@@ -323,7 +323,7 @@ func emitFunction(outdir string, preamble string, rules []rule) error {
 		file.WriteString("\n")
 		action := rule.Action
 		action = strings.Replace(action, "$$", rule.LHS+"0", -1)
-		for j, _ := range rule.RHS {
+		for j := range rule.RHS {
 			action = strings.Replace(action, fmt.Sprintf("$%d", j+1), fmt.Sprintf("%s%d", rule.RHS[j], j+1), -1)
 		}
 		lines := strings.Split(action, "\n")
