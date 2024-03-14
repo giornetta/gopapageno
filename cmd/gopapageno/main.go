@@ -1,10 +1,31 @@
 package main
 
 import (
+	"flag"
+	"fmt"
+	"os"
+
 	"github.com/giornetta/gopapageno/generator"
 )
 
 func main() {
-	generator.Generate("languages/arithmetic/lexer/arith.l", "languages/arithmetic/parser/arith.g", "languages/arithmetic")
-	//generator.Generate("languages/xml/lexer/xml.l", "languages/xml/parser/xml.g", "languages/xml")
+	if err := run(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
+	var lexerFlag = flag.String("l", "", "lexer source file")
+	var parserFlag = flag.String("g", "", "parser source file")
+	var outputFlag = flag.String("o", ".", "output directory")
+
+	flag.Parse()
+
+	if *lexerFlag == "" || *parserFlag == "" {
+		return fmt.Errorf("lexer and parser files must be provided")
+	}
+
+	generator.Generate(*lexerFlag, *parserFlag, *outputFlag)
+	return nil
 }

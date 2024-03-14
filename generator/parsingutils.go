@@ -1,7 +1,5 @@
 package generator
 
-import "fmt"
-
 func skipSpaces(bytes []byte, curPos int) int {
 	for curPos < len(bytes) && (bytes[curPos] == ' ' || bytes[curPos] == '\t' || bytes[curPos] == '\r' || bytes[curPos] == '\n') {
 		curPos++
@@ -104,10 +102,4 @@ func getSemanticFunction(bytes []byte, curPos int) (string, int) {
 	}
 
 	return string(bytes[startingPos:curPos]), curPos
-}
-
-func checkRegexpCompileError(err error) {
-	if err != nil {
-		fmt.Println(err)
-	}
 }

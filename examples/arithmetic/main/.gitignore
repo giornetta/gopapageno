@@ -1,6 +1,0 @@
-cpuprof.bat
-cpuprof 2 threads.bat
-cpuprof.prof
-main.exe
-memprof.bat
-memprof.prof

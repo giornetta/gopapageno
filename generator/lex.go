@@ -3,83 +3,85 @@ package generator
 import (
 	"bufio"
 	"fmt"
-	"os"
+	"io"
 	"regexp"
 	"strings"
 )
 
-func parseLexer(filename string) ([]lexRule, string, string) {
-	fmt.Println("Specified lexer file:", filename)
+var (
+	separatorRegex  = regexp.MustCompile("^%%\\s*$")
+	cutPointsRegex  = regexp.MustCompile("^%cut\\s*([^\\s].*)$")
+	definitionRegex = regexp.MustCompile("^([a-zA-Z][a-zA-Z0-9]*)\\s*(.+)$")
+)
 
-	file, err := os.Open(filename)
+type lexRule struct {
+	Regex  string
+	Action string
+}
 
-	if err != nil {
-		panic(err)
-	}
+func (r lexRule) String() string {
+	return fmt.Sprintf("%s: %s", r.Regex, r.Action)
+}
 
-	defer file.Close()
+func parseLexer(r io.Reader) ([]lexRule, string, string) {
+	scanner := bufio.NewScanner(r)
 
-	separatorRegex, err := regexp.Compile("^%%\\s*$")
-	checkRegexpCompileError(err)
-	cutPointsRegex, err := regexp.Compile("^%cut\\s*([^\\s].*)$")
-	checkRegexpCompileError(err)
-	definitionRegex, err := regexp.Compile("^([a-zA-Z][a-zA-Z0-9]*)\\s*(.+)$")
-	checkRegexpCompileError(err)
-
-	scanner := bufio.NewScanner(file)
-
-	//Scan the definitions section
+	/****************************
+	 * DEFINITIONS + CUT POINTS *
+	 ****************************/
 	cutPoints := ""
 	definitions := make(map[string]string)
 
 	for scanner.Scan() {
-		curLine := scanner.Text()
-		if separatorRegex.MatchString(curLine) {
+		l := scanner.Text()
+
+		if separatorRegex.MatchString(l) {
 			break
 		}
-		defMatch := definitionRegex.FindStringSubmatch(curLine)
-		cutPointsMatch := cutPointsRegex.FindStringSubmatch(curLine)
+		defMatch := definitionRegex.FindStringSubmatch(l)
+		cutPointsMatch := cutPointsRegex.FindStringSubmatch(l)
 		if defMatch != nil {
 			definitions[defMatch[1]] = strings.TrimSpace(defMatch[2])
 		} else if cutPointsMatch != nil {
-			cutPoints = cutPointsMatch[1]
+			cutPoints = cutPointsMatch[1] // TODO: Does this only support a single cutpoints definition?
 		}
 	}
 
-	fmt.Println("Definitions:")
-	for k, v := range definitions {
-		fmt.Printf("%s: %s\n", k, v)
-	}
+	// TODO: Log Definitions
 
-	ruleLines := make([]string, 0)
+	/*********
+	 * RULES *
+	 *********/
+	var ruleBuilder strings.Builder
 	for scanner.Scan() {
-		curLine := scanner.Text()
-		if separatorRegex.MatchString(curLine) {
+		l := scanner.Text()
+		if separatorRegex.MatchString(l) {
 			break
 		}
-		ruleLines = append(ruleLines, curLine)
+		ruleBuilder.WriteString(l)
+		ruleBuilder.WriteString("\n")
 	}
 
-	lexRules := parseLexRules(strings.Join(ruleLines, "\n"), definitions)
+	lexRules := parseLexRules(ruleBuilder.String(), definitions)
 
-	codeLines := make([]string, 0)
+	/********
+	 * CODE *
+	 ********/
+	var codeBuilder strings.Builder
 	for scanner.Scan() {
-		curLine := scanner.Text()
-		codeLines = append(codeLines, curLine)
+		l := scanner.Text()
+		codeBuilder.WriteString(l)
+		codeBuilder.WriteString("\n") // TODO: Consider reading directly from r? Or find a way to read until end of r in 1 instruction
 	}
 
-	return lexRules, cutPoints, strings.Join(codeLines, "\n")
+	return lexRules, cutPoints, codeBuilder.String()
 }
 
 func parseLexRules(input string, definitions map[string]string) []lexRule {
 	bytes := []byte(input)
-
 	lexRules := make([]lexRule, 0)
-
 	pos := 0
-
 	pos = skipSpaces(bytes, pos)
-
 	curRegex := ""
 
 	for pos < len(bytes) {
@@ -119,19 +121,11 @@ func parseLexRules(input string, definitions map[string]string) []lexRule {
 				panic(fmt.Sprintf("Missing definition \"%s\"", identifier))
 			}
 		} else {
-			pos = curlyLParPos
-
-			var semFun string
-			semFun, pos = getSemanticFunction(bytes, pos)
-
+			semFun, pos := getSemanticFunction(bytes, curlyLParPos)
 			curRegex += string(bytes[startingPos:curlyLParPos])
-
 			curRegex = strings.Trim(curRegex, " \t\r\n")
-
 			lexRules = append(lexRules, lexRule{curRegex, semFun})
-
 			curRegex = ""
-
 			pos = skipSpaces(bytes, pos)
 		}
 	}

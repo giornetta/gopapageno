@@ -13,7 +13,7 @@ type listOfStacks struct {
 	head *stack
 	cur  *stack
 	len  int
-	pool *stackPool
+	pool *Pool[stack]
 }
 
 /*
@@ -28,7 +28,7 @@ type iterator struct {
 /*
 newLos creates a new listOfStacks initialized with one empty stack.
 */
-func newLos(pool *stackPool) listOfStacks {
+func newLos(pool *Pool[stack]) listOfStacks {
 	firstStack := pool.Get()
 	return listOfStacks{firstStack, firstStack, 0, pool}
 }

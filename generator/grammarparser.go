@@ -19,10 +19,8 @@ func parseGrammar(filename string) (string, string, []rule) {
 
 	defer file.Close()
 
-	separatorRegex, err := regexp.Compile("^%%\\s*$")
-	checkRegexpCompileError(err)
-	axiomRegex, err := regexp.Compile("^%axiom\\s*([a-zA-Z][a-zA-Z0-9]*)\\s*$")
-	checkRegexpCompileError(err)
+	separatorRegex := regexp.MustCompile("^%%\\s*$")
+	axiomRegex := regexp.MustCompile("^%axiom\\s*([a-zA-Z][a-zA-Z0-9]*)\\s*$")
 
 	scanner := bufio.NewScanner(file)
 

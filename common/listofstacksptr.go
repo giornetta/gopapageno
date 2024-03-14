@@ -14,7 +14,7 @@ type listOfStackPtrs struct {
 	cur           *stackPtr
 	len           int
 	firstTerminal *symbol
-	pool          *stackPtrPool
+	pool          *Pool[stackPtr]
 }
 
 /*
@@ -29,7 +29,7 @@ type iteratorPtr struct {
 /*
 newLosPtr creates a new listOfStackPtrs initialized with one empty stack.
 */
-func newLosPtr(pool *stackPtrPool) listOfStackPtrs {
+func newLosPtr(pool *Pool[stackPtr]) listOfStackPtrs {
 	firstStack := pool.Get()
 	return listOfStackPtrs{firstStack, firstStack, 0, nil, pool}
 }
