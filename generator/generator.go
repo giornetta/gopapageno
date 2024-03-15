@@ -8,7 +8,6 @@ import (
 )
 
 func Generate(lexerFilename string, parserFilename string, outdir string) error {
-
 	lexerFile, err := os.Open(lexerFilename)
 	if err != nil {
 		return fmt.Errorf("could not open lexer file: %v", err)

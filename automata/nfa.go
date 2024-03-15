@@ -1,7 +1,5 @@
 package automata
 
-import "slices"
-
 const _EPSILON byte = 0
 
 type NFA[T comparable] struct {
@@ -65,7 +63,7 @@ func NFAFromClass[T comparable](elements map[T]bool) *NFA[T] {
 func NFAFromSlice[T comparable](elements []T) *NFA[T] {
 	nfa := &NFA[T]{
 		Initial:   NewNFAState[T](),
-		NumStates: len(bytes) + 1,
+		NumStates: len(elements) + 1,
 	}
 
 	curState := nfa.Initial
@@ -101,6 +99,7 @@ func (s *NFAState[T]) EpsilonClosure() []*NFAState[T] {
 	return closure
 }
 
+// EpsilonClosure returns the set of states which are reachable from the states in [ss] on epsilon-transitions.
 func (ss NFAStateSet[T]) EpsilonClosure() NFAStateSet[T] {
 	closureMap := make(map[*NFAState[T]]struct{})
 	var e struct{}
@@ -108,8 +107,8 @@ func (ss NFAStateSet[T]) EpsilonClosure() NFAStateSet[T] {
 	for _, s := range ss {
 		closure := s.EpsilonClosure()
 
-		for _, curClosureState := range closure {
-			closureMap[curClosureState] = e
+		for _, closureState := range closure {
+			closureMap[closureState] = e
 		}
 	}
 
@@ -124,20 +123,27 @@ func (ss NFAStateSet[T]) EpsilonClosure() NFAStateSet[T] {
 	return keys
 }
 
-func stateSetMove(stateSet []*NFAState, char int) []*NFAState {
-	states := make([]*NFAState, 0)
+func (ss NFAStateSet[T]) Move(input T) NFAStateSet[T] {
+	statesMap := make(map[*NFAState[T]]struct{})
+	var e struct{}
 
-	for _, curState := range stateSet {
-		reachedStates := curState.Transitions[char]
+	for _, s := range ss {
+		reachedStates := s.Transitions[input]
 
-		for _, curReachedState := range reachedStates {
-			if !slices.Contains(states, curReachedState) {
-				states = append(states, curReachedState)
-			}
+		for _, rs := range reachedStates {
+			statesMap[rs] = e
 		}
 	}
 
-	return states
+	keys := make([]*NFAState[T], len(statesMap), len(statesMap))
+	i := 0
+
+	for k := range statesMap {
+		keys[i] = k
+		i++
+	}
+
+	return keys
 }
 
 // AddTransition adds a transition from [s] to other based on [b].
@@ -158,72 +164,80 @@ func (nfa *NFA[T]) Concatenate(other *NFA[T]) {
 }
 
 // Operator |
-func (nfa *NFA) Unite(nfa2 NFA) {
-	newInitial := NFAState{}
-	newFinal := NFAState{}
+func (nfa *NFA[T]) Unite(other *NFA[T]) {
+	newInitial := NewNFAState[T]()
+	newFinal := NewNFAState[T]()
 
-	newInitial.AddTransition(_EPSILON, nfa.Initial)
-	newInitial.AddTransition(_EPSILON, nfa2.Initial)
+	var epsilon T
 
-	nfa.Final.AddTransition(_EPSILON, &newFinal)
-	nfa2.Final.AddTransition(_EPSILON, &newFinal)
+	newInitial.AddTransition(epsilon, nfa.Initial)
+	newInitial.AddTransition(epsilon, other.Initial)
 
-	nfa.Initial = &newInitial
-	nfa.Final = &newFinal
+	nfa.Final.AddTransition(epsilon, newFinal)
+	other.Final.AddTransition(epsilon, newFinal)
 
-	nfa.NumStates += nfa2.NumStates + 2
+	nfa.Initial = newInitial
+	nfa.Final = newFinal
+
+	nfa.NumStates += other.NumStates + 2
 }
 
 // Operator *
-func (nfa *NFA) KleeneStar() {
-	newInitial := NFAState{}
-	newFinal := NFAState{}
+func (nfa *NFA[T]) KleeneStar() {
+	newInitial := NewNFAState[T]()
+	newFinal := NewNFAState[T]()
 
-	newInitial.AddTransition(_EPSILON, nfa.Initial)
-	newInitial.AddTransition(_EPSILON, &newFinal)
+	var epsilon T
 
-	nfa.Final.AddTransition(_EPSILON, nfa.Initial)
-	nfa.Final.AddTransition(_EPSILON, &newFinal)
+	newInitial.AddTransition(epsilon, nfa.Initial)
+	newInitial.AddTransition(epsilon, newFinal)
 
-	nfa.Initial = &newInitial
-	nfa.Final = &newFinal
+	nfa.Final.AddTransition(epsilon, nfa.Initial)
+	nfa.Final.AddTransition(epsilon, newFinal)
+
+	nfa.Initial = newInitial
+	nfa.Final = newFinal
 
 	nfa.NumStates += 2
 }
 
 // Operator +
-func (nfa *NFA) KleenePlus() {
-	newInitial := NFAState{}
-	newFinal := NFAState{}
+func (nfa *NFA[T]) KleenePlus() {
+	newInitial := NewNFAState[T]()
+	newFinal := NewNFAState[T]()
 
-	newInitial.AddTransition(_EPSILON, nfa.Initial)
+	var epsilon T
 
-	nfa.Final.AddTransition(_EPSILON, nfa.Initial)
-	nfa.Final.AddTransition(_EPSILON, &newFinal)
+	newInitial.AddTransition(epsilon, nfa.Initial)
 
-	nfa.Initial = &newInitial
-	nfa.Final = &newFinal
+	nfa.Final.AddTransition(epsilon, nfa.Initial)
+	nfa.Final.AddTransition(epsilon, newFinal)
+
+	nfa.Initial = newInitial
+	nfa.Final = newFinal
 
 	nfa.NumStates += 2
 }
 
 // Operator ?
-func (nfa *NFA) ZeroOrOne() {
-	newInitial := NFAState{}
-	newFinal := NFAState{}
+func (nfa *NFA[T]) ZeroOrOne() {
+	newInitial := NewNFAState[T]()
+	newFinal := NewNFAState[T]()
 
-	newInitial.AddTransition(_EPSILON, nfa.Initial)
-	newInitial.AddTransition(_EPSILON, &newFinal)
+	var epsilon T
 
-	nfa.Final.AddTransition(_EPSILON, &newFinal)
+	newInitial.AddTransition(epsilon, nfa.Initial)
+	newInitial.AddTransition(epsilon, newFinal)
 
-	nfa.Initial = &newInitial
-	nfa.Final = &newFinal
+	nfa.Final.AddTransition(epsilon, newFinal)
+
+	nfa.Initial = newInitial
+	nfa.Final = newFinal
 
 	nfa.NumStates += 2
 }
 
-func (nfa *NFA) AddAssociatedRule(ruleNum int) {
+func (nfa *NFA[T]) AddAssociatedRule(ruleNum int) {
 	finalState := nfa.Final
 
 	if finalState.AssociatedRules == nil {
@@ -231,101 +245,4 @@ func (nfa *NFA) AddAssociatedRule(ruleNum int) {
 	} else {
 		finalState.AssociatedRules = append(finalState.AssociatedRules, ruleNum)
 	}
-}
-
-func (nfa *NFA) ToDfa() DFA {
-	genStates := make([]nfaStateSetPtr, 0)
-
-	curDfaStateNum := 0
-
-	initialDfaState := DFAState{}
-	initialDfaState.Num = curDfaStateNum
-
-	dfa := DFA{&initialDfaState, make([]*DFAState, 0), 1}
-
-	genStates = append(genStates, nfaStateSetPtr{nfa.Initial.EpsilonClosure(), &initialDfaState})
-
-	search := func(gStates []nfaStateSetPtr, stateSet []*NFAState) *nfaStateSetPtr {
-		for _, curGState := range gStates {
-			if len(curGState.StateSet) != len(stateSet) {
-				continue
-			}
-			equal := true
-			for i, _ := range curGState.StateSet {
-				if curGState.StateSet[i] != stateSet[i] {
-					equal = false
-					break
-				}
-			}
-			if equal {
-				return &curGState
-			}
-		}
-		return nil
-	}
-
-	nextStateToCheckPos := 0
-
-	for nextStateToCheckPos < len(genStates) {
-		curStateSet := genStates[nextStateToCheckPos].StateSet
-		curDfaState := genStates[nextStateToCheckPos].Ptr
-
-		//For each character
-		for i := 1; i < 256; i++ {
-			charStateSet := stateSetMove(curStateSet, i)
-			epsilonClosure := stateSetEpsilonClosure(charStateSet)
-
-			if len(epsilonClosure) == 0 {
-				continue
-			}
-
-			foundStateSetPtr := search(genStates, epsilonClosure)
-
-			if foundStateSetPtr != nil {
-				curDfaState.Transitions[i] = foundStateSetPtr.Ptr
-			} else {
-				curDfaStateNum++
-				newDfaState := DFAState{}
-				newDfaState.Num = curDfaStateNum
-				newDfaState.AssociatedRules = make([]int, 0)
-				for _, curNfaState := range epsilonClosure {
-					newDfaState.AssociatedRules = append(newDfaState.AssociatedRules, curNfaState.AssociatedRules...)
-				}
-				curDfaState.Transitions[i] = &newDfaState
-				newStateSetPtr := nfaStateSetPtr{epsilonClosure, &newDfaState}
-
-				genStates = append(genStates, newStateSetPtr)
-			}
-		}
-		nextStateToCheckPos++
-	}
-
-	dfa.NumStates = len(genStates)
-
-	for _, genState := range genStates {
-		if slices.Contains(genState.StateSet, nfa.Final) {
-			finalState := genState.Ptr
-			finalState.IsFinal = true
-			dfa.Final = append(dfa.Final, finalState)
-		}
-	}
-
-	return dfa
-}
-
-type nfaStateSetPtr struct {
-	StateSet []*NFAState
-	Ptr      *DFAState
-}
-
-func (stateSet1 *nfaStateSetPtr) Equals(stateSet2 *nfaStateSetPtr) bool {
-	if len(stateSet1.StateSet) != len(stateSet2.StateSet) {
-		return false
-	}
-	for i, _ := range stateSet1.StateSet {
-		if stateSet1.StateSet[i] != stateSet2.StateSet[i] {
-			return false
-		}
-	}
-	return true
 }
