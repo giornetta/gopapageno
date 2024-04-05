@@ -56,9 +56,7 @@ import (
 
 var lexerInt64Pools []*gopapageno.Pool[int64]
 
-/*
-lexerPreallocMem initializes all the memory pools required by the lexer.
-*/
+// LexerPreallocMem initializes all the memory pools required by the lexer.
 func LexerPreallocMem(inputSize int, numThreads int) {
 	lexerInt64Pools = make([]*gopapageno.Pool[int64], numThreads)
 

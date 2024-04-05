@@ -73,7 +73,7 @@ func run() error {
 		return fmt.Errorf("could not parse source: %w", err)
 	}
 
-	_ = root
+	fmt.Println(*root.Value.(*int64))
 
 	return nil
 }

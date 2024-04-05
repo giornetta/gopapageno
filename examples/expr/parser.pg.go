@@ -9,7 +9,7 @@ import (
 
 var parserInt64Pools []*gopapageno.Pool[int64]
 
-// parserPreallocMem initializes all the memory pools required by the semantic function of the parser.
+// ParserPreallocMem initializes all the memory pools required by the semantic function of the parser.
 func ParserPreallocMem(inputSize int, numThreads int) {
 	parserInt64Pools = make([]*gopapageno.Pool[int64], numThreads)
 
@@ -18,8 +18,10 @@ func ParserPreallocMem(inputSize int, numThreads int) {
 
 	for i := 0; i < numThreads; i++ {
 		parserInt64Pools[i] = gopapageno.NewPool[int64](poolSizePerThread)
+
 	}
 }
+
 
 // Non-terminals
 const (
@@ -37,6 +39,7 @@ const (
 	RPAR
 	TIMES
 )
+
 
 func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 	numTerminals := uint16(6)
@@ -60,7 +63,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 		{E_F_S_T, []gopapageno.TokenType{LPAR, E_S_T, RPAR}},
 		{E_F_S_T, []gopapageno.TokenType{NUMBER}},
 	}
-	compressedRules := []uint16{0, 0, 5, 1, 13, 2, 41, 3, 59, 32769, 87, 32770, 120, 4, 0, 2, 32771, 20, 32773, 33, 0, 0, 2, 1, 27, 3, 30, 2, 1, 0, 2, 2, 0, 0, 0, 1, 1, 38, 3, 3, 0, 4, 4, 1, 32771, 46, 0, 0, 2, 1, 53, 3, 56, 2, 5, 0, 2, 6, 0, 4, 7, 2, 32771, 66, 32773, 79, 0, 0, 2, 1, 73, 3, 76, 2, 8, 0, 2, 9, 0, 0, 0, 1, 1, 84, 3, 10, 0, 0, 0, 3, 1, 96, 2, 104, 3, 112, 0, 0, 1, 32772, 101, 1, 11, 0, 0, 0, 1, 32772, 109, 1, 12, 0, 0, 0, 1, 32772, 117, 1, 13, 0, 1, 14, 0}
+	compressedRules := []uint16{0, 0, 5, 1, 13, 2, 41, 3, 59, 32769, 87, 32770, 120, 4, 0, 2, 32771, 20, 32773, 33, 0, 0, 2, 1, 27, 3, 30, 2, 1, 0, 2, 2, 0, 0, 0, 1, 1, 38, 3, 3, 0, 4, 4, 1, 32771, 46, 0, 0, 2, 1, 53, 3, 56, 2, 5, 0, 2, 6, 0, 4, 7, 2, 32771, 66, 32773, 79, 0, 0, 2, 1, 73, 3, 76, 2, 8, 0, 2, 9, 0, 0, 0, 1, 1, 84, 3, 10, 0, 0, 0, 3, 1, 96, 2, 104, 3, 112, 0, 0, 1, 32772, 101, 1, 11, 0, 0, 0, 1, 32772, 109, 1, 12, 0, 0, 0, 1, 32772, 117, 1, 13, 0, 1, 14, 0	}
 
 	precMatrix := [][]gopapageno.Precedence{
 		{gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields},
@@ -71,10 +74,10 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecTakes},
 	}
 	bitPackedMatrix := []uint64{
-		3079943359210463233, 168,
+		3079943359210463233, 168, 
 	}
 
-	fn := func(rule uint16, lhs *gopapageno.Token, rhs []*gopapageno.Token, thread int) {
+	fn := func(rule uint16, lhs *gopapageno.Token, rhs []*gopapageno.Token, thread int){
 		switch rule {
 		case 0:
 			NEW_AXIOM0 := lhs
@@ -126,9 +129,9 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			TIMES2.Next = E_F_S_T3
 
 			{
-				newValue := parserInt64Pools[thread].Get()
-				*newValue = *E_F_S_T1.Value.(*int64) * *E_F_S_T3.Value.(*int64)
-				E_S_T0.Value = newValue
+			    newValue := parserInt64Pools[thread].Get()
+			    *newValue = *E_F_S_T1.Value.(*int64) * *E_F_S_T3.Value.(*int64)
+			    E_S_T0.Value = newValue
 			}
 		case 4:
 			NEW_AXIOM0 := lhs
@@ -219,9 +222,9 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			TIMES2.Next = E_F_S_T3
 
 			{
-				newValue := parserInt64Pools[thread].Get()
-				*newValue = *E_S_T1.Value.(*int64) * *E_F_S_T3.Value.(*int64)
-				E_S_T0.Value = newValue
+			    newValue := parserInt64Pools[thread].Get()
+			    *newValue = *E_S_T1.Value.(*int64) * *E_F_S_T3.Value.(*int64)
+			    E_S_T0.Value = newValue
 			}
 		case 11:
 			E_F_S_T0 := lhs
@@ -286,3 +289,4 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 		fn,
 		opts...)
 }
+
