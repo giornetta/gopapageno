@@ -1,5 +1,6 @@
 import (
     "sync"
+    "github.com/giornetta/gopapageno/ext/xpath"
 )
 
 var reductionPool = &sync.Pool{

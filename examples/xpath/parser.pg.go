@@ -4,6 +4,7 @@ package xpath
 import "github.com/giornetta/gopapageno"
 
 import (
+	"github.com/giornetta/gopapageno/ext/xpath"
 	"sync"
 )
 

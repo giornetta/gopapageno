@@ -19,6 +19,8 @@ type Options struct {
 	OutputDirectory           string
 	TypesOnly                 bool
 
+	Associative bool
+
 	Logger *log.Logger
 }
 
@@ -51,7 +53,7 @@ func Generate(opts *Options) error {
 		return fmt.Errorf("could not parse parser description: %w", err)
 	}
 
-	if err := parserDesc.compile(opts.Logger); err != nil {
+	if err := parserDesc.compile(opts); err != nil {
 		return fmt.Errorf("could not compile parser: %w", err)
 	}
 

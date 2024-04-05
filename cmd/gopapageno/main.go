@@ -22,6 +22,7 @@ func run() error {
 	parserFlag := flag.String("g", "", "parser source file")
 	outputFlag := flag.String("o", ".", "output directory")
 	typesOnlyFlag := flag.Bool("types-only", false, "generate types only")
+	associativeFlag := flag.Bool("associative", false, "generate using associative OG")
 
 	logFlag := flag.Bool("log", false, "enable logging during generation")
 
@@ -43,6 +44,7 @@ func run() error {
 		ParserDescriptionFilename: *parserFlag,
 		OutputDirectory:           *outputFlag,
 		TypesOnly:                 *typesOnlyFlag,
+		Associative:               *associativeFlag,
 		Logger:                    log.New(logOut, "", 0),
 	}
 

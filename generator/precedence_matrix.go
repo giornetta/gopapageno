@@ -33,7 +33,7 @@ func (p *parserDescriptor) newPrecedenceMatrix() (precedenceMatrix, error) {
 			if p.terminals.Contains(token1) && p.terminals.Contains(token2) {
 				//Check if the matrix already contains an entry for this couple
 				if m[token1][token2] != gopapageno.PrecEmpty && m[token1][token2] != gopapageno.PrecEquals {
-					return nil, fmt.Errorf("the precedence relation Eq is not unique between %s and %s", token1, token2)
+					return nil, fmt.Errorf("the precedence relation Equals is not unique between %s and %s", token1, token2)
 				}
 
 				m[token1][token2] = gopapageno.PrecEquals
@@ -41,7 +41,7 @@ func (p *parserDescriptor) newPrecedenceMatrix() (precedenceMatrix, error) {
 				for _, token := range rts[token1].Iter {
 					//Check if the matrix already contains an entry for this couple
 					if m[token][token2] != gopapageno.PrecEmpty && m[token][token2] != gopapageno.PrecTakes {
-						return nil, fmt.Errorf("the precedence relation Ta is not unique between %s and %s", token, token2)
+						return nil, fmt.Errorf("the precedence relation Takes is not unique between %s and %s", token, token2)
 					}
 					m[token][token2] = gopapageno.PrecTakes
 				}
@@ -49,7 +49,7 @@ func (p *parserDescriptor) newPrecedenceMatrix() (precedenceMatrix, error) {
 				for _, token := range lts[token2].Iter {
 					//Check if the matrix already contains an entry for this couple
 					if m[token1][token] != gopapageno.PrecEmpty && m[token1][token] != gopapageno.PrecYields {
-						return nil, fmt.Errorf("the precedence relation Yi is not unique between %s and %s", token1, token)
+						return nil, fmt.Errorf("the precedence relation Yields is not unique between %s and %s", token1, token)
 					}
 					m[token1][token] = gopapageno.PrecYields
 				}
@@ -213,4 +213,99 @@ func moveToFront[T comparable](slice []T, e T) error {
 	copy(slice, newSlice)
 
 	return nil
+}
+
+func (p *parserDescriptor) newAssociativePrecedenceMatrix() (precedenceMatrix, error) {
+	m := make(map[string]map[string]gopapageno.Precedence)
+
+	// Initialize an empty matrix.
+	for _, term := range p.terminals.Iter {
+		m[term] = make(map[string]gopapageno.Precedence)
+
+		for _, term2 := range p.terminals.Iter {
+			m[term][term2] = gopapageno.PrecEmpty
+		}
+	}
+
+	lts, rts := p.getTerminalSets()
+
+	for _, rule := range p.rules {
+		rhs := rule.RHS
+
+		//Check digrams
+		for i := 0; i < len(rhs)-1; i++ {
+			token1 := rhs[i]
+			token2 := rhs[i+1]
+
+			if p.terminals.Contains(token1) && p.terminals.Contains(token2) {
+				// Check if the matrix already contains an entry for this couple
+				if m[token1][token2] != gopapageno.PrecEmpty && m[token1][token2] != gopapageno.PrecEquals {
+					return nil, fmt.Errorf("the precedence relation Equals is not unique between %s and %s", token1, token2)
+				}
+
+				m[token1][token2] = gopapageno.PrecEquals
+			} else if p.nonterminals.Contains(token1) && p.terminals.Contains(token2) {
+				for _, token := range rts[token1].Iter {
+					// Check if the matrix already contains an entry for this couple
+					if m[token][token2] != gopapageno.PrecEmpty && m[token][token2] != gopapageno.PrecTakes {
+						// TODO: Check for Weak or Associativity Conflict
+						return nil, fmt.Errorf("the precedence relation Takes is not unique between %s and %s", token, token2)
+					}
+					m[token][token2] = gopapageno.PrecTakes
+				}
+			} else if p.terminals.Contains(token1) && p.nonterminals.Contains(token2) {
+				for _, token := range lts[token2].Iter {
+					// Check if the matrix already contains an entry for this couple
+					if m[token1][token] != gopapageno.PrecEmpty && m[token1][token] != gopapageno.PrecYields {
+						// TODO: Check for Weak or Associativity Conflict
+						return nil, fmt.Errorf("the precedence relation Yields is not unique between %s and %s", token1, token)
+					}
+					m[token1][token] = gopapageno.PrecYields
+				}
+			} else {
+				return nil, fmt.Errorf("the rule %s is not in operator precedence form", rule.String())
+			}
+		}
+
+		//Check trigrams
+		for i := 0; i < len(rhs)-2; i++ {
+			token1 := rhs[i]
+			token2 := rhs[i+1]
+			token3 := rhs[i+2]
+
+			if p.terminals.Contains(token1) && p.nonterminals.Contains(token2) && p.terminals.Contains(token3) {
+				//Check if the matrix already contains an entry for this couple
+				if m[token1][token3] != gopapageno.PrecEmpty && m[token1][token3] != gopapageno.PrecEquals {
+					return nil, fmt.Errorf("the precedence relation is not unique between %s and %s", token1, token3)
+				}
+
+				m[token1][token3] = gopapageno.PrecEquals
+			}
+		}
+	}
+
+	//set precedence for #
+	for _, terminal := range p.terminals.Iter {
+		if terminal != "_TERM" {
+			m["_TERM"][terminal] = gopapageno.PrecYields
+			m[terminal]["_TERM"] = gopapageno.PrecTakes
+		}
+	}
+	m["_TERM"]["_TERM"] = gopapageno.PrecEquals
+
+	terminals := p.terminals.Slice()
+	if err := moveToFront(terminals, "_TERM"); err != nil {
+		return nil, fmt.Errorf("could not move _TERM to front: %w", err)
+	}
+
+	precMatrix := make([][]gopapageno.Precedence, len(terminals))
+	for i, t1 := range terminals {
+		precMatrix[i] = make([]gopapageno.Precedence, len(terminals))
+
+		for j, t2 := range terminals {
+			precMatrix[i][j] = m[t1][t2]
+		}
+	}
+
+	return precMatrix, nil
 }

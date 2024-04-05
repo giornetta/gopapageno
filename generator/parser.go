@@ -189,7 +189,7 @@ func parseRules(input string) ([]rule, error) {
 
 // compile completes the parser description by doing all necessary checks and
 // transformations in order to produce a correct OPG.
-func (p *parserDescriptor) compile(logger *log.Logger) error {
+func (p *parserDescriptor) compile(opts *Options) error {
 	p.inferTokens()
 
 	if !p.isAxiomUsed() {
@@ -198,7 +198,14 @@ func (p *parserDescriptor) compile(logger *log.Logger) error {
 
 	p.deleteRepeatedRHS()
 
-	precMatrix, err := p.newPrecedenceMatrix()
+	var precMatrix precedenceMatrix
+	var err error
+
+	if !opts.Associative {
+		precMatrix, err = p.newPrecedenceMatrix()
+	} else {
+		precMatrix, err = p.newAssociativePrecedenceMatrix()
+	}
 	if err != nil {
 		return fmt.Errorf("could not create precedence matrix: %w", err)
 	}
