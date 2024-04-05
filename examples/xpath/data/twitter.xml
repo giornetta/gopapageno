@@ -1,0 +1,23 @@
+<tweets>
+    <tweet>
+        <author>Lebron</author>
+        <content>Hello there</content>
+    </tweet>  
+    <tweet>
+        <author>Lebron</author>
+        <content>Goodbye Heats</content>
+    </tweet>
+    <tweet>
+        <author>Lebron</author>
+        <content>I lost :(</content>
+    </tweet>
+    <tweet>
+        <author>Lebron</author>
+        <content>I won</content>
+    </tweet>
+    <tweet>
+        <author>Stephen</author>
+        <content>Hello Lebron</content>
+    </tweet>
+</tweets>
+    

@@ -143,31 +143,31 @@ func newNfaFromString(str []byte) Nfa {
 	return nfa
 }
 
-func (nfa1 *Nfa) Concatenate(nfa2 Nfa) {
-	*nfa1.Final = *nfa2.Initial
-	nfa1.Final = nfa2.Final
+func (nfa *Nfa) Concatenate(nfa2 Nfa) {
+	*nfa.Final = *nfa2.Initial
+	nfa.Final = nfa2.Final
 
-	nfa1.NumStates = nfa1.NumStates + nfa2.NumStates - 1
+	nfa.NumStates = nfa.NumStates + nfa2.NumStates - 1
 }
 
-// Operator |
-func (nfa1 *Nfa) Unite(nfa2 Nfa) {
+// Unite Operator |
+func (nfa *Nfa) Unite(nfa2 Nfa) {
 	newInitial := NfaState{}
 	newFinal := NfaState{}
 
-	newInitial.AddTransition(_EPSILON, nfa1.Initial)
+	newInitial.AddTransition(_EPSILON, nfa.Initial)
 	newInitial.AddTransition(_EPSILON, nfa2.Initial)
 
-	nfa1.Final.AddTransition(_EPSILON, &newFinal)
+	nfa.Final.AddTransition(_EPSILON, &newFinal)
 	nfa2.Final.AddTransition(_EPSILON, &newFinal)
 
-	nfa1.Initial = &newInitial
-	nfa1.Final = &newFinal
+	nfa.Initial = &newInitial
+	nfa.Final = &newFinal
 
-	nfa1.NumStates += nfa2.NumStates + 2
+	nfa.NumStates += nfa2.NumStates + 2
 }
 
-// Operator *
+// KleeneStar Operator *
 func (nfa *Nfa) KleeneStar() {
 	newInitial := NfaState{}
 	newFinal := NfaState{}
@@ -184,7 +184,7 @@ func (nfa *Nfa) KleeneStar() {
 	nfa.NumStates += 2
 }
 
-// Operator +
+// KleenePlus Operator +
 func (nfa *Nfa) KleenePlus() {
 	newInitial := NfaState{}
 	newFinal := NfaState{}
@@ -200,7 +200,7 @@ func (nfa *Nfa) KleenePlus() {
 	nfa.NumStates += 2
 }
 
-// Operator ?
+// ZeroOrOne Operator ?
 func (nfa *Nfa) ZeroOrOne() {
 	newInitial := NfaState{}
 	newFinal := NfaState{}
@@ -333,10 +333,8 @@ func (dfaState *DfaState) getStatesR(addedStates *[]*DfaState) {
 	}
 }
 
-/*
-GetState returns a slice containing all the states of the dfa.
-The states are sorted by their state number.
-*/
+// GetStates returns a slice containing all the states of the dfa.
+// The states are sorted by their state number.
 func (dfa *Dfa) GetStates() []*DfaState {
 	states := make([]*DfaState, dfa.NumStates)
 

@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
+	"log"
 	"os"
 
 	"github.com/giornetta/gopapageno/generator"
@@ -16,9 +18,12 @@ func main() {
 }
 
 func run() error {
-	var lexerFlag = flag.String("l", "", "lexer source file")
-	var parserFlag = flag.String("g", "", "parser source file")
-	var outputFlag = flag.String("o", ".", "output directory")
+	lexerFlag := flag.String("l", "", "lexer source file")
+	parserFlag := flag.String("g", "", "parser source file")
+	outputFlag := flag.String("o", ".", "output directory")
+	typesOnlyFlag := flag.Bool("types-only", false, "generate types only")
+
+	logFlag := flag.Bool("log", false, "enable logging during generation")
 
 	flag.Parse()
 
@@ -26,6 +31,24 @@ func run() error {
 		return fmt.Errorf("lexer and parser files must be provided")
 	}
 
-	generator.Generate(*lexerFlag, *parserFlag, *outputFlag)
+	var logOut io.Writer
+	if *logFlag {
+		logOut = os.Stderr
+	} else {
+		logOut = io.Discard
+	}
+
+	opts := &generator.Options{
+		LexerDescriptionFilename:  *lexerFlag,
+		ParserDescriptionFilename: *parserFlag,
+		OutputDirectory:           *outputFlag,
+		TypesOnly:                 *typesOnlyFlag,
+		Logger:                    log.New(logOut, "", 0),
+	}
+
+	if err := generator.Generate(opts); err != nil {
+		return fmt.Errorf("could not generate: %w", err)
+	}
+
 	return nil
 }

@@ -33,9 +33,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			leftNfa := CONCATENATION_RE_SIMPLE_RE1.Value.(*Nfa)
 			rightNfa := CONCATENATION_RE_SIMPLE_RE3.Value.(*Nfa)
-			
+
 			leftNfa.Unite(*rightNfa)
-			
+
 			RE_UNION0.Value = leftNfa
 		}
 	case 2:
@@ -51,9 +51,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			leftNfa := CONCATENATION_RE_SIMPLE_RE1.Value.(*Nfa)
 			rightNfa := RE_SIMPLE_RE3.Value.(*Nfa)
-			
+
 			leftNfa.Unite(*rightNfa)
-			
+
 			RE_UNION0.Value = leftNfa
 		}
 	case 3:
@@ -78,9 +78,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			leftNfa := RE_SIMPLE_RE1.Value.(*Nfa)
 			rightNfa := CONCATENATION_RE_SIMPLE_RE3.Value.(*Nfa)
-			
+
 			leftNfa.Unite(*rightNfa)
-			
+
 			RE_UNION0.Value = leftNfa
 		}
 	case 5:
@@ -96,9 +96,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			leftNfa := RE_SIMPLE_RE1.Value.(*Nfa)
 			rightNfa := RE_SIMPLE_RE3.Value.(*Nfa)
-			
+
 			leftNfa.Unite(*rightNfa)
-			
+
 			RE_UNION0.Value = leftNfa
 		}
 	case 6:
@@ -123,9 +123,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			leftNfa := RE_UNION1.Value.(*Nfa)
 			rightNfa := CONCATENATION_RE_SIMPLE_RE3.Value.(*Nfa)
-			
+
 			leftNfa.Unite(*rightNfa)
-			
+
 			RE_UNION0.Value = leftNfa
 		}
 	case 8:
@@ -141,9 +141,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			leftNfa := RE_UNION1.Value.(*Nfa)
 			rightNfa := RE_SIMPLE_RE3.Value.(*Nfa)
-			
+
 			leftNfa.Unite(*rightNfa)
-			
+
 			RE_UNION0.Value = leftNfa
 		}
 	case 9:
@@ -166,9 +166,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			leftNfa := any1.Value.(*Nfa)
 			rightNfa := CONCATENATION_RE_SIMPLE_RE2.Value.(*Nfa)
-			
+
 			leftNfa.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = leftNfa
 		}
 	case 11:
@@ -182,9 +182,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			leftNfa := any1.Value.(*Nfa)
 			rightNfa := RE_SIMPLE_RE2.Value.(*Nfa)
-			
+
 			leftNfa.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = leftNfa
 		}
 	case 12:
@@ -198,7 +198,7 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			nfaAny := any1.Value.(*Nfa)
 			nfaAny.KleenePlus()
-			
+
 			RE_SIMPLE_RE0.Value = nfaAny
 		}
 	case 13:
@@ -215,9 +215,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 			nfaAny := any1.Value.(*Nfa)
 			nfaAny.KleenePlus()
 			rightNfa := CONCATENATION_RE_SIMPLE_RE3.Value.(*Nfa)
-			
+
 			nfaAny.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = nfaAny
 		}
 	case 14:
@@ -234,9 +234,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 			nfaAny := any1.Value.(*Nfa)
 			nfaAny.KleenePlus()
 			rightNfa := RE_SIMPLE_RE3.Value.(*Nfa)
-			
+
 			nfaAny.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = nfaAny
 		}
 	case 15:
@@ -250,7 +250,7 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			nfaAny := any1.Value.(*Nfa)
 			nfaAny.KleeneStar()
-			
+
 			RE_SIMPLE_RE0.Value = nfaAny
 		}
 	case 16:
@@ -267,9 +267,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 			nfaAny := any1.Value.(*Nfa)
 			nfaAny.KleeneStar()
 			rightNfa := CONCATENATION_RE_SIMPLE_RE3.Value.(*Nfa)
-			
+
 			nfaAny.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = nfaAny
 		}
 	case 17:
@@ -286,9 +286,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 			nfaAny := any1.Value.(*Nfa)
 			nfaAny.KleeneStar()
 			rightNfa := RE_SIMPLE_RE3.Value.(*Nfa)
-			
+
 			nfaAny.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = nfaAny
 		}
 	case 18:
@@ -299,7 +299,7 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 
 		{
 			newNfa := newNfaFromChar(char1.Value.(byte))
-			
+
 			RE_SIMPLE_RE0.Value = &newNfa
 		}
 	case 19:
@@ -313,9 +313,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			newNfa := newNfaFromChar(char1.Value.(byte))
 			rightNfa := CONCATENATION_RE_SIMPLE_RE2.Value.(*Nfa)
-		
+
 			newNfa.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = &newNfa
 		}
 	case 20:
@@ -329,9 +329,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			newNfa := newNfaFromChar(char1.Value.(byte))
 			rightNfa := RE_SIMPLE_RE2.Value.(*Nfa)
-		
+
 			newNfa.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = &newNfa
 		}
 	case 21:
@@ -345,7 +345,7 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			newNfa := newNfaFromChar(char1.Value.(byte))
 			newNfa.KleenePlus()
-			
+
 			RE_SIMPLE_RE0.Value = &newNfa
 		}
 	case 22:
@@ -362,9 +362,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 			newNfa := newNfaFromChar(char1.Value.(byte))
 			newNfa.KleenePlus()
 			rightNfa := plus2.Value.(*Nfa)
-		
+
 			newNfa.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = &newNfa
 		}
 	case 23:
@@ -381,9 +381,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 			newNfa := newNfaFromChar(char1.Value.(byte))
 			newNfa.KleenePlus()
 			rightNfa := plus2.Value.(*Nfa)
-		
+
 			newNfa.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = &newNfa
 		}
 	case 24:
@@ -397,7 +397,7 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			newNfa := newNfaFromChar(char1.Value.(byte))
 			newNfa.KleeneStar()
-			
+
 			RE_SIMPLE_RE0.Value = &newNfa
 		}
 	case 25:
@@ -414,9 +414,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 			newNfa := newNfaFromChar(char1.Value.(byte))
 			newNfa.KleeneStar()
 			rightNfa := star2.Value.(*Nfa)
-		
+
 			newNfa.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = &newNfa
 		}
 	case 26:
@@ -433,9 +433,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 			newNfa := newNfaFromChar(char1.Value.(byte))
 			newNfa.KleeneStar()
 			rightNfa := star2.Value.(*Nfa)
-		
+
 			newNfa.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = &newNfa
 		}
 	case 27:
@@ -447,7 +447,7 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			var charSet [256]bool
 			charSet[charinset1.Value.(byte)] = true
-			
+
 			SET_ITEMS0.Value = charSet
 		}
 	case 28:
@@ -461,7 +461,7 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			charSet := SET_ITEMS2.Value.([256]bool)
 			charSet[charinset1.Value.(byte)] = true
-			
+
 			SET_ITEMS0.Value = charSet
 		}
 	case 29:
@@ -477,18 +477,18 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			charStart := charinset1.Value.(byte)
 			charEnd := charinset3.Value.(byte)
-			
+
 			if charStart > charEnd {
 				temp := charStart
 				charStart = charEnd
 				charEnd = temp
 			}
-			
+
 			var charSet [256]bool
 			for i := charStart; i <= charEnd; i++ {
 				charSet[i] = true
 			}
-			
+
 			SET_ITEMS0.Value = charSet
 		}
 	case 30:
@@ -507,17 +507,17 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 			charStart := charinset1.Value.(byte)
 			charEnd := charinset3.Value.(byte)
 			charSet := SET_ITEMS4.Value.([256]bool)
-			
+
 			if charStart > charEnd {
 				temp := charStart
 				charStart = charEnd
 				charEnd = temp
 			}
-			
+
 			for i := charStart; i <= charEnd; i++ {
 				charSet[i] = true
 			}
-			
+
 			SET_ITEMS0.Value = charSet
 		}
 	case 31:
@@ -548,9 +548,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			nfaEnclosed := CONCATENATION_RE_SIMPLE_RE2.Value.(*Nfa)
 			rightNfa := CONCATENATION_RE_SIMPLE_RE4.Value.(*Nfa)
-			
+
 			nfaEnclosed.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = nfaEnclosed
 		}
 	case 33:
@@ -568,9 +568,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			nfaEnclosed := CONCATENATION_RE_SIMPLE_RE2.Value.(*Nfa)
 			rightNfa := RE_SIMPLE_RE4.Value.(*Nfa)
-			
+
 			nfaEnclosed.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = nfaEnclosed
 		}
 	case 34:
@@ -587,9 +587,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 
 		{
 			nfaEnclosed := CONCATENATION_RE_SIMPLE_RE2.Value.(*Nfa)
-			
+
 			nfaEnclosed.KleenePlus()
-			
+
 			RE_SIMPLE_RE0.Value = nfaEnclosed
 		}
 	case 35:
@@ -610,9 +610,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 			nfaEnclosed := CONCATENATION_RE_SIMPLE_RE2.Value.(*Nfa)
 			nfaEnclosed.KleenePlus()
 			rightNfa := CONCATENATION_RE_SIMPLE_RE5.Value.(*Nfa)
-			
+
 			nfaEnclosed.Concatenate(*rightNfa)
-				
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = nfaEnclosed
 		}
 	case 36:
@@ -633,9 +633,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 			nfaEnclosed := CONCATENATION_RE_SIMPLE_RE2.Value.(*Nfa)
 			nfaEnclosed.KleenePlus()
 			rightNfa := RE_SIMPLE_RE5.Value.(*Nfa)
-			
+
 			nfaEnclosed.Concatenate(*rightNfa)
-				
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = nfaEnclosed
 		}
 	case 37:
@@ -652,9 +652,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 
 		{
 			nfaEnclosed := CONCATENATION_RE_SIMPLE_RE2.Value.(*Nfa)
-			
+
 			nfaEnclosed.KleeneStar()
-			
+
 			RE_SIMPLE_RE0.Value = nfaEnclosed
 		}
 	case 38:
@@ -675,9 +675,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 			nfaEnclosed := CONCATENATION_RE_SIMPLE_RE2.Value.(*Nfa)
 			nfaEnclosed.KleeneStar()
 			rightNfa := CONCATENATION_RE_SIMPLE_RE5.Value.(*Nfa)
-			
+
 			nfaEnclosed.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = nfaEnclosed
 		}
 	case 39:
@@ -698,9 +698,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 			nfaEnclosed := CONCATENATION_RE_SIMPLE_RE2.Value.(*Nfa)
 			nfaEnclosed.KleeneStar()
 			rightNfa := RE_SIMPLE_RE5.Value.(*Nfa)
-			
+
 			nfaEnclosed.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = nfaEnclosed
 		}
 	case 40:
@@ -731,9 +731,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			nfaEnclosed := RE_SIMPLE_RE2.Value.(*Nfa)
 			rightNfa := CONCATENATION_RE_SIMPLE_RE4.Value.(*Nfa)
-			
+
 			nfaEnclosed.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = nfaEnclosed
 		}
 	case 42:
@@ -751,9 +751,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			nfaEnclosed := RE_SIMPLE_RE2.Value.(*Nfa)
 			rightNfa := RE_SIMPLE_RE4.Value.(*Nfa)
-			
+
 			nfaEnclosed.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = nfaEnclosed
 		}
 	case 43:
@@ -770,9 +770,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 
 		{
 			nfaEnclosed := RE_SIMPLE_RE2.Value.(*Nfa)
-			
+
 			nfaEnclosed.KleenePlus()
-			
+
 			RE_SIMPLE_RE0.Value = nfaEnclosed
 		}
 	case 44:
@@ -793,9 +793,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 			nfaEnclosed := RE_SIMPLE_RE2.Value.(*Nfa)
 			nfaEnclosed.KleenePlus()
 			rightNfa := CONCATENATION_RE_SIMPLE_RE5.Value.(*Nfa)
-			
+
 			nfaEnclosed.Concatenate(*rightNfa)
-				
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = nfaEnclosed
 		}
 	case 45:
@@ -816,9 +816,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 			nfaEnclosed := RE_SIMPLE_RE2.Value.(*Nfa)
 			nfaEnclosed.KleenePlus()
 			rightNfa := RE_SIMPLE_RE5.Value.(*Nfa)
-			
+
 			nfaEnclosed.Concatenate(*rightNfa)
-				
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = nfaEnclosed
 		}
 	case 46:
@@ -835,9 +835,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 
 		{
 			nfaEnclosed := RE_SIMPLE_RE2.Value.(*Nfa)
-			
+
 			nfaEnclosed.KleeneStar()
-			
+
 			RE_SIMPLE_RE0.Value = nfaEnclosed
 		}
 	case 47:
@@ -858,9 +858,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 			nfaEnclosed := RE_SIMPLE_RE2.Value.(*Nfa)
 			nfaEnclosed.KleeneStar()
 			rightNfa := CONCATENATION_RE_SIMPLE_RE5.Value.(*Nfa)
-			
+
 			nfaEnclosed.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = nfaEnclosed
 		}
 	case 48:
@@ -881,9 +881,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 			nfaEnclosed := RE_SIMPLE_RE2.Value.(*Nfa)
 			nfaEnclosed.KleeneStar()
 			rightNfa := RE_SIMPLE_RE5.Value.(*Nfa)
-			
+
 			nfaEnclosed.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = nfaEnclosed
 		}
 	case 49:
@@ -914,9 +914,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			nfaEnclosed := RE_UNION2.Value.(*Nfa)
 			rightNfa := CONCATENATION_RE_SIMPLE_RE4.Value.(*Nfa)
-			
+
 			nfaEnclosed.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = nfaEnclosed
 		}
 	case 51:
@@ -934,9 +934,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			nfaEnclosed := RE_UNION2.Value.(*Nfa)
 			rightNfa := RE_SIMPLE_RE4.Value.(*Nfa)
-			
+
 			nfaEnclosed.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = nfaEnclosed
 		}
 	case 52:
@@ -953,9 +953,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 
 		{
 			nfaEnclosed := RE_UNION2.Value.(*Nfa)
-			
+
 			nfaEnclosed.KleenePlus()
-			
+
 			RE_SIMPLE_RE0.Value = nfaEnclosed
 		}
 	case 53:
@@ -976,9 +976,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 			nfaEnclosed := RE_UNION2.Value.(*Nfa)
 			nfaEnclosed.KleenePlus()
 			rightNfa := CONCATENATION_RE_SIMPLE_RE5.Value.(*Nfa)
-			
+
 			nfaEnclosed.Concatenate(*rightNfa)
-				
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = nfaEnclosed
 		}
 	case 54:
@@ -999,9 +999,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 			nfaEnclosed := RE_UNION2.Value.(*Nfa)
 			nfaEnclosed.KleenePlus()
 			rightNfa := RE_SIMPLE_RE5.Value.(*Nfa)
-			
+
 			nfaEnclosed.Concatenate(*rightNfa)
-				
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = nfaEnclosed
 		}
 	case 55:
@@ -1018,9 +1018,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 
 		{
 			nfaEnclosed := RE_UNION2.Value.(*Nfa)
-			
+
 			nfaEnclosed.KleeneStar()
-			
+
 			RE_SIMPLE_RE0.Value = nfaEnclosed
 		}
 	case 56:
@@ -1041,9 +1041,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 			nfaEnclosed := RE_UNION2.Value.(*Nfa)
 			nfaEnclosed.KleeneStar()
 			rightNfa := CONCATENATION_RE_SIMPLE_RE5.Value.(*Nfa)
-			
+
 			nfaEnclosed.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = nfaEnclosed
 		}
 	case 57:
@@ -1064,9 +1064,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 			nfaEnclosed := RE_UNION2.Value.(*Nfa)
 			nfaEnclosed.KleeneStar()
 			rightNfa := RE_SIMPLE_RE5.Value.(*Nfa)
-			
+
 			nfaEnclosed.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = nfaEnclosed
 		}
 	case 58:
@@ -1081,7 +1081,7 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 
 		{
 			newNfa := newNfaFromCharClass(SET_ITEMS2.Value.([256]bool))
-			
+
 			RE_SIMPLE_RE0.Value = &newNfa
 		}
 	case 59:
@@ -1099,9 +1099,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			newNfa := newNfaFromCharClass(SET_ITEMS2.Value.([256]bool))
 			rightNfa := CONCATENATION_RE_SIMPLE_RE4.Value.(*Nfa)
-			
+
 			newNfa.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = &newNfa
 		}
 	case 60:
@@ -1119,9 +1119,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			newNfa := newNfaFromCharClass(SET_ITEMS2.Value.([256]bool))
 			rightNfa := RE_SIMPLE_RE4.Value.(*Nfa)
-			
+
 			newNfa.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = &newNfa
 		}
 	case 61:
@@ -1139,7 +1139,7 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			newNfa := newNfaFromCharClass(SET_ITEMS2.Value.([256]bool))
 			newNfa.KleenePlus()
-			
+
 			RE_SIMPLE_RE0.Value = &newNfa
 		}
 	case 62:
@@ -1160,9 +1160,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 			newNfa := newNfaFromCharClass(SET_ITEMS2.Value.([256]bool))
 			newNfa.KleenePlus()
 			rightNfa := CONCATENATION_RE_SIMPLE_RE5.Value.(*Nfa)
-			
+
 			newNfa.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = &newNfa
 		}
 	case 63:
@@ -1183,9 +1183,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 			newNfa := newNfaFromCharClass(SET_ITEMS2.Value.([256]bool))
 			newNfa.KleenePlus()
 			rightNfa := RE_SIMPLE_RE5.Value.(*Nfa)
-			
+
 			newNfa.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = &newNfa
 		}
 	case 64:
@@ -1203,7 +1203,7 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 		{
 			newNfa := newNfaFromCharClass(SET_ITEMS2.Value.([256]bool))
 			newNfa.KleeneStar()
-			
+
 			RE_SIMPLE_RE0.Value = &newNfa
 		}
 	case 65:
@@ -1224,9 +1224,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 			newNfa := newNfaFromCharClass(SET_ITEMS2.Value.([256]bool))
 			newNfa.KleeneStar()
 			rightNfa := CONCATENATION_RE_SIMPLE_RE5.Value.(*Nfa)
-			
+
 			newNfa.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = &newNfa
 		}
 	case 66:
@@ -1247,9 +1247,9 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 			newNfa := newNfaFromCharClass(SET_ITEMS2.Value.([256]bool))
 			newNfa.KleeneStar()
 			rightNfa := RE_SIMPLE_RE5.Value.(*Nfa)
-			
+
 			newNfa.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = &newNfa
 		}
 	case 67:
@@ -1266,14 +1266,14 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 
 		{
 			chars := SET_ITEMS3.Value.([256]bool)
-			
+
 			//Skip the first char (empty transition)
 			for i := 1; i < len(chars); i++ {
 				chars[i] = !chars[i]
 			}
-			
+
 			newNfa := newNfaFromCharClass(chars)
-			
+
 			RE_SIMPLE_RE0.Value = &newNfa
 		}
 	case 68:
@@ -1292,17 +1292,17 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 
 		{
 			chars := SET_ITEMS3.Value.([256]bool)
-			
+
 			//Skip the first char (empty transition)
 			for i := 1; i < len(chars); i++ {
 				chars[i] = !chars[i]
 			}
-			
+
 			newNfa := newNfaFromCharClass(chars)
 			rightNfa := CONCATENATION_RE_SIMPLE_RE5.Value.(*Nfa)
-			
+
 			newNfa.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = &newNfa
 		}
 	case 69:
@@ -1321,17 +1321,17 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 
 		{
 			chars := SET_ITEMS3.Value.([256]bool)
-			
+
 			//Skip the first char (empty transition)
 			for i := 1; i < len(chars); i++ {
 				chars[i] = !chars[i]
 			}
-			
+
 			newNfa := newNfaFromCharClass(chars)
 			rightNfa := RE_SIMPLE_RE5.Value.(*Nfa)
-			
+
 			newNfa.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = &newNfa
 		}
 	case 70:
@@ -1350,16 +1350,16 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 
 		{
 			chars := SET_ITEMS3.Value.([256]bool)
-			
+
 			//Skip the first char (empty transition)
 			for i := 1; i < len(chars); i++ {
 				chars[i] = !chars[i]
 			}
-			
+
 			newNfa := newNfaFromCharClass(chars)
-			
+
 			newNfa.KleenePlus()
-			
+
 			RE_SIMPLE_RE0.Value = &newNfa
 		}
 	case 71:
@@ -1380,18 +1380,18 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 
 		{
 			chars := SET_ITEMS3.Value.([256]bool)
-			
+
 			//Skip the first char (empty transition)
 			for i := 1; i < len(chars); i++ {
 				chars[i] = !chars[i]
 			}
-			
+
 			newNfa := newNfaFromCharClass(chars)
 			newNfa.KleenePlus()
 			rightNfa := CONCATENATION_RE_SIMPLE_RE6.Value.(*Nfa)
-			
+
 			newNfa.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = &newNfa
 		}
 	case 72:
@@ -1412,18 +1412,18 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 
 		{
 			chars := SET_ITEMS3.Value.([256]bool)
-			
+
 			//Skip the first char (empty transition)
 			for i := 1; i < len(chars); i++ {
 				chars[i] = !chars[i]
 			}
-			
+
 			newNfa := newNfaFromCharClass(chars)
 			newNfa.KleenePlus()
 			rightNfa := RE_SIMPLE_RE6.Value.(*Nfa)
-			
+
 			newNfa.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = &newNfa
 		}
 	case 73:
@@ -1442,16 +1442,16 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 
 		{
 			chars := SET_ITEMS3.Value.([256]bool)
-			
+
 			//Skip the first char (empty transition)
 			for i := 1; i < len(chars); i++ {
 				chars[i] = !chars[i]
 			}
-			
+
 			newNfa := newNfaFromCharClass(chars)
-			
+
 			newNfa.KleeneStar()
-			
+
 			RE_SIMPLE_RE0.Value = &newNfa
 		}
 	case 74:
@@ -1472,18 +1472,18 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 
 		{
 			chars := SET_ITEMS3.Value.([256]bool)
-			
+
 			//Skip the first char (empty transition)
 			for i := 1; i < len(chars); i++ {
 				chars[i] = !chars[i]
 			}
-			
+
 			newNfa := newNfaFromCharClass(chars)
 			newNfa.KleeneStar()
 			rightNfa := CONCATENATION_RE_SIMPLE_RE6.Value.(*Nfa)
-			
+
 			newNfa.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = &newNfa
 		}
 	case 75:
@@ -1504,18 +1504,18 @@ func function(thread int, ruleNum uint16, lhs *symbol, rhs []*symbol) {
 
 		{
 			chars := SET_ITEMS3.Value.([256]bool)
-			
+
 			//Skip the first char (empty transition)
 			for i := 1; i < len(chars); i++ {
 				chars[i] = !chars[i]
 			}
-			
+
 			newNfa := newNfaFromCharClass(chars)
 			newNfa.KleeneStar()
 			rightNfa := RE_SIMPLE_RE6.Value.(*Nfa)
-			
+
 			newNfa.Concatenate(*rightNfa)
-			
+
 			CONCATENATION_RE_SIMPLE_RE0.Value = &newNfa
 		}
 	}

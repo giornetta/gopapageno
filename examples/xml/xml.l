@@ -16,59 +16,46 @@ NEWLINE  [\r\n]
 
 {INFOS}
 {
-	*genSym = symbol{infos, 0, nil, nil, nil}
-	return _LEX_CORRECT
+	token.Type = Infos
 }
 {LBRACKET}{IDENT}{RBRACKET}
 {
-	*genSym = symbol{openbracket, 0, nil, nil, nil}
-	return _LEX_CORRECT
+	token.Type = OpenBracket
 }
 {LSLASH}{IDENT}{RBRACKET}
 {
-	*genSym = symbol{closebracket, 0, nil, nil, nil}
-	return _LEX_CORRECT
+	token.Type = CloseBracket
 }
 {LBRACKET}{IDENT}{RSLASH}
 {
-	*genSym = symbol{alternativeclose, 0, nil, nil, nil}
-	return _LEX_CORRECT
+	token.Type = AlternativeClose
 }
 {LBRACKET}{IDENT}{SPACE}{IDENT}{EQUALS}{VALUE}{RBRACKET}
 {
-	*genSym = symbol{openparams, 0, nil, nil, nil}
-	return _LEX_CORRECT
+    token.Type = OpenParams
 }
 {LBRACKET}{IDENT}{RBRACKET}{LSLASH}{IDENT}{RBRACKET}
 {
-	*genSym = symbol{opencloseinfo, 0, nil, nil, nil}
-	return _LEX_CORRECT
+	token.Type = OpenCloseInfo
 }
 {LBRACKET}{IDENT}{SPACE}{IDENT}{EQUALS}{VALUE}{RBRACKET}{LSLASH}{IDENT}{RBRACKET}
 {
-	*genSym = symbol{opencloseparam, 0, nil, nil, nil}
-	return _LEX_CORRECT
+	token.Type = OpenCloseParams
 }
 {SPACE}
 {
-	return _SKIP
+	return gopapageno.LexSkip
 }
 {NEWLINE}
 {
-	return _SKIP
+	return gopapageno.LexSkip
 }
 <?[^?]+?>
 {
-	return _SKIP
-}
-.
-{
-	return _ERROR
+	return gopapageno.LexSkip
 }
 
 %%
-/*
-lexerPreallocMem initializes all the memory pools required by the lexer.
-*/
-func lexerPreallocMem(inputSize int, numThreads int) {
+// LexerPreallocMem initializes all the memory pools required by the lexer.
+func LexerPreallocMem(inputSize int, numThreads int) {
 }

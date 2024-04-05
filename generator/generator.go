@@ -2,156 +2,220 @@ package generator
 
 import (
 	"fmt"
+	"log"
 	"os"
-
-	"github.com/giornetta/gopapageno/generator/regex"
+	"path"
 )
 
-func Generate(lexerFilename string, parserFilename string, outdir string) error {
+const (
+	GeneratedLexerFilename  = "lexer.pg.go"
+	GeneratedParserFilename = "parser.pg.go"
+	GeneratedMainFilename   = "main.pg.go"
+)
 
-	lexerFile, err := os.Open(lexerFilename)
+type Options struct {
+	LexerDescriptionFilename  string
+	ParserDescriptionFilename string
+	OutputDirectory           string
+	TypesOnly                 bool
+
+	Logger *log.Logger
+}
+
+func Generate(opts *Options) error {
+	lexerFile, err := os.Open(opts.LexerDescriptionFilename)
 	if err != nil {
-		return fmt.Errorf("could not open lexer file: %v", err)
-	}
-	defer lexerFile.Close()
-
-	lexRules, cutPoints, lexCode := parseLexer(lexerFile)
-
-	fmt.Printf("Lex rules (%d):\n", len(lexRules))
-	for _, r := range lexRules {
-		fmt.Println(r)
+		return fmt.Errorf("could not open lexer description file: %w", err)
 	}
 
-	fmt.Printf("Cut points regex: %s\n", cutPoints)
-
-	fmt.Println("Lex code:")
-	fmt.Println(lexCode)
-
-	var dfa regex.Dfa
-
-	if len(lexRules) == 0 {
-		return fmt.Errorf("lexer doesn't contain any rules")
-	}
-
-	var nfa *regex.Nfa
-	success, result := regex.ParseString([]byte(lexRules[0].Regex), 1)
-	if success {
-		nfa = result.Value.(*regex.Nfa)
-		nfa.AddAssociatedRule(0)
-	} else {
-		return fmt.Errorf("could not parse regular expression %v", lexRules[0].Regex)
-	}
-	for i := 1; i < len(lexRules); i++ {
-		var curNfa *regex.Nfa
-		success, result = regex.ParseString([]byte(lexRules[i].Regex), 1)
-		if success {
-			curNfa = result.Value.(*regex.Nfa)
-			curNfa.AddAssociatedRule(i)
-			nfa.Unite(*curNfa)
-		} else {
-			return fmt.Errorf("could not parse regular expression %v", lexRules[0].Regex)
-		}
-	}
-
-	dfa = nfa.ToDfa()
-
-	/*ok, hasRuleNum, ruleNum := dfa.Check([]byte(" "))
-	if ok {
-		fmt.Println("Ok")
-		if hasRuleNum {
-			fmt.Println("RuleNum:", ruleNum)
-		} else {
-			fmt.Println("No rule")
-		}
-	} else {
-		fmt.Println("Not ok")
-	}*/
-
-	var cutPointsDfa regex.Dfa
-	if cutPoints == "" {
-		cutPointsNfa := regex.NewEmptyStringNfa()
-		cutPointsDfa = cutPointsNfa.ToDfa()
-	} else {
-		var cutPointsNfa *regex.Nfa
-		success, result := regex.ParseString([]byte(cutPoints), 1)
-		if success {
-			cutPointsNfa = result.Value.(*regex.Nfa)
-		} else {
-			return fmt.Errorf("could not parse regular expression %v", lexRules[0].Regex)
-		}
-		cutPointsDfa = cutPointsNfa.ToDfa()
-	}
-
-	parserPreamble, axiom, rules := parseGrammar(parserFilename)
-
-	fmt.Println("Go preamble:")
-	fmt.Println(parserPreamble)
-
-	if axiom == "" {
-		return fmt.Errorf("axiom is not defined")
-	} else {
-		fmt.Println("Axiom:", axiom)
-	}
-
-	fmt.Printf("Rules (%d):\n", len(rules))
-	for _, r := range rules {
-		fmt.Println(r)
-	}
-
-	nonterminals, terminals := inferTokens(rules)
-
-	fmt.Printf("Nonterminals (%d): %s\n", len(nonterminals), nonterminals)
-	fmt.Printf("Terminals (%d): %s\n", len(terminals), terminals)
-
-	if !checkAxiomUsage(rules, axiom) {
-		return fmt.Errorf("axiom is not used in any rule")
-	}
-
-	newRules, newNonterminals := deleteRepeatedRHS(nonterminals, terminals, axiom, rules)
-
-	fmt.Printf("New rules after elimination of repeated rhs (%d):\n", len(newRules))
-	for _, r := range newRules {
-		fmt.Println(r)
-	}
-
-	fmt.Printf("New nonterminals (%d): %s\n", len(newNonterminals), newNonterminals)
-
-	precMatrix, err := createPrecMatrix(newRules, newNonterminals, terminals)
+	lexerDesc, err := parseLexerDescription(lexerFile, opts.Logger)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not parse lexer description: %w", err)
 	}
 
-	fmt.Println("Precedence matrix:")
-	fmt.Println(precMatrix)
-
-	sortedRules := sortRulesByRHS(newRules, newNonterminals, terminals)
-	fmt.Printf("Sorted rules (%d):\n", len(sortedRules))
-	for _, r := range sortedRules {
-		fmt.Println(r)
+	if err := lexerDesc.compile(); err != nil {
+		return fmt.Errorf("could not compile lexer: %w", err)
 	}
 
-	err = emitOutputFolder(outdir)
-	handleEmissionError(err)
-	err = emitLexerFunction(outdir, lexCode, lexRules)
-	handleEmissionError(err)
-	err = emitLexerAutomata(outdir, dfa, cutPointsDfa)
-	handleEmissionError(err)
-	err = emitTokens(outdir, newNonterminals, terminals)
-	handleEmissionError(err)
-	err = emitRules(outdir, sortedRules, newNonterminals, terminals)
-	handleEmissionError(err)
-	err = emitFunction(outdir, parserPreamble, sortedRules)
-	handleEmissionError(err)
-	err = emitPrecMatrix(outdir, terminals, precMatrix)
-	handleEmissionError(err)
-	err = emitCommonFiles(outdir)
-	handleEmissionError(err)
+	if err := lexerFile.Close(); err != nil {
+		opts.Logger.Printf("could not close lexer description file: %v\n", err)
+	}
+
+	parserFile, err := os.Open(opts.ParserDescriptionFilename)
+	if err != nil {
+		return fmt.Errorf("could not open parser file: %w", err)
+	}
+
+	parserDesc, err := parseParserDescription(parserFile, opts.Logger)
+	if err != nil {
+		return fmt.Errorf("could not parse parser description: %w", err)
+	}
+
+	if err := parserDesc.compile(opts.Logger); err != nil {
+		return fmt.Errorf("could not compile parser: %w", err)
+	}
+
+	if err := parserFile.Close(); err != nil {
+		opts.Logger.Printf("could not close parser description file: %v\n", err)
+	}
+
+	lexerGenFile, parserGenFile, err := emitFiles(opts.OutputDirectory, opts.TypesOnly, opts.Logger)
+	if err != nil {
+		return fmt.Errorf("could not generate output files: %w", err)
+	}
+	defer lexerGenFile.Close()
+	defer parserGenFile.Close()
+
+	lexerDesc.emit(lexerGenFile, opts)
+	parserDesc.emit(parserGenFile, opts)
 
 	return nil
 }
 
-func handleEmissionError(e error) {
-	if e != nil {
-		fmt.Println(e.Error())
+func emitFiles(outdir string, typesOnly bool, logger *log.Logger) (*os.File, *os.File, error) {
+	s, err := os.Stat(outdir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			logger.Printf("Creating directory %s...\n", outdir)
+			if err = os.Mkdir(outdir, os.ModeDir); err != nil {
+				return nil, nil, fmt.Errorf("could not create output directory %s: %w", outdir, err)
+			}
+		}
+
+		return nil, nil, err
 	}
+	if !s.IsDir() {
+		return nil, nil, fmt.Errorf("%s is not a directory", outdir)
+	}
+
+	packageName := "main"
+	if typesOnly {
+		packageName = s.Name()
+	}
+
+	lPath := path.Join(outdir, GeneratedLexerFilename)
+
+	logger.Printf("Creating lexer file %s...\n", lPath)
+
+	lFile, err := os.Create(lPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not create lexer file %s: %w", lPath, err)
+	}
+
+	fmt.Fprintf(lFile, "// Code generated by Gopapageno; DO NOT EDIT.\n")
+	fmt.Fprintf(lFile, "package %s\n\n", packageName)
+	fmt.Fprintf(lFile, "import \"github.com/giornetta/gopapageno\"\n\n")
+
+	pPath := path.Join(outdir, GeneratedParserFilename)
+
+	logger.Printf("Creating parser file %s...\n", lPath)
+
+	pFile, err := os.Create(pPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not create parser file %s: %w", lPath, err)
+	}
+
+	fmt.Fprintf(pFile, "// Code generated by Gopapageno; DO NOT EDIT.\n")
+	fmt.Fprintf(pFile, "package %s\n\n", packageName)
+	fmt.Fprintf(pFile, "import \"github.com/giornetta/gopapageno\"\n\n")
+
+	if typesOnly {
+		return lFile, pFile, nil
+	}
+
+	mainPath := path.Join(outdir, GeneratedMainFilename)
+
+	logger.Printf("Creating main file %s...\n", mainPath)
+
+	mainFile, err := os.Create(mainPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not create main file %s: %w", mainPath, err)
+	}
+
+	fmt.Fprintf(mainFile, "// Code generated by Gopapageno.\n")
+	fmt.Fprintf(mainFile, "package %s\n", packageName)
+	fmt.Fprintf(mainFile, `
+import (
+	"context"
+	"flag"
+	"fmt"
+	"github.com/giornetta/gopapageno"
+	"io"
+	"log"
+	"os"
+	"time"
+)
+
+func main() {
+	start := time.Now()
+
+	if err := run(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	fmt.Println(time.Since(start))
+}
+
+func run() error {
+	sourceFlag := flag.String("f", "", "source file")
+	concurrencyFlag := flag.Int("c", 1, "number of concurrent goroutines to spawn")
+	logFlag := flag.Bool("log", false, "enable logging")
+
+	cpuProfileFlag := flag.String("cpuprof", "", "output file for CPU profiling")
+	memProfileFlag := flag.String("memprof", "", "output file for Memory profiling")
+
+	flag.Parse()
+
+	bytes, err := os.ReadFile(*sourceFlag)
+	if err != nil {
+		return fmt.Errorf("could not read source file %%s: %%w", *sourceFlag, err)
+	}
+
+	logOut := io.Discard
+	if *logFlag {
+		logOut = os.Stderr
+	}
+
+	cpuProfileWriter := io.Discard
+	if *cpuProfileFlag != "" {
+		cpuProfileWriter, err = os.Create(*cpuProfileFlag)
+		if err != nil {
+			cpuProfileWriter = io.Discard
+		}
+	}
+
+	memProfileWriter := io.Discard
+	if *memProfileFlag != "" {
+		memProfileWriter, err = os.Create(*memProfileFlag)
+		if err != nil {
+			memProfileWriter = io.Discard
+		}
+	}
+
+	p := NewParser(
+		gopapageno.WithConcurrency(*concurrencyFlag),
+		gopapageno.WithLogging(log.New(logOut, "", 0)),
+		gopapageno.WithCPUProfiling(cpuProfileWriter),
+		gopapageno.WithMemoryProfiling(memProfileWriter),
+		gopapageno.WithPreallocFunc(ParserPreallocMem))
+
+	ctx := context.Background()
+
+	root, err := p.Parse(ctx, bytes)
+	if err != nil {
+		return fmt.Errorf("could not parse source: %%w", err)
+	}
+
+	_ = root
+
+	return nil
+}
+`)
+
+	if err := mainFile.Close(); err != nil {
+		logger.Printf("Could not close main file: %v\n", err)
+	}
+
+	return lFile, pFile, nil
 }

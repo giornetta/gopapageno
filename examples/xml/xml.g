@@ -1,34 +1,33 @@
-/*
-parserPreallocMem initializes all the memory pools required by the semantic function of the parser.
-*/
-func parserPreallocMem(inputSize int, numThreads int) {
+// ParserPreallocMem initializes all the memory pools required by the semantic function of the parser.
+func ParserPreallocMem(inputSize int, numThreads int) {
 }
+
 %%
 
 %axiom ELEM
 
 %%
 
-ELEM : ELEM openbracket ELEM closebracket
+ELEM : ELEM OpenBracket ELEM CloseBracket
 {
-} | ELEM openparams ELEM closeparams
+} | ELEM OpenParams ELEM CloseParams
 {
-} | ELEM opencloseinfo
+} | ELEM OpenCloseInfo
 {
-} | ELEM opencloseparam
+} | ELEM OpenCloseParams
 {
-} | ELEM alternativeclose
+} | ELEM AlternativeClose
 {
-} | openbracket ELEM closebracket
+} | OpenBracket ELEM CloseBracket
 {
-} | openparams ELEM closebracket
+} | OpenParams ELEM CloseBracket
 {
-} | opencloseinfo
+} | OpenCloseInfo
 {
-} | opencloseparam
+} | OpenCloseParams
 {
-} | alternativeclose
+} | AlternativeClose
 {
-} | infos
+} | Infos
 {
 };

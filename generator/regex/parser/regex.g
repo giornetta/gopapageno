@@ -1,4 +1,7 @@
 /*
+import "github.com/giornetta/gopapageno/automata"
+
+
 parserPreallocMem initializes all the memory pools required by the semantic function.
 */
 func parserPreallocMem(inputSize int, numThreads int) {
@@ -16,15 +19,17 @@ RE : UNION
 {
 	$$.Value = $1.Value
 };
+
 UNION : RE pipe SIMPLE_RE
 {
 	leftNfa := $1.Value.(*Nfa)
 	rightNfa := $3.Value.(*Nfa)
 	
-	leftNfa.Unite(*rightNfa)
+	leftNfa.Unite(rightNfa)
 	
 	$$.Value = leftNfa
 };
+
 SIMPLE_RE : CONCATENATION
 {
 	$$.Value = $1.Value

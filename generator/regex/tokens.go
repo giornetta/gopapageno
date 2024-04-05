@@ -5,24 +5,24 @@ const _NUM_TERMINALS = 13
 
 const (
 	CONCATENATION_RE_SIMPLE_RE = iota
-	NEW_AXIOM = iota
-	RE_SIMPLE_RE = iota
-	RE_UNION = iota
-	SET_ITEMS = iota
-	_EMPTY = iota
-	_TERM = 0x8000 + iota - _NUM_NONTERMINALS
-	any = 0x8000 + iota - _NUM_NONTERMINALS
-	caret = 0x8000 + iota - _NUM_NONTERMINALS
-	char = 0x8000 + iota - _NUM_NONTERMINALS
-	charinset = 0x8000 + iota - _NUM_NONTERMINALS
-	dash = 0x8000 + iota - _NUM_NONTERMINALS
-	lpar = 0x8000 + iota - _NUM_NONTERMINALS
-	pipe = 0x8000 + iota - _NUM_NONTERMINALS
-	plus = 0x8000 + iota - _NUM_NONTERMINALS
-	rpar = 0x8000 + iota - _NUM_NONTERMINALS
-	squarelpar = 0x8000 + iota - _NUM_NONTERMINALS
-	squarerpar = 0x8000 + iota - _NUM_NONTERMINALS
-	star = 0x8000 + iota - _NUM_NONTERMINALS
+	NEW_AXIOM                  = iota
+	RE_SIMPLE_RE               = iota
+	RE_UNION                   = iota
+	SET_ITEMS                  = iota
+	_EMPTY                     = iota
+	_TERM                      = 0x8000 + iota - _NUM_NONTERMINALS
+	anyc                       = 0x8000 + iota - _NUM_NONTERMINALS
+	caret                      = 0x8000 + iota - _NUM_NONTERMINALS
+	char                       = 0x8000 + iota - _NUM_NONTERMINALS
+	charinset                  = 0x8000 + iota - _NUM_NONTERMINALS
+	dash                       = 0x8000 + iota - _NUM_NONTERMINALS
+	lpar                       = 0x8000 + iota - _NUM_NONTERMINALS
+	pipe                       = 0x8000 + iota - _NUM_NONTERMINALS
+	plus                       = 0x8000 + iota - _NUM_NONTERMINALS
+	rpar                       = 0x8000 + iota - _NUM_NONTERMINALS
+	squarelpar                 = 0x8000 + iota - _NUM_NONTERMINALS
+	squarerpar                 = 0x8000 + iota - _NUM_NONTERMINALS
+	star                       = 0x8000 + iota - _NUM_NONTERMINALS
 )
 
 func tokenValue(token uint16) uint16 {
@@ -49,8 +49,8 @@ func tokenToString(token uint16) string {
 		return "_EMPTY"
 	case _TERM:
 		return "_TERM"
-	case any:
-		return "any"
+	case anyc:
+		return "anyc"
 	case caret:
 		return "caret"
 	case char:

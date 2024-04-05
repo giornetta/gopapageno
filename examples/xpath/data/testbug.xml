@@ -1,0 +1,14 @@
+<!--suppress CheckTagEmptyBody -->
+<site>
+    <closed_auctions>
+        <closed_auction>
+            <annotation>
+                <description>
+                    <text>Some text
+                    <keyword></keyword>
+                    </text>
+                </description>
+            </annotation>
+        </closed_auction>
+    </closed_auctions>
+</site>

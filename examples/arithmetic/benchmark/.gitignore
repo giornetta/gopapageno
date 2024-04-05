@@ -1,8 +1,0 @@
-benchmark 10MB.bat
-benchmark 10MB 2 threads.bat
-benchmark.exe
-plotscript
-lexparallelcode.dat
-lexperformance.dat
-parseparallelcode.dat
-parseperformance.dat
