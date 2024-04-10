@@ -7,6 +7,7 @@ const (
 	PrecEquals
 	PrecTakes
 	PrecEmpty
+	PrecAssociative
 	PrecUnknown
 )
 
@@ -20,6 +21,8 @@ func (p Precedence) String() string {
 		return "Takes"
 	case PrecEmpty:
 		return "Empty"
+	case PrecAssociative:
+		return "Associative"
 	default:
 		return "Unknown"
 	}

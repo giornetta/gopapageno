@@ -376,27 +376,32 @@ func (w *parserWorker) parse(ctx context.Context, tokens *ListOfStacks[Token], n
 		firstTerminal := stack.FirstTerminal()
 		prec := w.parser.precedence(firstTerminal.Type, inputToken.Type)
 		switch prec {
-		// If it yields precedence, push the tokens inputToken onto the stack with that precedence relation.
-		// Also increment the counter of the number of tokens yielding precedence.
-		case PrecYields:
-			inputToken.Precedence = PrecYields
-			stack.Push(inputToken)
-			numYieldsPrec++
-
-			inputToken = tokensIt.Next()
 		// If it's equal in precedence, push the tokens inputToken onto the stack with that precedence relation
 		case PrecEquals:
-			inputToken.Precedence = PrecEquals
+			fallthrough
+		case PrecYields:
+			inputToken.Precedence = prec
 			stack.Push(inputToken)
+
+			// If yields, increment the counter of the number of tokens yielding precedence.
+			if prec == PrecYields {
+				numYieldsPrec++
+			}
 
 			inputToken = tokensIt.Next()
 		// If it takes precedence, the next action depends on whether there are tokens that yield precedence onto the stack.
 		case PrecTakes:
+			fallthrough
+		case PrecAssociative:
 			//If there are no tokens yielding precedence on the stack, push the tokens inputToken onto the stack with take precedence as precedence relation
 			//Otherwise, perform a reduction
 			if numYieldsPrec == 0 {
-				inputToken.Precedence = PrecTakes
+				inputToken.Precedence = prec
 				stack.Push(inputToken)
+
+				if prec == PrecAssociative {
+					numYieldsPrec++
+				}
 
 				inputToken = tokensIt.Next()
 			} else {
@@ -404,7 +409,7 @@ func (w *parserWorker) parse(ctx context.Context, tokens *ListOfStacks[Token], n
 
 				var token *Token
 				// Pop tokens from the stack until one that yields precedence is reached, saving them in rhsBuf
-				for token = stack.Pop(); token.Precedence != PrecYields; token = stack.Pop() {
+				for token = stack.Pop(); token.Precedence != PrecYields && token.Precedence != PrecAssociative; token = stack.Pop() {
 					rhsTokensBuf[pos] = token
 					rhsBuf[pos] = token.Type
 					pos--
@@ -437,6 +442,7 @@ func (w *parserWorker) parse(ctx context.Context, tokens *ListOfStacks[Token], n
 
 				//Push the new nonterminal onto the appropriate m to save it
 				newNonTerm.Type = lhs
+				newNonTerm.Precedence = PrecUnknown
 				lhsToken = newNonTerminalsList.Push(*newNonTerm)
 
 				//Execute the semantic action

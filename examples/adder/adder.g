@@ -28,7 +28,9 @@ S : E
 
 E : E PLUS E
 {
-    $$.Value = $1.Value + $3.Value
+    newValue := parserPools[thread].Get()
+    *newValue = *$1.Value.(*int64) + *$3.Value.(*int64)
+    $$.Value = newValue
 } | LPAR E RPAR
 {
     $$.Value = $2.Value
