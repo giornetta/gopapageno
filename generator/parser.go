@@ -189,7 +189,7 @@ func parseRules(input string) ([]rule, error) {
 
 // compile completes the parser description by doing all necessary checks and
 // transformations in order to produce a correct OPG.
-func (p *parserDescriptor) compile(logger *log.Logger) error {
+func (p *parserDescriptor) compile(opts *Options) error {
 	p.inferTokens()
 
 	if !p.isAxiomUsed() {
@@ -198,7 +198,14 @@ func (p *parserDescriptor) compile(logger *log.Logger) error {
 
 	p.deleteRepeatedRHS()
 
-	precMatrix, err := p.newPrecedenceMatrix()
+	var precMatrix precedenceMatrix
+	var err error
+
+	if !opts.Associative {
+		precMatrix, err = p.newPrecedenceMatrix()
+	} else {
+		precMatrix, err = p.newAssociativePrecedenceMatrix()
+	}
 	if err != nil {
 		return fmt.Errorf("could not create precedence matrix: %w", err)
 	}
@@ -402,4 +409,57 @@ func (p *parserDescriptor) emitTokens(f io.Writer) {
 		}
 	}
 	fmt.Fprintf(f, ")\n\n")
+
+	fmt.Fprintf(f, "func SprintToken[T any](root *gopapageno.Token) string {\n")
+	fmt.Fprintf(f, "\tvar sprintRec func(t *gopapageno.Token, sb *strings.Builder, indent string)\n\n")
+	fmt.Fprintf(f, "\tsprintRec = func(t *gopapageno.Token, sb *strings.Builder, indent string) {\n\t\t")
+	fmt.Fprintf(f, `if t == nil {
+			return
+		}
+
+		sb.WriteString(indent)
+		if t.Next == nil {
+			sb.WriteString("└── ")
+			indent += "    "
+		} else {
+			sb.WriteString("├── ")
+			indent += "|   "
+		}
+`)
+
+	fmt.Fprintf(f, "\n\t\tswitch t.Type {\n")
+
+	for _, token := range p.nonterminals.Slice() {
+		if token == "_EMPTY" {
+			fmt.Fprintf(f, "\t\tcase gopapageno.TokenEmpty:\n\t\t\tsb.WriteString(\"Empty\")\n")
+		} else {
+			fmt.Fprintf(f, "\t\tcase %s:\n\t\t\tsb.WriteString(\"%s\")\n", token, token)
+		}
+	}
+
+	for _, token := range p.terminals.Slice() {
+		if token == "_TERM" {
+			fmt.Fprintf(f, "\t\tcase gopapageno.TokenTerm:\n\t\t\tsb.WriteString(\"Term\")\n")
+		} else {
+			fmt.Fprintf(f, "\t\tcase %s:\n\t\t\tsb.WriteString(\"%s\")\n", token, token)
+		}
+	}
+
+	fmt.Fprintf(f, "\t\tdefault:\n\t\t\tsb.WriteString(\"Unknown\")\n\t\t}\n")
+	fmt.Fprintf(f, "\t\t\t\tif t.Value != nil {\n\t\t\tsb.WriteString(fmt.Sprintf(\": %%v\", *t.Value.(*T)))\n\t\t}\n")
+	fmt.Fprintf(f, "\t\tsb.WriteString(\"\\n\")\n\n")
+
+	fmt.Fprintf(f, `		sprintRec(t.Child, sb, indent)
+		sprintRec(t.Next, sb, indent[:len(indent)-4])
+	}
+	`)
+
+	fmt.Fprintf(f, `
+	var sb strings.Builder
+	
+	sprintRec(root, &sb, "")
+	
+	return sb.String()
+}
+`)
 }

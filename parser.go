@@ -278,13 +278,17 @@ func (p *Parser) Parse(ctx context.Context, src []byte) (*Token, error) {
 		}
 	}
 
-	//Pop tokens from the stack until a nonterminal is found
-	token := parseResults[0].stack.Pop()
-	for token.Type.IsTerminal() {
-		token = parseResults[0].stack.Pop()
+	// Pop tokens until the last nonterminal is found.
+	// TODO: Check if this makes sense, the former approach looked for the first one
+	// TODO: but it wasn't working for AOPP.
+	var root *Token
+	for token := parseResults[0].stack.Pop(); token != nil; token = parseResults[0].stack.Pop() {
+		if !token.Type.IsTerminal() {
+			root = token
+		}
 	}
 
-	return token, nil
+	return root, nil
 }
 
 type parserWorker struct {
@@ -360,9 +364,8 @@ func (w *parserWorker) parse(ctx context.Context, tokens *ListOfStacks[Token], n
 		Child:      nil,
 	}
 
-	i := 0
 	// Iterate over the tokens m
-	for inputToken := tokensIt.Next(); inputToken != nil; i++ {
+	for inputToken := tokensIt.Next(); inputToken != nil; {
 		//If the current inputToken is a non-terminal, push it onto the stack with no precedence relation
 		if !inputToken.Type.IsTerminal() {
 			inputToken.Precedence = PrecEmpty
@@ -375,28 +378,28 @@ func (w *parserWorker) parse(ctx context.Context, tokens *ListOfStacks[Token], n
 		//Find the first terminal on the stack and get the precedence between it and the current tokens inputToken
 		firstTerminal := stack.FirstTerminal()
 		prec := w.parser.precedence(firstTerminal.Type, inputToken.Type)
-		switch prec {
-		// If it yields precedence, push the tokens inputToken onto the stack with that precedence relation.
-		// Also increment the counter of the number of tokens yielding precedence.
-		case PrecYields:
-			inputToken.Precedence = PrecYields
-			stack.Push(inputToken)
-			numYieldsPrec++
 
-			inputToken = tokensIt.Next()
-		// If it's equal in precedence, push the tokens inputToken onto the stack with that precedence relation
-		case PrecEquals:
-			inputToken.Precedence = PrecEquals
+		// If it's equal in precedence or yields, push the inputToken onto the stack with its precedence relation.
+		if prec == PrecEquals || prec == PrecYields {
+			inputToken.Precedence = prec
 			stack.Push(inputToken)
 
+			// If yields, increment the counter of the number of tokens yielding precedence.
+			if prec == PrecYields {
+				numYieldsPrec++
+			}
+
 			inputToken = tokensIt.Next()
-		// If it takes precedence, the next action depends on whether there are tokens that yield precedence onto the stack.
-		case PrecTakes:
-			//If there are no tokens yielding precedence on the stack, push the tokens inputToken onto the stack with take precedence as precedence relation
+		} else if prec == PrecTakes || prec == PrecAssociative {
+			//If there are no tokens yielding precedence on the stack, push inputToken onto the stack.
 			//Otherwise, perform a reduction
 			if numYieldsPrec == 0 {
-				inputToken.Precedence = PrecTakes
+				inputToken.Precedence = prec
 				stack.Push(inputToken)
+
+				if prec == PrecAssociative {
+					numYieldsPrec++
+				}
 
 				inputToken = tokensIt.Next()
 			} else {
@@ -404,7 +407,7 @@ func (w *parserWorker) parse(ctx context.Context, tokens *ListOfStacks[Token], n
 
 				var token *Token
 				// Pop tokens from the stack until one that yields precedence is reached, saving them in rhsBuf
-				for token = stack.Pop(); token.Precedence != PrecYields; token = stack.Pop() {
+				for token = stack.Pop(); token.Precedence != PrecYields && token.Precedence != PrecAssociative; token = stack.Pop() {
 					rhsTokensBuf[pos] = token
 					rhsBuf[pos] = token.Type
 					pos--
@@ -437,6 +440,7 @@ func (w *parserWorker) parse(ctx context.Context, tokens *ListOfStacks[Token], n
 
 				//Push the new nonterminal onto the appropriate m to save it
 				newNonTerm.Type = lhs
+				//newNonTerm.Precedence = PrecEmpty
 				lhsToken = newNonTerminalsList.Push(*newNonTerm)
 
 				//Execute the semantic action
@@ -448,8 +452,8 @@ func (w *parserWorker) parse(ctx context.Context, tokens *ListOfStacks[Token], n
 				//Decrement the counter of the number of tokens yielding precedence
 				numYieldsPrec--
 			}
-		//If there's no precedence relation, abort the parsing
-		default:
+		} else {
+			//If there's no precedence relation, abort the parsing
 			errCh <- fmt.Errorf("no precedence relation found")
 			return
 		}

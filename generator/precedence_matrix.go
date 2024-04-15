@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/giornetta/gopapageno"
 	"math"
+	"slices"
 )
 
 type precedenceMatrix [][]gopapageno.Precedence
@@ -33,7 +34,7 @@ func (p *parserDescriptor) newPrecedenceMatrix() (precedenceMatrix, error) {
 			if p.terminals.Contains(token1) && p.terminals.Contains(token2) {
 				//Check if the matrix already contains an entry for this couple
 				if m[token1][token2] != gopapageno.PrecEmpty && m[token1][token2] != gopapageno.PrecEquals {
-					return nil, fmt.Errorf("the precedence relation Eq is not unique between %s and %s", token1, token2)
+					return nil, fmt.Errorf("the precedence relation Equals is not unique between %s and %s", token1, token2)
 				}
 
 				m[token1][token2] = gopapageno.PrecEquals
@@ -41,7 +42,7 @@ func (p *parserDescriptor) newPrecedenceMatrix() (precedenceMatrix, error) {
 				for _, token := range rts[token1].Iter {
 					//Check if the matrix already contains an entry for this couple
 					if m[token][token2] != gopapageno.PrecEmpty && m[token][token2] != gopapageno.PrecTakes {
-						return nil, fmt.Errorf("the precedence relation Ta is not unique between %s and %s", token, token2)
+						return nil, fmt.Errorf("the precedence relation Takes is not unique between %s and %s", token, token2)
 					}
 					m[token][token2] = gopapageno.PrecTakes
 				}
@@ -49,7 +50,7 @@ func (p *parserDescriptor) newPrecedenceMatrix() (precedenceMatrix, error) {
 				for _, token := range lts[token2].Iter {
 					//Check if the matrix already contains an entry for this couple
 					if m[token1][token] != gopapageno.PrecEmpty && m[token1][token] != gopapageno.PrecYields {
-						return nil, fmt.Errorf("the precedence relation Yi is not unique between %s and %s", token1, token)
+						return nil, fmt.Errorf("the precedence relation Yields is not unique between %s and %s", token1, token)
 					}
 					m[token1][token] = gopapageno.PrecYields
 				}
@@ -213,4 +214,174 @@ func moveToFront[T comparable](slice []T, e T) error {
 	copy(slice, newSlice)
 
 	return nil
+}
+
+type conflict struct {
+	rule rule
+	i    int
+	j    int
+}
+
+func (p *parserDescriptor) newAssociativePrecedenceMatrix() (precedenceMatrix, error) {
+	m := make(map[string]map[string]map[gopapageno.Precedence][]conflict)
+	nonOP := make([]conflict, 0)
+
+	// Initialize an empty matrix.
+	for _, term := range p.terminals.Iter {
+		m[term] = make(map[string]map[gopapageno.Precedence][]conflict)
+
+		for _, term2 := range p.terminals.Iter {
+			m[term][term2] = make(map[gopapageno.Precedence][]conflict)
+
+			m[term][term2][gopapageno.PrecEquals] = make([]conflict, 0)
+			m[term][term2][gopapageno.PrecYields] = make([]conflict, 0)
+			m[term][term2][gopapageno.PrecTakes] = make([]conflict, 0)
+		}
+	}
+
+	lts, rts := p.getTerminalSets()
+
+	for _, rule := range p.rules {
+		rhs := rule.RHS
+
+		//Check digrams
+		for i := 0; i < len(rhs)-1; i++ {
+			token1 := rhs[i]
+			token2 := rhs[i+1]
+
+			if p.terminals.Contains(token1) && p.terminals.Contains(token2) {
+				m[token1][token2][gopapageno.PrecEquals] = append(m[token1][token2][gopapageno.PrecEquals], conflict{
+					rule: rule,
+					i:    i,
+					j:    i + 1,
+				})
+			} else if p.nonterminals.Contains(token1) && p.terminals.Contains(token2) {
+				for _, token := range rts[token1].Iter {
+					m[token][token2][gopapageno.PrecTakes] = append(m[token][token2][gopapageno.PrecTakes], conflict{
+						rule: rule,
+						i:    i,
+						j:    i + 1,
+					})
+				}
+			} else if p.terminals.Contains(token1) && p.nonterminals.Contains(token2) {
+				for _, token := range lts[token2].Iter {
+					m[token1][token][gopapageno.PrecYields] = append(m[token1][token][gopapageno.PrecYields], conflict{
+						rule: rule,
+						i:    i,
+						j:    i + 1,
+					})
+				}
+			} else {
+				nonOP = append(nonOP, conflict{rule: rule, i: i, j: i + 1})
+			}
+		}
+
+		//Check trigrams
+		for i := 0; i < len(rhs)-2; i++ {
+			token1 := rhs[i]
+			token2 := rhs[i+1]
+			token3 := rhs[i+2]
+
+			if p.terminals.Contains(token1) && p.nonterminals.Contains(token2) && p.terminals.Contains(token3) {
+				m[token1][token3][gopapageno.PrecEquals] = append(m[token1][token3][gopapageno.PrecEquals], conflict{
+					rule: rule,
+					i:    i,
+					j:    i + 2,
+				})
+			}
+		}
+	}
+
+	//set precedence for #
+	for _, terminal := range p.terminals.Iter {
+		if terminal != "_TERM" {
+			m["_TERM"][terminal][gopapageno.PrecYields] = append(m["_TERM"][terminal][gopapageno.PrecYields], conflict{
+				rule: p.rules[0],
+				i:    0,
+				j:    0,
+			})
+
+			m[terminal]["_TERM"][gopapageno.PrecTakes] = append(m[terminal]["_TERM"][gopapageno.PrecTakes], conflict{
+				rule: p.rules[0],
+				i:    0,
+				j:    0,
+			})
+		}
+	}
+	m["_TERM"]["_TERM"][gopapageno.PrecEquals] = append(m["_TERM"]["_TERM"][gopapageno.PrecEquals], conflict{
+		rule: p.rules[0],
+		i:    0,
+		j:    0,
+	})
+
+	if len(nonOP) > 0 {
+		return nil, fmt.Errorf("rule %s violates OP form: no two nonterminals may be adjacent", nonOP[0].rule)
+	}
+
+	terminals := p.terminals.Slice()
+	if err := moveToFront(terminals, "_TERM"); err != nil {
+		return nil, fmt.Errorf("could not move _TERM to front: %w", err)
+	}
+
+	precMatrix := make([][]gopapageno.Precedence, len(terminals))
+
+	for i, term := range terminals {
+		precMatrix[i] = make([]gopapageno.Precedence, len(terminals))
+		for j, term2 := range terminals {
+			conflicts := make(map[gopapageno.Precedence][]conflict)
+
+			var prec gopapageno.Precedence
+
+			if len(m[term][term2][gopapageno.PrecEquals]) > 0 {
+				conflicts[gopapageno.PrecEquals] = m[term][term2][gopapageno.PrecEquals]
+				prec = gopapageno.PrecEquals
+			}
+
+			if len(m[term][term2][gopapageno.PrecTakes]) > 0 {
+				conflicts[gopapageno.PrecTakes] = m[term][term2][gopapageno.PrecTakes]
+				prec = gopapageno.PrecTakes
+			}
+
+			if len(m[term][term2][gopapageno.PrecYields]) > 0 {
+				conflicts[gopapageno.PrecYields] = m[term][term2][gopapageno.PrecYields]
+				prec = gopapageno.PrecYields
+			}
+
+			// Handle conflicts.
+			// If `n : n T n` is present, it might be an associative conflict.
+			if len(conflicts) > 1 {
+				ok := false
+				for p, cc := range conflicts {
+					if p == gopapageno.PrecEquals {
+						return nil, fmt.Errorf("strong precedence conflict")
+					}
+
+					// This is NOT enough, but we can leave it as is for testing purposes
+
+					for _, c := range cc {
+						if len(c.rule.RHS) == 3 && c.rule.RHS[0] == c.rule.LHS && c.rule.RHS[2] == c.rule.LHS && slices.Contains(terminals, c.rule.RHS[1]) {
+							precMatrix[i][j] = gopapageno.PrecAssociative
+							ok = true
+							break
+						}
+					}
+
+					if ok {
+						break
+					}
+				}
+
+				if !ok {
+					return nil, fmt.Errorf("conflicts...")
+				}
+			}
+
+			if len(conflicts) == 1 {
+				precMatrix[i][j] = prec
+			}
+
+		}
+	}
+
+	return precMatrix, nil
 }

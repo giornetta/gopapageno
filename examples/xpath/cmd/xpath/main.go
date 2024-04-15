@@ -1,3 +1,4 @@
+//go:generate gopapageno -l ../../xml.l -g ../../xml.g -o ../../../xpath -types-only
 package main
 
 import (
