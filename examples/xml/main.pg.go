@@ -13,17 +13,15 @@ import (
 )
 
 func main() {
-	start := time.Now()
-
 	if err := run(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-
-	fmt.Println(time.Since(start))
 }
 
 func run() error {
+	start := time.Now()
+
 	sourceFlag := flag.String("f", "", "source file")
 	concurrencyFlag := flag.Int("c", 1, "number of concurrent goroutines to spawn")
 	logFlag := flag.Bool("log", false, "enable logging")
@@ -72,6 +70,8 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("could not parse source: %w", err)
 	}
+
+	fmt.Printf("Parsing took: %v\n", time.Since(start))
 
 	_ = root
 

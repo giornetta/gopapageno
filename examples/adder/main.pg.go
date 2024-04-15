@@ -13,19 +13,15 @@ import (
 )
 
 func main() {
-	start := time.Now()
-
 	if err := run(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-
-	fmt.Println(time.Since(start))
 }
 
-const res = (1 + 2 + 3 + 11 + 222 + 3333 + (1 + 2)) * 26000
-
 func run() error {
+	start := time.Now()
+
 	sourceFlag := flag.String("f", "", "source file")
 	concurrencyFlag := flag.Int("c", 1, "number of concurrent goroutines to spawn")
 	logFlag := flag.Bool("log", false, "enable logging")
@@ -75,7 +71,14 @@ func run() error {
 		return fmt.Errorf("could not parse source: %w", err)
 	}
 
-	fmt.Println(*root.Value.(*int64))
+	fmt.Printf("Parsing took: %v\n", time.Since(start))
+
+	fmt.Printf("Result: %v\n", *root.Value.(*int64))
+	h := root.Height()
+	fmt.Printf("Height: %d\n", h)
+	if h < 100 {
+		fmt.Println(SprintToken[int64](root))
+	}
 
 	return nil
 }

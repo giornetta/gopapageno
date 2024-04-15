@@ -195,6 +195,7 @@ func (w *scannerWorker) lex(ctx context.Context, resultCh chan<- lexResult, errC
 	var token Token
 
 	for {
+		token.Value = nil
 		result := w.next(&token)
 		if result != LexOK {
 			if result == LexEOF {
