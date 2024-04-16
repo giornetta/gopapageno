@@ -39,6 +39,7 @@ type Parser struct {
 	PreallocFunc PreallocFunc
 
 	concurrency int
+	serialSweep bool
 
 	logger *log.Logger
 
@@ -90,6 +91,12 @@ func WithPreallocFunc(fn PreallocFunc) ParserOpt {
 	}
 }
 
+func WithSerialSweep(enabled bool) ParserOpt {
+	return func(p *Parser) {
+		p.serialSweep = enabled
+	}
+}
+
 func NewParser(
 	lexer *Lexer,
 	numTerminals uint16, numNonterminals uint16, maxRHSLength int,
@@ -109,6 +116,7 @@ func NewParser(
 		BitPackedPrecedenceMatrix: bitPackedPrecedenceMatrix,
 		Func:                      fn,
 		concurrency:               1,
+		serialSweep:               false,
 		logger:                    discardLogger,
 		cpuProfileWriter:          nil,
 		memProfileWriter:          nil,
@@ -206,6 +214,7 @@ func (p *Parser) Parse(ctx context.Context, src []byte) (*Token, error) {
 	for thread := 0; thread < p.concurrency; thread++ {
 		var nextToken *Token
 
+		// If the thread is not the last, also take the first token of the next stack
 		if thread < p.concurrency-1 {
 			nextInputListIter := tokensLists[thread+1].HeadIterator()
 			nextToken = nextInputListIter.Next()
@@ -215,8 +224,8 @@ func (p *Parser) Parse(ctx context.Context, src []byte) (*Token, error) {
 			parser: p,
 			id:     thread,
 
-			stackPool:    pools[thread],
-			ptrStackPool: ptrPools[thread],
+			newNTList: NewListOfStacks[Token](pools[thread]),
+			stack:     newListOfTokenPointerStacks(ptrPools[thread]),
 		}
 
 		go workers[thread].parse(ctx,
@@ -227,13 +236,13 @@ func (p *Parser) Parse(ctx context.Context, src []byte) (*Token, error) {
 			errCh)
 	}
 
-	parseResults := make([]parseResult, p.concurrency)
+	parseResults := make([]*listOfTokenPointerStacks, p.concurrency)
 	completed := 0
 
 	for completed < p.concurrency {
 		select {
 		case result := <-resultCh:
-			parseResults[result.threadNum] = result
+			parseResults[result.threadNum] = result.stack
 			completed++
 		case err := <-errCh:
 			cancel()
@@ -241,48 +250,84 @@ func (p *Parser) Parse(ctx context.Context, src []byte) (*Token, error) {
 		}
 	}
 
-	//If the number of threads is greater than one, a final pass is required
-	if p.concurrency > 1 {
-		//Create the final input by joining together the stacks from the previous step
-		finalPassInput := NewListOfStacks[Token](stackPoolFinalPass)
+	if p.serialSweep {
+		//If the number of threads is greater than one, a final pass is required
+		if p.concurrency > 1 {
+			//Create the final input by joining together the stacks from the previous step
+			finalPassInput := NewListOfStacks[Token](stackPoolFinalPass)
 
-		for i := 0; i < p.concurrency; i++ {
-			iterator := parseResults[i].stack.HeadIterator()
+			for i := 0; i < p.concurrency; i++ {
+				iterator := parseResults[i].HeadIterator()
 
-			//Ignore the first token
-			iterator.Next()
+				//Ignore the first token
+				iterator.Next()
 
-			for token := iterator.Next(); token != nil; token = iterator.Next() {
-				finalPassInput.Push(*token)
+				for token := iterator.Next(); token != nil; token = iterator.Next() {
+					finalPassInput.Push(*token)
+				}
+			}
+
+			workers[0].newNTList = NewListOfStacks[Token](stackPoolNewNonterminalsFinalPass)
+			workers[0].stack = newListOfTokenPointerStacks(stackPtrPoolFinalPass)
+
+			p.concurrency = 1
+
+			go workers[0].parse(ctx,
+				finalPassInput,
+				nil,
+				true,
+				resultCh,
+				errCh)
+
+			select {
+			case result := <-resultCh:
+				parseResults[0] = result.stack
+			case err := <-errCh:
+				cancel()
+				return nil, err
 			}
 		}
+	} else {
+		// Loop until we have a single reduced stack
+		p.concurrency--
+		for workers := make([]*parserWorker, p.concurrency); p.concurrency >= 1; p.concurrency-- {
+			// TODO: Fill the right info
+			for i := 0; i < len(workers); i++ {
+				stackLeft := parseResults[i]
+				stackRight := parseResults[i+1]
 
-		workers[0].stackPool = stackPoolNewNonterminalsFinalPass
-		workers[0].ptrStackPool = stackPtrPoolFinalPass
+				stack := stackLeft.Combine()
+				input := CombineLOS(tokens, stackRight)
 
-		p.concurrency = 1
+				workers[i] = &parserWorker{
+					parser:    p,
+					id:        i,
+					stack:     stack,
+					newNTList: NewListOfStacks[Token](pools[i]),
+				}
 
-		go workers[0].parse(ctx,
-			finalPassInput,
-			nil,
-			true,
-			resultCh,
-			errCh)
+				go workers[i].parse(ctx, input, nil, true, resultCh, errCh)
+			}
 
-		select {
-		case result := <-resultCh:
-			parseResults[0] = result
-		case err := <-errCh:
-			cancel()
-			return nil, err
+			completed = 0
+			for completed < p.concurrency {
+				select {
+				case result := <-resultCh:
+					parseResults[result.threadNum] = result.stack
+					completed++
+				case err := <-errCh:
+					cancel()
+					return nil, err
+				}
+			}
 		}
 	}
 
-	// Pop tokens until the last nonterminal is found.
+	// Pop tokens until the last non-terminal is found.
 	// TODO: Check if this makes sense, the former approach looked for the first one
 	// TODO: but it wasn't working for AOPP.
 	var root *Token
-	for token := parseResults[0].stack.Pop(); token != nil; token = parseResults[0].stack.Pop() {
+	for token := parseResults[0].Pop(); token != nil; token = parseResults[0].Pop() {
 		if !token.Type.IsTerminal() {
 			root = token
 		}
@@ -296,8 +341,8 @@ type parserWorker struct {
 
 	id int
 
-	stackPool    *Pool[stack[Token]]
-	ptrStackPool *Pool[tokenPointerStack]
+	newNTList *ListOfStacks[Token]
+	stack     *listOfTokenPointerStacks
 }
 
 type parseResult struct {
@@ -308,43 +353,44 @@ type parseResult struct {
 func (w *parserWorker) parse(ctx context.Context, tokens *ListOfStacks[Token], nextToken *Token, finalPass bool, resultCh chan<- parseResult, errCh chan<- error) {
 	tokensIt := tokens.HeadIterator()
 
-	newNonTerminalsList := NewListOfStacks[Token](w.stackPool)
-	stack := newListOfTokenPointerStacks(w.ptrStackPool)
+	// newNonTerminalsList := NewListOfStacks[Token](w.stackPool)
+	// stack := newListOfTokenPointerStacks(w.ptrStackPool)
 
 	// If the thread is the first, push a # onto the stack
 	// Otherwise, push the first inputToken onto the stack
-	if w.id == 0 {
-		stack.Push(&Token{
-			Type:  TokenTerm,
-			Value: nil,
-			// Lexeme:     "",
-			Precedence: PrecEmpty,
-			Next:       nil,
-			Child:      nil,
-		})
-	} else {
-		t := tokensIt.Next()
-		t.Precedence = PrecEmpty
+	if !finalPass {
+		if w.id == 0 {
+			w.stack.Push(&Token{
+				Type:  TokenTerm,
+				Value: nil,
+				// Lexeme:     "",
+				Precedence: PrecEmpty,
+				Next:       nil,
+				Child:      nil,
+			})
+		} else {
+			t := tokensIt.Next()
+			t.Precedence = PrecEmpty
+			w.stack.Push(t)
+			// precToken.Precedence = PrecEmpty
+			// stack.Push(precToken)
+		}
 
-		stack.Push(t)
+		// If the thread is the last, push a # onto the tokens m
+		// Otherwise, push onto the tokens m the first inputToken of the next tokens m
+		if w.id == w.parser.concurrency-1 {
+			tokens.Push(Token{
+				Type:  TokenTerm,
+				Value: nil,
+				// Lexeme:     "",
+				Precedence: PrecEmpty,
+				Next:       nil,
+				Child:      nil,
+			})
+		} else if nextToken != nil {
+			tokens.Push(*nextToken)
+		}
 	}
-
-	// If the thread is the last, push a # onto the tokens m
-	// Otherwise, push onto the tokens m the first inputToken of the next tokens m
-	if w.id == w.parser.concurrency-1 {
-		tokens.Push(Token{
-			Type:  TokenTerm,
-			Value: nil,
-			// Lexeme:     "",
-			Precedence: PrecEmpty,
-			Next:       nil,
-			Child:      nil,
-		})
-	} else {
-		tokens.Push(*nextToken)
-	}
-
-	numYieldsPrec := 0
 
 	var pos int
 	var lhsToken *Token
@@ -364,42 +410,41 @@ func (w *parserWorker) parse(ctx context.Context, tokens *ListOfStacks[Token], n
 		Child:      nil,
 	}
 
-	// Iterate over the tokens m
+	// Iterate over the tokens
+	// If this is the first worker, start reading from the input stack, otherwise begin with the last
+	// token of the previous stack.
 	for inputToken := tokensIt.Next(); inputToken != nil; {
 		//If the current inputToken is a non-terminal, push it onto the stack with no precedence relation
 		if !inputToken.Type.IsTerminal() {
 			inputToken.Precedence = PrecEmpty
-			stack.Push(inputToken)
+			w.stack.Push(inputToken)
 
 			inputToken = tokensIt.Next()
 			continue
 		}
 
 		//Find the first terminal on the stack and get the precedence between it and the current tokens inputToken
-		firstTerminal := stack.FirstTerminal()
-		prec := w.parser.precedence(firstTerminal.Type, inputToken.Type)
+		firstTerminal := w.stack.FirstTerminal()
+
+		var prec Precedence
+		if firstTerminal == nil {
+			prec = w.parser.precedence(TokenTerm, inputToken.Type)
+		} else {
+			prec = w.parser.precedence(firstTerminal.Type, inputToken.Type)
+		}
 
 		// If it's equal in precedence or yields, push the inputToken onto the stack with its precedence relation.
 		if prec == PrecEquals || prec == PrecYields {
 			inputToken.Precedence = prec
-			stack.Push(inputToken)
-
-			// If yields, increment the counter of the number of tokens yielding precedence.
-			if prec == PrecYields {
-				numYieldsPrec++
-			}
+			w.stack.Push(inputToken)
 
 			inputToken = tokensIt.Next()
 		} else if prec == PrecTakes || prec == PrecAssociative {
 			//If there are no tokens yielding precedence on the stack, push inputToken onto the stack.
 			//Otherwise, perform a reduction
-			if numYieldsPrec == 0 {
+			if w.stack.YieldingPrecedence() == 0 {
 				inputToken.Precedence = prec
-				stack.Push(inputToken)
-
-				if prec == PrecAssociative {
-					numYieldsPrec++
-				}
+				w.stack.Push(inputToken)
 
 				inputToken = tokensIt.Next()
 			} else {
@@ -407,7 +452,7 @@ func (w *parserWorker) parse(ctx context.Context, tokens *ListOfStacks[Token], n
 
 				var token *Token
 				// Pop tokens from the stack until one that yields precedence is reached, saving them in rhsBuf
-				for token = stack.Pop(); token.Precedence != PrecYields && token.Precedence != PrecAssociative; token = stack.Pop() {
+				for token = w.stack.Pop(); token.Precedence != PrecYields && token.Precedence != PrecAssociative; token = w.stack.Pop() {
 					rhsTokensBuf[pos] = token
 					rhsBuf[pos] = token.Type
 					pos--
@@ -416,15 +461,15 @@ func (w *parserWorker) parse(ctx context.Context, tokens *ListOfStacks[Token], n
 				rhsBuf[pos] = token.Type
 
 				//Pop one last token, if it's a non-terminal add it to rhsBuf, otherwise ignore it (push it again onto the stack)
-				token = stack.Pop()
+				token = w.stack.Pop()
 				if token.Type.IsTerminal() {
-					stack.Push(token)
+					w.stack.Push(token)
 				} else {
 					pos--
 					rhsTokensBuf[pos] = token
 					rhsBuf[pos] = token.Type
 
-					stack.UpdateFirstTerminal()
+					w.stack.UpdateFirstTerminal()
 				}
 
 				//Obtain the actual rhs from the buffers
@@ -438,19 +483,14 @@ func (w *parserWorker) parse(ctx context.Context, tokens *ListOfStacks[Token], n
 					return
 				}
 
-				//Push the new nonterminal onto the appropriate m to save it
 				newNonTerm.Type = lhs
-				//newNonTerm.Precedence = PrecEmpty
-				lhsToken = newNonTerminalsList.Push(*newNonTerm)
+				lhsToken = w.newNTList.Push(*newNonTerm)
 
 				//Execute the semantic action
 				w.parser.Func(ruleNum, lhsToken, rhsTokens, w.id)
 
 				//Push the new nonterminal onto the stack
-				stack.Push(lhsToken)
-
-				//Decrement the counter of the number of tokens yielding precedence
-				numYieldsPrec--
+				w.stack.Push(lhsToken)
 			}
 		} else {
 			//If there's no precedence relation, abort the parsing
@@ -459,7 +499,7 @@ func (w *parserWorker) parse(ctx context.Context, tokens *ListOfStacks[Token], n
 		}
 	}
 
-	resultCh <- parseResult{w.id, stack}
+	resultCh <- parseResult{w.id, w.stack}
 }
 
 func (p *Parser) precedence(t1 TokenType, t2 TokenType) Precedence {
