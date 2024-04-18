@@ -166,6 +166,7 @@ func run() error {
 
 	sourceFlag := flag.String("f", "", "source file")
 	concurrencyFlag := flag.Int("c", 1, "number of concurrent goroutines to spawn")
+	strategyFlag := flag.String("s", "sweep", "parsing strategy to execute")
 	logFlag := flag.Bool("log", false, "enable logging")
 
 	cpuProfileFlag := flag.String("cpuprof", "", "output file for CPU profiling")
@@ -199,12 +200,19 @@ func run() error {
 		}
 	}
 
+	strat := gopapageno.StratSweep
+	if *strategyFlag == "parallel" {
+		strat = gopapageno.StratParallel
+	}
+
 	p := NewParser(
 		gopapageno.WithConcurrency(*concurrencyFlag),
 		gopapageno.WithLogging(log.New(logOut, "", 0)),
 		gopapageno.WithCPUProfiling(cpuProfileWriter),
 		gopapageno.WithMemoryProfiling(memProfileWriter),
-		gopapageno.WithPreallocFunc(ParserPreallocMem))
+		gopapageno.WithPreallocFunc(ParserPreallocMem),
+		gopapageno.WithStrategy(strat),
+	)
 
 	ctx := context.Background()
 

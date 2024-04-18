@@ -3,12 +3,11 @@ package gopapageno
 type Precedence int
 
 const (
-	PrecYields = iota
-	PrecEquals
+	PrecEquals Precedence = iota
+	PrecYields
 	PrecTakes
-	PrecEmpty
 	PrecAssociative
-	PrecUnknown
+	PrecEmpty
 )
 
 func (p Precedence) String() string {

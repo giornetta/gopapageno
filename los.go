@@ -98,6 +98,8 @@ func (l *ListOfStacks[T]) Pop() *T {
 }
 
 func CombineLOS(l *ListOfStacks[Token], stacks *listOfTokenPointerStacks) *ListOfStacks[Token] {
+	var tok Token
+
 	list := NewListOfStacks[Token](l.pool)
 
 	it := stacks.HeadIterator()
@@ -105,9 +107,10 @@ func CombineLOS(l *ListOfStacks[Token], stacks *listOfTokenPointerStacks) *ListO
 	// Ignore first element
 	it.Next()
 
-	for t := it.Next(); t != nil; t = it.Next() {
-		t.Precedence = PrecEmpty
-		list.Push(*t)
+	for t := it.Next(); t != nil && t.Precedence != PrecYields; t = it.Next() {
+		tok = *t
+		tok.Precedence = PrecEmpty
+		list.Push(tok)
 	}
 
 	return list

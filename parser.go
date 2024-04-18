@@ -21,6 +21,17 @@ type Rule struct {
 
 type ParserFunc func(rule uint16, lhs *Token, rhs []*Token, thread int)
 
+// A ParseStrategy defines which kind of algorithm should be executed
+// when collecting and running multiple parsing passes.
+type ParseStrategy uint8
+
+const (
+	// StratSweep will run a single serial pass after combining data from the first `n` parallel runs.
+	StratSweep ParseStrategy = iota
+	// StratParallel will combine adjacent parsing results and recursively run `n-1` parallel runs until one stack remains.
+	StratParallel
+)
+
 type Parser struct {
 	Lexer *Lexer
 
@@ -39,7 +50,7 @@ type Parser struct {
 	PreallocFunc PreallocFunc
 
 	concurrency int
-	serialSweep bool
+	strategy    ParseStrategy
 
 	logger *log.Logger
 
@@ -91,9 +102,9 @@ func WithPreallocFunc(fn PreallocFunc) ParserOpt {
 	}
 }
 
-func WithSerialSweep(enabled bool) ParserOpt {
+func WithStrategy(strat ParseStrategy) ParserOpt {
 	return func(p *Parser) {
-		p.serialSweep = enabled
+		p.strategy = strat
 	}
 }
 
@@ -116,7 +127,7 @@ func NewParser(
 		BitPackedPrecedenceMatrix: bitPackedPrecedenceMatrix,
 		Func:                      fn,
 		concurrency:               1,
-		serialSweep:               false,
+		strategy:                  StratSweep,
 		logger:                    discardLogger,
 		cpuProfileWriter:          nil,
 		memProfileWriter:          nil,
@@ -250,7 +261,7 @@ func (p *Parser) Parse(ctx context.Context, src []byte) (*Token, error) {
 		}
 	}
 
-	if p.serialSweep {
+	if p.strategy == StratSweep {
 		//If the number of threads is greater than one, a final pass is required
 		if p.concurrency > 1 {
 			//Create the final input by joining together the stacks from the previous step
@@ -292,7 +303,7 @@ func (p *Parser) Parse(ctx context.Context, src []byte) (*Token, error) {
 		p.concurrency--
 		for workers := make([]*parserWorker, p.concurrency); p.concurrency >= 1; p.concurrency-- {
 			// TODO: Fill the right info
-			for i := 0; i < len(workers); i++ {
+			for i := 0; i < p.concurrency; i++ {
 				stackLeft := parseResults[i]
 				stackRight := parseResults[i+1]
 

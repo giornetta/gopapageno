@@ -108,12 +108,12 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 	precMatrix := [][]gopapageno.Precedence{
 		{gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields},
 		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEquals},
-		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecTakes, gopapageno.PrecTakes},
+		{gopapageno.PrecTakes, gopapageno.PrecEquals, gopapageno.PrecEquals, gopapageno.PrecTakes, gopapageno.PrecTakes},
 		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecAssociative, gopapageno.PrecTakes},
-		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecTakes, gopapageno.PrecTakes},
+		{gopapageno.PrecTakes, gopapageno.PrecEquals, gopapageno.PrecEquals, gopapageno.PrecTakes, gopapageno.PrecTakes},
 	}
 	bitPackedMatrix := []uint64{
-		706439041779713,
+		706666674870612,
 	}
 
 	fn := func(rule uint16, lhs *gopapageno.Token, rhs []*gopapageno.Token, thread int) {
