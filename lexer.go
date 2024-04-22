@@ -65,7 +65,9 @@ func (l *Lexer) Scanner(src []byte, opts ...ScannerOpt) *Scanner {
 	s.pools = make([]*Pool[stack[Token]], s.concurrency)
 
 	sourceLen := len(s.source)
-	avgCharsPerToken := 12.5
+
+	// TODO: Where does this number come from?
+	avgCharsPerToken := 4.0
 
 	stackPoolBaseSize := math.Ceil(float64(sourceLen) / avgCharsPerToken / float64(stackSize) / float64(s.concurrency))
 
@@ -127,7 +129,7 @@ func (s *Scanner) findCutPoints(maxConcurrency int) ([]int, int) {
 	return cutPoints, maxConcurrency
 }
 
-func (s *Scanner) Lex(ctx context.Context) (*ListOfStacks[Token], error) {
+func (s *Scanner) Lex(ctx context.Context) ([]*ListOfStacks[Token], error) {
 	resultCh := make(chan lexResult, s.concurrency)
 	errCh := make(chan error, 1)
 
@@ -161,13 +163,7 @@ func (s *Scanner) Lex(ctx context.Context) (*ListOfStacks[Token], error) {
 		}
 	}
 
-	// Merge results of different goroutines,
-	// guaranteeing ordering amongst them.
-	for i := 1; i < s.concurrency; i++ {
-		lexResults[0].Merge(lexResults[i])
-	}
-
-	return lexResults[0], nil
+	return lexResults, nil
 }
 
 // worker implements the tokenizing logic on a subset of the source string.

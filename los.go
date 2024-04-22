@@ -97,6 +97,52 @@ func (l *ListOfStacks[T]) Pop() *T {
 	return &l.cur.Data[l.cur.Tos]
 }
 
+func CombineLOS(l *ListOfStacks[Token], stacks *listOfTokenPointerStacks) *ListOfStacks[Token] {
+	var tok Token
+
+	list := NewListOfStacks[Token](l.pool)
+
+	it := stacks.HeadIterator()
+
+	// Ignore first element
+	it.Next()
+
+	for t := it.Next(); t != nil && t.Precedence != PrecYields; t = it.Next() {
+		tok = *t
+		tok.Precedence = PrecEmpty
+		list.Push(tok)
+	}
+
+	return list
+}
+
+// Get returns the topmost element from the ListOfStacks.
+func (l *ListOfStacks[T]) Get() *T {
+	if l.cur.Tos > 0 {
+		return &l.cur.Data[l.cur.Tos-1]
+	}
+
+	if l.cur.Prev == nil {
+		return nil
+	}
+
+	return &l.cur.Prev.Data[l.cur.Prev.Tos-1]
+}
+
+// Clear empties the ListOfStacks.
+func (l *ListOfStacks[T]) Clear() {
+	// Reset length
+	l.len = 0
+
+	// Reset Top of Stack for every stack
+	for s := l.head; s != nil; s = s.Next {
+		s.Tos = 0
+	}
+
+	// Reset current stack
+	l.cur = l.head
+}
+
 // Merge links the stacks of the current and of another listOfStacks.
 func (l *ListOfStacks[T]) Merge(other *ListOfStacks[T]) {
 	l.cur.Next = other.head
@@ -256,16 +302,17 @@ type tokenPointerStack struct {
 
 // ListOfStacks is a list of pointer stacks.
 type listOfTokenPointerStacks struct {
-	head          *tokenPointerStack
-	cur           *tokenPointerStack
-	len           int
+	head *tokenPointerStack
+	cur  *tokenPointerStack
+	len  int
+
 	firstTerminal *Token
-	pool          *Pool[tokenPointerStack]
+	yieldsPrec    int
+
+	pool *Pool[tokenPointerStack]
 }
 
-/*
-listOfTokenPointerStacksIterator allows to iterate over a listOfTokenPointerStacks, either forward or backward.
-*/
+// listOfTokenPointerStacksIterator allows to iterate over a listOfTokenPointerStacks, either forward or backward.
 type listOfTokenPointerStacksIterator struct {
 	los *listOfTokenPointerStacks
 
@@ -278,11 +325,12 @@ func newListOfTokenPointerStacks(pool *Pool[tokenPointerStack]) *listOfTokenPoin
 	s := pool.Get()
 
 	return &listOfTokenPointerStacks{
-		s,
-		s,
-		0,
-		nil,
-		pool,
+		head:          s,
+		cur:           s,
+		len:           0,
+		firstTerminal: nil,
+		yieldsPrec:    0,
+		pool:          pool,
 	}
 }
 
@@ -353,6 +401,11 @@ func (l *listOfTokenPointerStacks) Push(token *Token) *Token {
 		l.firstTerminal = token
 	}
 
+	// If the token is yielding precedence, increase the counter
+	if token.Precedence == PrecYields || token.Precedence == PrecAssociative {
+		l.yieldsPrec++
+	}
+
 	l.cur.Tos++
 	l.len++
 
@@ -363,22 +416,29 @@ func (l *listOfTokenPointerStacks) Push(token *Token) *Token {
 func (l *listOfTokenPointerStacks) Pop() *Token {
 	l.cur.Tos--
 
-	if l.cur.Tos >= 0 {
-		l.len--
-		return l.cur.Data[l.cur.Tos]
+	if l.cur.Tos < 0 {
+		l.cur.Tos = 0
+
+		if l.cur.Prev == nil {
+			return nil
+		}
+
+		l.cur = l.cur.Prev
+		l.cur.Tos--
 	}
 
-	l.cur.Tos = 0
-
-	if l.cur.Prev == nil {
-		return nil
+	t := l.cur.Data[l.cur.Tos]
+	if t.Precedence == PrecYields || t.Precedence == PrecAssociative {
+		l.yieldsPrec--
 	}
 
-	l.cur = l.cur.Prev
-	l.cur.Tos--
 	l.len--
 
-	return l.cur.Data[l.cur.Tos]
+	return t
+}
+
+func (l *listOfTokenPointerStacks) YieldingPrecedence() int {
+	return l.yieldsPrec
 }
 
 // Merge links the stacks of the current and of another listOfTokenPointerStacks.
@@ -443,6 +503,53 @@ func (l *listOfTokenPointerStacks) Split(n int) ([]*listOfTokenPointerStacks, er
 	}
 
 	return lists, nil
+}
+
+func (l *listOfTokenPointerStacks) Combine() *listOfTokenPointerStacks {
+	var topLeft Token
+
+	// TODO: This could be moved in Push/Pop to allow constant time access.
+	it := l.HeadIterator()
+	for t := it.Next(); t != nil && t.Precedence != PrecYields; t = it.Next() {
+		topLeft = *t
+	}
+
+	list := newListOfTokenPointerStacks(l.pool)
+
+	topLeft.Precedence = PrecEmpty
+	list.Push(&topLeft)
+
+	for t := it.Cur(); t != nil && t.Precedence != PrecTakes; t = it.Next() {
+		list.Push(t)
+	}
+
+	list.UpdateFirstTerminal()
+
+	return list
+}
+
+func (l *listOfTokenPointerStacks) CombineNoAlloc() {
+	var topLeft *Token
+
+	var topLeftStack *tokenPointerStack
+	var topLeftPos int
+
+	// TODO: This could be moved in Push/Pop to allow constant time access.
+	it := l.HeadIterator()
+	removedTokens := 0
+	for t := it.Next(); t != nil && t.Precedence != PrecYields; t = it.Next() {
+		topLeft = t
+		topLeftStack = it.cur
+		topLeftPos = it.pos
+
+		removedTokens++
+	}
+
+	topLeft.Precedence = PrecEmpty
+
+	l.cur = topLeftStack
+	l.len -= removedTokens
+	l.cur.Tos = topLeftPos
 }
 
 // NumStacks returns the number of stacks contained in the listOfTokenPointerStacks.
