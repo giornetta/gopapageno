@@ -129,6 +129,20 @@ func (l *ListOfStacks[T]) Get() *T {
 	return &l.cur.Prev.Data[l.cur.Prev.Tos-1]
 }
 
+// Clear empties the ListOfStacks.
+func (l *ListOfStacks[T]) Clear() {
+	// Reset length
+	l.len = 0
+
+	// Reset Top of Stack for every stack
+	for s := l.head; s != nil; s = s.Next {
+		s.Tos = 0
+	}
+
+	// Reset current stack
+	l.cur = l.head
+}
+
 // Merge links the stacks of the current and of another listOfStacks.
 func (l *ListOfStacks[T]) Merge(other *ListOfStacks[T]) {
 	l.cur.Next = other.head
@@ -402,33 +416,25 @@ func (l *listOfTokenPointerStacks) Push(token *Token) *Token {
 func (l *listOfTokenPointerStacks) Pop() *Token {
 	l.cur.Tos--
 
-	if l.cur.Tos >= 0 {
-		l.len--
+	if l.cur.Tos < 0 {
+		l.cur.Tos = 0
 
-		e := l.cur.Data[l.cur.Tos]
-		if e.Precedence == PrecYields || e.Precedence == PrecAssociative {
-			l.yieldsPrec--
+		if l.cur.Prev == nil {
+			return nil
 		}
 
-		return e
+		l.cur = l.cur.Prev
+		l.cur.Tos--
 	}
 
-	l.cur.Tos = 0
-
-	if l.cur.Prev == nil {
-		return nil
-	}
-
-	l.cur = l.cur.Prev
-	l.cur.Tos--
-	l.len--
-
-	e := l.cur.Data[l.cur.Tos]
-	if e.Precedence == PrecYields || e.Precedence == PrecAssociative {
+	t := l.cur.Data[l.cur.Tos]
+	if t.Precedence == PrecYields || t.Precedence == PrecAssociative {
 		l.yieldsPrec--
 	}
 
-	return e
+	l.len--
+
+	return t
 }
 
 func (l *listOfTokenPointerStacks) YieldingPrecedence() int {
@@ -502,6 +508,7 @@ func (l *listOfTokenPointerStacks) Split(n int) ([]*listOfTokenPointerStacks, er
 func (l *listOfTokenPointerStacks) Combine() *listOfTokenPointerStacks {
 	var topLeft Token
 
+	// TODO: This could be moved in Push/Pop to allow constant time access.
 	it := l.HeadIterator()
 	for t := it.Next(); t != nil && t.Precedence != PrecYields; t = it.Next() {
 		topLeft = *t
@@ -519,6 +526,30 @@ func (l *listOfTokenPointerStacks) Combine() *listOfTokenPointerStacks {
 	list.UpdateFirstTerminal()
 
 	return list
+}
+
+func (l *listOfTokenPointerStacks) CombineNoAlloc() {
+	var topLeft *Token
+
+	var topLeftStack *tokenPointerStack
+	var topLeftPos int
+
+	// TODO: This could be moved in Push/Pop to allow constant time access.
+	it := l.HeadIterator()
+	removedTokens := 0
+	for t := it.Next(); t != nil && t.Precedence != PrecYields; t = it.Next() {
+		topLeft = t
+		topLeftStack = it.cur
+		topLeftPos = it.pos
+
+		removedTokens++
+	}
+
+	topLeft.Precedence = PrecEmpty
+
+	l.cur = topLeftStack
+	l.len -= removedTokens
+	l.cur.Tos = topLeftPos
 }
 
 // NumStacks returns the number of stacks contained in the listOfTokenPointerStacks.

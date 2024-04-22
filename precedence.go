@@ -1,6 +1,6 @@
 package gopapageno
 
-type Precedence int
+type Precedence uint8
 
 const (
 	PrecEquals Precedence = iota

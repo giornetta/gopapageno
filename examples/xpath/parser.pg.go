@@ -123,7 +123,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 		{gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecTakes},
 	}
 	bitPackedMatrix := []uint64{
-		749874088421377,
+		750230570707284,
 	}
 
 	fn := func(rule uint16, lhs *gopapageno.Token, rhs []*gopapageno.Token, thread int) {
