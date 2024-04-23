@@ -3,6 +3,7 @@ package generator
 import (
 	"bufio"
 	"fmt"
+	"github.com/giornetta/gopapageno"
 	"io"
 	"log"
 	"regexp"
@@ -92,7 +93,7 @@ func parseParserDescription(r io.Reader, opts *Options) (*parserDescriptor, erro
 	}, nil
 }
 
-func parseRules(input string, strategy Strategy) ([]rule, error) {
+func parseRules(input string, strategy gopapageno.ParsingStrategy) ([]rule, error) {
 	rules := make([]rule, 0)
 
 	var pos int
@@ -129,7 +130,7 @@ func parseRules(input string, strategy Strategy) ([]rule, error) {
 
 		for input[pos] != '{' {
 			var rhsToken string
-			if strategy != COPP {
+			if strategy != gopapageno.COPP {
 				rhsToken = getIdentifier(input, &pos)
 				if rhsToken == "" {
 					return nil, fmt.Errorf("rule %s is missing an identifier for rhs", lhs)
@@ -171,7 +172,7 @@ func parseRules(input string, strategy Strategy) ([]rule, error) {
 		semFun := getSemanticFunction(input, &pos)
 		rule.Action = semFun
 
-		if strategy != COPP {
+		if strategy != gopapageno.COPP {
 			rules = append(rules, rule)
 		} else {
 			for _, rhs := range rightSides {
@@ -213,11 +214,11 @@ func (p *parserDescriptor) compile(opts *Options) error {
 	var precMatrix precedenceMatrix
 	var err error
 
-	if opts.Strategy == OPP {
+	if opts.Strategy == gopapageno.OPP {
 		precMatrix, err = p.newPrecedenceMatrix()
-	} else if opts.Strategy == AOPP {
+	} else if opts.Strategy == gopapageno.AOPP {
 		precMatrix, err = p.newAssociativePrecedenceMatrix()
-	} else if opts.Strategy == COPP {
+	} else if opts.Strategy == gopapageno.COPP {
 		precMatrix, err = p.newCyclicPrecedenceMatrix()
 	}
 	if err != nil {
@@ -390,6 +391,7 @@ func (p *parserDescriptor) emit(f io.Writer, opts *Options) {
 	fmt.Fprintf(f, "\t\tprecMatrix,\n")
 	fmt.Fprintf(f, "\t\tbitPackedMatrix,\n")
 	fmt.Fprintf(f, "\t\tfn,\n")
+	fmt.Fprintf(f, "\t\tgopapageno.%s,\n", opts.Strategy)
 	fmt.Fprintf(f, "\t\topts...)\n}\n\n")
 }
 

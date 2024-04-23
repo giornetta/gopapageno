@@ -223,5 +223,6 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 		precMatrix,
 		bitPackedMatrix,
 		fn,
+		gopapageno.COPP,
 		opts...)
 }

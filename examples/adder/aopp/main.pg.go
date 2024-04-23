@@ -58,9 +58,9 @@ func run() error {
 		}
 	}
 
-	strat := gopapageno.StratParallel
+	strat := gopapageno.ReductionSweep
 	if *strategyFlag == "parallel" {
-		strat = gopapageno.StratParallel
+		strat = gopapageno.ReductionParallel
 	}
 
 	p := NewParser(
@@ -69,7 +69,7 @@ func run() error {
 		gopapageno.WithCPUProfiling(cpuProfileWriter),
 		gopapageno.WithMemoryProfiling(memProfileWriter),
 		gopapageno.WithPreallocFunc(ParserPreallocMem),
-		gopapageno.WithStrategy(strat),
+		gopapageno.WithReductionStrategy(strat),
 	)
 
 	ctx := context.Background()

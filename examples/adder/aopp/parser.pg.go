@@ -21,7 +21,6 @@ func ParserPreallocMem(inputSize int, numThreads int) {
 
 	for i := 0; i < numThreads; i++ {
 		parserPools[i] = gopapageno.NewPool[int64](poolSizePerThread)
-
 	}
 }
 
@@ -39,7 +38,7 @@ const (
 	RPAR
 )
 
-func SprintToken[T any](root *gopapageno.Token) string {
+func SprintToken[TokenValue any](root *gopapageno.Token) string {
 	var sprintRec func(t *gopapageno.Token, sb *strings.Builder, indent string)
 
 	sprintRec = func(t *gopapageno.Token, sb *strings.Builder, indent string) {
@@ -77,7 +76,7 @@ func SprintToken[T any](root *gopapageno.Token) string {
 			sb.WriteString("Unknown")
 		}
 		if t.Value != nil {
-			sb.WriteString(fmt.Sprintf(": %v", *t.Value.(*T)))
+			sb.WriteString(fmt.Sprintf(": %v", *t.Value.(*TokenValue)))
 		}
 		sb.WriteString("\n")
 
@@ -177,5 +176,6 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 		precMatrix,
 		bitPackedMatrix,
 		fn,
+		gopapageno.AOPP,
 		opts...)
 }

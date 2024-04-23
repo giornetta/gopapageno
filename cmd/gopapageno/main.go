@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/giornetta/gopapageno"
 	"io"
 	"log"
 	"os"
@@ -33,11 +34,11 @@ func run() error {
 		return fmt.Errorf("lexer and parser files must be provided")
 	}
 
-	strategy := generator.OPP
+	strategy := gopapageno.OPP
 	if *strategyFlag == "aopp" {
-		strategy = generator.AOPP
+		strategy = gopapageno.AOPP
 	} else if *strategyFlag == "copp" {
-		strategy = generator.COPP
+		strategy = gopapageno.COPP
 	}
 
 	var logOut io.Writer

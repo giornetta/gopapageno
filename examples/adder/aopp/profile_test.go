@@ -24,7 +24,7 @@ const (
 
 func TestProfile(t *testing.T) {
 	c := 12
-	strat := gopapageno.StratSweep
+	strat := gopapageno.ReductionSweep
 	file := path.Join(baseFolder, file10MB)
 
 	bytes, err := os.ReadFile(file)
@@ -35,7 +35,7 @@ func TestProfile(t *testing.T) {
 	p := NewParser(
 		gopapageno.WithConcurrency(c),
 		gopapageno.WithPreallocFunc(ParserPreallocMem),
-		gopapageno.WithStrategy(strat),
+		gopapageno.WithReductionStrategy(strat),
 	)
 
 	ctx := context.Background()

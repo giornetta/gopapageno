@@ -2,6 +2,7 @@ package generator
 
 import (
 	"fmt"
+	"github.com/giornetta/gopapageno"
 	"log"
 	"os"
 	"path"
@@ -13,24 +14,13 @@ const (
 	GeneratedMainFilename   = "main.pg.go"
 )
 
-type Strategy uint8
-
-const (
-	// OPP is Operator-Precedence Parsing. It is the original parsing strategy.
-	OPP Strategy = iota
-	// AOPP is Associative Operator Precedence Parsing.
-	AOPP
-	// COPP is Cyclic Operator Precedence Parsing.
-	COPP
-)
-
 type Options struct {
 	LexerDescriptionFilename  string
 	ParserDescriptionFilename string
 	OutputDirectory           string
 	TypesOnly                 bool
 
-	Strategy Strategy
+	Strategy gopapageno.ParsingStrategy
 
 	Logger *log.Logger
 }
@@ -211,9 +201,9 @@ func run() error {
 		}
 	}
 
-	strat := gopapageno.StratSweep
+	strat := gopapageno.ReductionSweep
 	if *strategyFlag == "parallel" {
-		strat = gopapageno.StratParallel
+		strat = gopapageno.ReductionParallel
 	}
 
 	p := NewParser(
@@ -222,7 +212,7 @@ func run() error {
 		gopapageno.WithCPUProfiling(cpuProfileWriter),
 		gopapageno.WithMemoryProfiling(memProfileWriter),
 		gopapageno.WithPreallocFunc(ParserPreallocMem),
-		gopapageno.WithStrategy(strat),
+		gopapageno.WithReductionStrategy(strat),
 	)
 
 	ctx := context.Background()
