@@ -180,6 +180,8 @@ func (p *parserDescriptor) deleteRepeatedRHS() {
 				RHS:    []string{strings.Join(nontermSet.Slice(), "_")},
 				Action: newAxiomSemAction,
 			})
+
+			//p.axiom = newAxiom
 		}
 	}
 
@@ -194,6 +196,8 @@ func (p *parserDescriptor) deleteRepeatedRHS() {
 
 	p.rules = newRules
 	p.inferTokens()
+
+	p.axiom = newAxiom
 }
 
 func addNewRules(dict *rulesDictionary,

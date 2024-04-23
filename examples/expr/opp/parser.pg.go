@@ -22,7 +22,6 @@ func ParserPreallocMem(inputSize int, numThreads int) {
 
 	for i := 0; i < numThreads; i++ {
 		parserInt64Pools[i] = gopapageno.NewPool[int64](poolSizePerThread)
-
 	}
 }
 

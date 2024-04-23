@@ -22,7 +22,8 @@ func run() error {
 	parserFlag := flag.String("g", "", "parser source file")
 	outputFlag := flag.String("o", ".", "output directory")
 	typesOnlyFlag := flag.Bool("types-only", false, "generate types only")
-	associativeFlag := flag.Bool("associative", false, "generate using associative OG")
+
+	strategyFlag := flag.String("strategy", "opp", "strategy to use during parser generation: opp/aopp/copp")
 
 	logFlag := flag.Bool("log", false, "enable logging during generation")
 
@@ -30,6 +31,13 @@ func run() error {
 
 	if *lexerFlag == "" || *parserFlag == "" {
 		return fmt.Errorf("lexer and parser files must be provided")
+	}
+
+	strategy := generator.OPP
+	if *strategyFlag == "aopp" {
+		strategy = generator.AOPP
+	} else if *strategyFlag == "copp" {
+		strategy = generator.COPP
 	}
 
 	var logOut io.Writer
@@ -44,7 +52,7 @@ func run() error {
 		ParserDescriptionFilename: *parserFlag,
 		OutputDirectory:           *outputFlag,
 		TypesOnly:                 *typesOnlyFlag,
-		Associative:               *associativeFlag,
+		Strategy:                  strategy,
 		Logger:                    log.New(logOut, "", 0),
 	}
 

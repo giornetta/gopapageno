@@ -13,13 +13,24 @@ const (
 	GeneratedMainFilename   = "main.pg.go"
 )
 
+type Strategy uint8
+
+const (
+	// OPP is Operator-Precedence Parsing. It is the original parsing strategy.
+	OPP Strategy = iota
+	// AOPP is Associative Operator Precedence Parsing.
+	AOPP
+	// COPP is Cyclic Operator Precedence Parsing.
+	COPP
+)
+
 type Options struct {
 	LexerDescriptionFilename  string
 	ParserDescriptionFilename string
 	OutputDirectory           string
 	TypesOnly                 bool
 
-	Associative bool
+	Strategy Strategy
 
 	Logger *log.Logger
 }
@@ -48,7 +59,7 @@ func Generate(opts *Options) error {
 		return fmt.Errorf("could not open parser file: %w", err)
 	}
 
-	parserDesc, err := parseParserDescription(parserFile, opts.Logger)
+	parserDesc, err := parseParserDescription(parserFile, opts)
 	if err != nil {
 		return fmt.Errorf("could not parse parser description: %w", err)
 	}

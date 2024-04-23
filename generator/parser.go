@@ -13,16 +13,6 @@ var (
 	axiomRegexp = regexp.MustCompile("^%axiom\\s*([a-zA-Z][a-zA-Z0-9]*)\\s*$")
 )
 
-type rule struct {
-	LHS    string
-	RHS    []string
-	Action string
-}
-
-func (r rule) String() string {
-	return fmt.Sprintf("%s -> %s", r.LHS, strings.Join(r.RHS, " "))
-}
-
 type parserDescriptor struct {
 	axiom    string
 	preamble string
@@ -37,8 +27,8 @@ type parserDescriptor struct {
 	precMatrix precedenceMatrix
 }
 
-func parseParserDescription(r io.Reader, logger *log.Logger) (*parserDescriptor, error) {
-	logger.Printf("Parsing parser description file...\n")
+func parseParserDescription(r io.Reader, opts *Options) (*parserDescriptor, error) {
+	opts.Logger.Printf("Parsing parser description file...\n")
 
 	scanner := bufio.NewScanner(r)
 
@@ -65,7 +55,7 @@ func parseParserDescription(r io.Reader, logger *log.Logger) (*parserDescriptor,
 		axiomMatch := axiomRegexp.FindStringSubmatch(l)
 		if axiomMatch != nil {
 			if axiom != "" && !moreThanOneAxiomWarning {
-				fmt.Println("Warning: axiom is defined more than once")
+				log.Println("Warning: axiom is defined more than once.")
 				moreThanOneAxiomWarning = true
 			}
 			axiom = axiomMatch[1]
@@ -76,7 +66,7 @@ func parseParserDescription(r io.Reader, logger *log.Logger) (*parserDescriptor,
 		return nil, fmt.Errorf("no axiom is defined")
 	}
 
-	logger.Printf("Axiom: %s\n", axiom)
+	opts.Logger.Printf("Axiom: %s\n", axiom)
 
 	var sb strings.Builder
 	for scanner.Scan() {
@@ -85,14 +75,14 @@ func parseParserDescription(r io.Reader, logger *log.Logger) (*parserDescriptor,
 		sb.WriteString("\n")
 	}
 
-	rules, err := parseRules(sb.String())
+	rules, err := parseRules(sb.String(), opts.Strategy)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse rules: %w", err)
 	}
 
-	logger.Printf("Parser Rules:\n")
+	opts.Logger.Printf("Parser Rules:\n")
 	for _, rule := range rules {
-		logger.Printf("%s\n", rule)
+		opts.Logger.Printf("%s\n", rule)
 	}
 
 	return &parserDescriptor{
@@ -102,85 +92,107 @@ func parseParserDescription(r io.Reader, logger *log.Logger) (*parserDescriptor,
 	}, nil
 }
 
-func parseRules(input string) ([]rule, error) {
+func parseRules(input string, strategy Strategy) ([]rule, error) {
 	rules := make([]rule, 0)
 
 	var pos int
 	skipSpaces(input, &pos)
 
+	var lhs string
 	for pos < len(input) {
-		firstRule := rule{}
+		var rule rule
 
-		lhs := getIdentifier(input, &pos)
+		// If we're reading an "alternate rule"
 		if lhs == "" {
-			return nil, fmt.Errorf("missing or invalid identifier for lhs")
+			// Read LHS
+			lhs = getIdentifier(input, &pos)
+			if lhs == "" {
+				return nil, fmt.Errorf("missing or invalid identifier for lhs")
+			}
+			skipSpaces(input, &pos)
+
+			// Read production delimiter
+			if input[pos] == ':' {
+				pos++
+			} else {
+				return nil, fmt.Errorf("rule %s is missing a colon between lhs and rhs", lhs)
+			}
+			skipSpaces(input, &pos)
 		}
-		firstRule.LHS = lhs
+		rule.LHS = lhs
 
-		skipSpaces(input, &pos)
+		// Read Rhs
+		rule.RHS = make([]string, 0)
 
-		if input[pos] == ':' {
-			pos++
-		} else {
-			return nil, fmt.Errorf("rule %s is missing a colon between lhs and rhs", lhs)
-		}
-
-		skipSpaces(input, &pos)
-
-		firstRule.RHS = make([]string, 0)
+		// This is used only for COPP; it contains all possible extensions of a rhs.
+		rightSides := make([][]string, 1)
 
 		for input[pos] != '{' {
-			rhsToken := getIdentifier(input, &pos)
-			if rhsToken == "" {
-				return nil, fmt.Errorf("rule %s is missing an identifier for rhs", lhs)
+			var rhsToken string
+			if strategy != COPP {
+				rhsToken = getIdentifier(input, &pos)
+				if rhsToken == "" {
+					return nil, fmt.Errorf("rule %s is missing an identifier for rhs", lhs)
+				}
+
+				rule.RHS = append(rule.RHS, rhsToken)
+			} else {
+				if input[pos] == '(' {
+					// If the next section is a ()+ part, get the list of all produced alternatives (even nested).
+					alternatives, err := getAlternatives(input, &pos)
+					if err != nil {
+						return nil, fmt.Errorf("rule %s is missing an alternative body for lhs", lhs)
+					}
+
+					// Add each produced alternative to every rhs found so far.
+					newRightSides := make([][]string, len(alternatives)*len(rightSides), len(alternatives)*len(rightSides))
+					for i := 0; i < len(rightSides); i++ {
+						for j := 0; j < len(alternatives); j++ {
+							newRightSides[i*len(alternatives)+j] = append(rightSides[i], alternatives[j]...)
+						}
+					}
+					rightSides = newRightSides
+				} else {
+					// Get a simple identifier
+					rhsToken = getIdentifier(input, &pos)
+					if rhsToken == "" {
+						return nil, fmt.Errorf("rule %s is missing an identifier for rhs", lhs)
+					}
+
+					for i := 0; i < len(rightSides); i++ {
+						rightSides[i] = append(rightSides[i], rhsToken)
+					}
+				}
 			}
-			firstRule.RHS = append(firstRule.RHS, rhsToken)
 
 			skipSpaces(input, &pos)
 		}
 
 		semFun := getSemanticFunction(input, &pos)
+		rule.Action = semFun
 
-		firstRule.Action = semFun
-
-		rules = append(rules, firstRule)
-
-		for {
-			skipSpaces(input, &pos)
-
-			if input[pos] == ';' {
-				pos++
-				break
-			} else if input[pos] == '|' {
-				pos++
-
-				skipSpaces(input, &pos)
-
-				nextRule := rule{}
-				nextRule.LHS = lhs
-				nextRule.RHS = make([]string, 0)
-
-				for input[pos] != '{' {
-					var rhsToken string
-					rhsToken = getIdentifier(input, &pos)
-					if rhsToken == "" {
-						return nil, fmt.Errorf("rule %s is missing an identifier for rhs", lhs)
-					}
-					nextRule.RHS = append(nextRule.RHS, rhsToken)
-
-					skipSpaces(input, &pos)
-				}
-
-				semFun := getSemanticFunction(input, &pos)
-
-				nextRule.Action = semFun
-
-				rules = append(rules, nextRule)
-			} else {
-				return nil, fmt.Errorf("invalid character at the end of rule %s", lhs)
+		if strategy != COPP {
+			rules = append(rules, rule)
+		} else {
+			for _, rhs := range rightSides {
+				rule.RHS = rhs
+				rules = append(rules, rule)
 			}
 		}
 
+		skipSpaces(input, &pos)
+
+		if input[pos] == ';' {
+			// We're done with rules with this lhs
+			// Reset current lhs
+			lhs = ""
+		} else if input[pos] == '|' {
+			// We have another rule with the same lhs
+		} else {
+			return nil, fmt.Errorf("invalid character at the end of rule %s", lhs)
+		}
+
+		pos++
 		skipSpaces(input, &pos)
 	}
 
@@ -201,10 +213,12 @@ func (p *parserDescriptor) compile(opts *Options) error {
 	var precMatrix precedenceMatrix
 	var err error
 
-	if !opts.Associative {
+	if opts.Strategy == OPP {
 		precMatrix, err = p.newPrecedenceMatrix()
-	} else {
+	} else if opts.Strategy == AOPP {
 		precMatrix, err = p.newAssociativePrecedenceMatrix()
+	} else if opts.Strategy == COPP {
+		precMatrix, err = p.newCyclicPrecedenceMatrix()
 	}
 	if err != nil {
 		return fmt.Errorf("could not create precedence matrix: %w", err)
@@ -410,7 +424,7 @@ func (p *parserDescriptor) emitTokens(f io.Writer) {
 	}
 	fmt.Fprintf(f, ")\n\n")
 
-	fmt.Fprintf(f, "func SprintToken[T any](root *gopapageno.Token) string {\n")
+	fmt.Fprintf(f, "func SprintToken[TokenValue any](root *gopapageno.Token) string {\n")
 	fmt.Fprintf(f, "\tvar sprintRec func(t *gopapageno.Token, sb *strings.Builder, indent string)\n\n")
 	fmt.Fprintf(f, "\tsprintRec = func(t *gopapageno.Token, sb *strings.Builder, indent string) {\n\t\t")
 	fmt.Fprintf(f, `if t == nil {
@@ -446,7 +460,7 @@ func (p *parserDescriptor) emitTokens(f io.Writer) {
 	}
 
 	fmt.Fprintf(f, "\t\tdefault:\n\t\t\tsb.WriteString(\"Unknown\")\n\t\t}\n")
-	fmt.Fprintf(f, "\t\t\t\tif t.Value != nil {\n\t\t\tsb.WriteString(fmt.Sprintf(\": %%v\", *t.Value.(*T)))\n\t\t}\n")
+	fmt.Fprintf(f, "\t\tif t.Value != nil {\n\t\t\tsb.WriteString(fmt.Sprintf(\": %%v\", *t.Value.(*TokenValue)))\n\t\t}\n")
 	fmt.Fprintf(f, "\t\tsb.WriteString(\"\\n\")\n\n")
 
 	fmt.Fprintf(f, `		sprintRec(t.Child, sb, indent)
