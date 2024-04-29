@@ -8,10 +8,7 @@ import (
 )
 
 var (
-	ErrEOF         = errors.New("reached end of file")
-	ErrNotAccepted = errors.New("no final state reached")
-	ErrSkip        = errors.New("skip current character")
-	ErrInvalid     = errors.New("invalid character")
+	ErrInvalid = errors.New("invalid character")
 )
 
 type PreallocFunc func(sourceLen, concurrency int)
@@ -72,7 +69,7 @@ func (l *Lexer) Scanner(src []byte, opts ...ScannerOpt) *Scanner {
 	stackPoolBaseSize := math.Ceil(float64(sourceLen) / avgCharsPerToken / float64(stackSize) / float64(s.concurrency))
 
 	for thread := 0; thread < s.concurrency; thread++ {
-		s.pools[thread] = NewPool[stack[Token]](int(stackPoolBaseSize * 1.2))
+		s.pools[thread] = NewPool[stack[Token]](int(stackPoolBaseSize*1.2), WithConstructor[stack[Token]](newStack[Token]))
 	}
 
 	return s

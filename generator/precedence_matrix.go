@@ -401,8 +401,6 @@ func (p *parserDescriptor) newCyclicPrecedenceMatrix() (precedenceMatrix, error)
 	lts, rts := p.getTerminalSets()
 	terminals := p.terminals.Slice()
 
-	_ = lts
-
 	/*
 		for ridx, rule := range p.rules {
 			productions := RuleProductions(p.rules, ridx)

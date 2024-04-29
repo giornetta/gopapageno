@@ -18,6 +18,7 @@ type parserDescriptor struct {
 	axiom    string
 	preamble string
 	rules    []rule
+	prefixes [][]string
 
 	// nonterminals is nil until inferTokens() is executed successfully.
 	nonterminals *set[string]
@@ -76,7 +77,7 @@ func parseParserDescription(r io.Reader, opts *Options) (*parserDescriptor, erro
 		sb.WriteString("\n")
 	}
 
-	rules, err := parseRules(sb.String(), opts.Strategy)
+	rules, prefixes, err := parseRules(sb.String(), opts.Strategy)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse rules: %w", err)
 	}
@@ -90,11 +91,13 @@ func parseParserDescription(r io.Reader, opts *Options) (*parserDescriptor, erro
 		axiom:    axiom,
 		preamble: preambleBuilder.String(),
 		rules:    rules,
+		prefixes: prefixes,
 	}, nil
 }
 
-func parseRules(input string, strategy gopapageno.ParsingStrategy) ([]rule, error) {
+func parseRules(input string, strategy gopapageno.ParsingStrategy) ([]rule, [][]string, error) {
 	rules := make([]rule, 0)
+	prefixes := make([][]string, 0)
 
 	var pos int
 	skipSpaces(input, &pos)
@@ -108,7 +111,7 @@ func parseRules(input string, strategy gopapageno.ParsingStrategy) ([]rule, erro
 			// Read LHS
 			lhs = getIdentifier(input, &pos)
 			if lhs == "" {
-				return nil, fmt.Errorf("missing or invalid identifier for lhs")
+				return nil, nil, fmt.Errorf("missing or invalid identifier for lhs")
 			}
 			skipSpaces(input, &pos)
 
@@ -116,7 +119,7 @@ func parseRules(input string, strategy gopapageno.ParsingStrategy) ([]rule, erro
 			if input[pos] == ':' {
 				pos++
 			} else {
-				return nil, fmt.Errorf("rule %s is missing a colon between lhs and rhs", lhs)
+				return nil, nil, fmt.Errorf("rule %s is missing a colon between lhs and rhs", lhs)
 			}
 			skipSpaces(input, &pos)
 		}
@@ -125,44 +128,48 @@ func parseRules(input string, strategy gopapageno.ParsingStrategy) ([]rule, erro
 		// Read Rhs
 		rule.RHS = make([]string, 0)
 
-		// This is used only for COPP; it contains all possible extensions of a rhs.
-		rightSides := make([][]string, 1)
-
 		for input[pos] != '{' {
 			var rhsToken string
 			if strategy != gopapageno.COPP {
 				rhsToken = getIdentifier(input, &pos)
 				if rhsToken == "" {
-					return nil, fmt.Errorf("rule %s is missing an identifier for rhs", lhs)
+					return nil, nil, fmt.Errorf("rule %s is missing an identifier for rhs", lhs)
 				}
 
 				rule.RHS = append(rule.RHS, rhsToken)
 			} else {
 				if input[pos] == '(' {
 					// If the next section is a ()+ part, get the list of all produced alternatives (even nested).
-					alternatives, err := getAlternatives(input, &pos)
+					flattened, alternatives, err := getAlternatives(input, &pos)
 					if err != nil {
-						return nil, fmt.Errorf("rule %s is missing an alternative body for lhs", lhs)
+						return nil, nil, fmt.Errorf("rule %s is missing an alternative body for lhs", lhs)
 					}
 
 					// Add each produced alternative to every rhs found so far.
-					newRightSides := make([][]string, len(alternatives)*len(rightSides), len(alternatives)*len(rightSides))
-					for i := 0; i < len(rightSides); i++ {
-						for j := 0; j < len(alternatives); j++ {
-							newRightSides[i*len(alternatives)+j] = append(rightSides[i], alternatives[j]...)
+					/*
+						newRightSides := make([][]string, len(alternatives)*len(rightSides), len(alternatives)*len(rightSides))
+						for i := 0; i < len(rightSides); i++ {
+							for j := 0; j < len(alternatives); j++ {
+								newRightSides[i*len(alternatives)+j] = append(rightSides[i], alternatives[j]...)
+							}
 						}
-					}
-					rightSides = newRightSides
+						rightSides = newRightSides
+					*/
+					rule.RHS = append(rule.RHS, flattened...)
+					prefixes = append(prefixes, alternatives...)
 				} else {
 					// Get a simple identifier
 					rhsToken = getIdentifier(input, &pos)
 					if rhsToken == "" {
-						return nil, fmt.Errorf("rule %s is missing an identifier for rhs", lhs)
+						return nil, nil, fmt.Errorf("rule %s is missing an identifier for rhs", lhs)
 					}
 
-					for i := 0; i < len(rightSides); i++ {
-						rightSides[i] = append(rightSides[i], rhsToken)
-					}
+					/*
+						for i := 0; i < len(rightSides); i++ {
+							rightSides[i] = append(rightSides[i], rhsToken)
+						}
+					*/
+					rule.RHS = append(rule.RHS, rhsToken)
 				}
 			}
 
@@ -175,10 +182,7 @@ func parseRules(input string, strategy gopapageno.ParsingStrategy) ([]rule, erro
 		if strategy != gopapageno.COPP {
 			rules = append(rules, rule)
 		} else {
-			for _, rhs := range rightSides {
-				rule.RHS = rhs
-				rules = append(rules, rule)
-			}
+			rules = append(rules, rule)
 		}
 
 		skipSpaces(input, &pos)
@@ -190,14 +194,14 @@ func parseRules(input string, strategy gopapageno.ParsingStrategy) ([]rule, erro
 		} else if input[pos] == '|' {
 			// We have another rule with the same lhs
 		} else {
-			return nil, fmt.Errorf("invalid character at the end of rule %s", lhs)
+			return nil, nil, fmt.Errorf("invalid character at the end of rule %s", lhs)
 		}
 
 		pos++
 		skipSpaces(input, &pos)
 	}
 
-	return rules, nil
+	return rules, prefixes, nil
 }
 
 // compile completes the parser description by doing all necessary checks and
@@ -288,9 +292,8 @@ func (p *parserDescriptor) emit(f io.Writer, opts *Options) {
 	 *********/
 	maxRHSLen := 0
 	for _, rule := range p.rules {
-		ruleLen := len(rule.RHS)
-		if ruleLen > maxRHSLen {
-			maxRHSLen = ruleLen
+		if len(rule.RHS) > maxRHSLen {
+			maxRHSLen = len(rule.RHS)
 		}
 	}
 
@@ -317,6 +320,23 @@ func (p *parserDescriptor) emit(f io.Writer, opts *Options) {
 		}
 	}
 	fmt.Fprintf(f, "\t}\n\n")
+
+	/*****************
+	 * COPP Prefixes *
+	 *****************/
+	maxPrefixLen := 0
+	for _, prefix := range p.prefixes {
+		if len(prefix) > maxPrefixLen {
+			maxPrefixLen = len(prefix)
+		}
+	}
+
+	fmt.Fprintf(f, "\tmaxPrefixLen := %d\n", maxPrefixLen)
+	fmt.Fprint(f, "\tprefixes := [][]gopapageno.TokenType{\n")
+	for _, prefix := range p.prefixes {
+		fmt.Fprintf(f, "\t\t{%s},\n", strings.Join(prefix, ", "))
+	}
+	fmt.Fprintf(f, "\t}\n")
 
 	/*********************
 	 * Precedence Matrix *
@@ -388,6 +408,8 @@ func (p *parserDescriptor) emit(f io.Writer, opts *Options) {
 	fmt.Fprintf(f, "\t\tmaxRHSLen,\n")
 	fmt.Fprintf(f, "\t\trules,\n")
 	fmt.Fprintf(f, "\t\tcompressedRules,\n")
+	fmt.Fprintf(f, "\t\tprefixes,\n")
+	fmt.Fprintf(f, "\t\tmaxPrefixLen,\n")
 	fmt.Fprintf(f, "\t\tprecMatrix,\n")
 	fmt.Fprintf(f, "\t\tbitPackedMatrix,\n")
 	fmt.Fprintf(f, "\t\tfn,\n")

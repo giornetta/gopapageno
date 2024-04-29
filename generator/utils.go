@@ -34,27 +34,30 @@ func getIdentifier(input string, index *int) string {
 	return input[startIndex:*index]
 }
 
-func getAlternatives(input string, index *int) ([][]string, error) {
+func getAlternatives(input string, index *int) ([]string, [][]string, error) {
 	startIndex := *index
 
 	// Check if the current substring stars with an open parenthesis.
 	if *index < len(input) && input[*index] == '(' {
 		*index++
 	} else {
-		return nil, fmt.Errorf("input string %s does not start with '('", input[*index:])
+		return nil, nil, fmt.Errorf("input string %s does not start with '('", input[*index:])
 	}
 	skipSpaces(input, index)
 
+	rhsTokens := make([]string, 0)
 	alternatives := make([][]string, 1)
 
 	// Loop until we found a closed parenthesis
 	for input[*index] != ')' {
 		// If the next character is another open bracket, look for nested alternatives.
 		if *index < len(input) && input[*index] == '(' {
-			nestedAlternatives, err := getAlternatives(input, index)
+			flattened, nestedAlternatives, err := getAlternatives(input, index)
 			if err != nil {
-				return nil, fmt.Errorf("could not parse nested alternatives: %w", err)
+				return nil, nil, fmt.Errorf("could not parse nested alternatives: %w", err)
 			}
+
+			rhsTokens = append(rhsTokens, flattened...)
 
 			// Add each nested alternative to every alternative found so far.
 			newAlternatives := make([][]string, len(alternatives)*len(nestedAlternatives), len(alternatives)*len(nestedAlternatives))
@@ -68,6 +71,7 @@ func getAlternatives(input string, index *int) ([][]string, error) {
 			// Instead it should be just a normal identifier
 			identifier := getIdentifier(input, index)
 
+			rhsTokens = append(rhsTokens, identifier)
 			for i := 0; i < len(alternatives); i++ {
 				alternatives[i] = append(alternatives[i], identifier)
 			}
@@ -79,7 +83,7 @@ func getAlternatives(input string, index *int) ([][]string, error) {
 	*index++
 
 	if input[*index] != '+' {
-		return nil, fmt.Errorf("alternative string %s does not end with '+'", input[startIndex:*index+1])
+		return nil, nil, fmt.Errorf("alternative string %s does not end with '+'", input[startIndex:*index+1])
 	}
 	*index++
 
@@ -90,7 +94,7 @@ func getAlternatives(input string, index *int) ([][]string, error) {
 		newAlternatives[i+len(alternatives)] = append(alt, alt...)
 	}
 
-	return newAlternatives, nil
+	return rhsTokens, newAlternatives, nil
 }
 
 func getSemanticFunction(input string, index *int) string {

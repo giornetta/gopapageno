@@ -98,23 +98,27 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 	numTerminals := uint16(5)
 	numNonTerminals := uint16(4)
 
-	maxRHSLen := 5
+	maxRHSLen := 3
 	rules := []gopapageno.Rule{
 		{NEW_AXIOM, []gopapageno.TokenType{E_S}},
 		{NEW_AXIOM, []gopapageno.TokenType{E_S_T}},
 		{E_S, []gopapageno.TokenType{E_S_T, PLUS, E_S_T}},
-		{E_S, []gopapageno.TokenType{E_S_T, PLUS, E_S_T, PLUS, E_S_T}},
 		{E_S_T, []gopapageno.TokenType{LPAR, E_S, RPAR}},
 		{E_S_T, []gopapageno.TokenType{LPAR, E_S_T, RPAR}},
 		{E_S_T, []gopapageno.TokenType{NUMBER}},
 	}
-	compressedRules := []uint16{0, 0, 4, 1, 11, 2, 14, 32769, 37, 32770, 60, 3, 0, 0, 3, 1, 1, 32771, 19, 0, 0, 1, 2, 24, 1, 2, 1, 32771, 29, 0, 0, 1, 2, 34, 1, 3, 0, 0, 0, 2, 1, 44, 2, 52, 0, 0, 1, 32772, 49, 2, 4, 0, 0, 0, 1, 32772, 57, 2, 5, 0, 2, 6, 0}
+	compressedRules := []uint16{0, 0, 4, 1, 11, 2, 14, 32769, 27, 32770, 50, 3, 0, 0, 3, 1, 1, 32771, 19, 0, 0, 1, 2, 24, 1, 2, 0, 0, 0, 2, 1, 34, 2, 42, 0, 0, 1, 32772, 39, 2, 3, 0, 0, 0, 1, 32772, 47, 2, 4, 0, 2, 5, 0}
 
+	maxPrefixLen := 4
+	prefixes := [][]gopapageno.TokenType{
+		{E_S_T, PLUS},
+		{E_S_T, PLUS, E_S_T, PLUS},
+	}
 	precMatrix := [][]gopapageno.Precedence{
 		{gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEmpty},
 		{gopapageno.PrecEmpty, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEquals},
 		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes},
-		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEquals, gopapageno.PrecTakes},
+		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEmpty, gopapageno.PrecTakes},
 		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes},
 	}
 	bitPackedMatrix := []uint64{
@@ -157,25 +161,6 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 				E_S0.Value = newValue
 			}
 		case 3:
-			E_S0 := lhs
-			E_S_T1 := rhs[0]
-			PLUS2 := rhs[1]
-			E_S_T3 := rhs[2]
-			PLUS4 := rhs[3]
-			E_S_T5 := rhs[4]
-
-			E_S0.Child = E_S_T1
-			E_S_T1.Next = PLUS2
-			PLUS2.Next = E_S_T3
-			E_S_T3.Next = PLUS4
-			PLUS4.Next = E_S_T5
-
-			{
-				newValue := parserPools[thread].Get()
-				*newValue = *E_S_T1.Value.(*int64) + *E_S_T3.Value.(*int64)
-				E_S0.Value = newValue
-			}
-		case 4:
 			E_S_T0 := lhs
 			LPAR1 := rhs[0]
 			E_S2 := rhs[1]
@@ -188,7 +173,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			{
 				E_S_T0.Value = E_S2.Value
 			}
-		case 5:
+		case 4:
 			E_S_T0 := lhs
 			LPAR1 := rhs[0]
 			E_S_T2 := rhs[1]
@@ -201,7 +186,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			{
 				E_S_T0.Value = E_S_T2.Value
 			}
-		case 6:
+		case 5:
 			E_S_T0 := lhs
 			NUMBER1 := rhs[0]
 
@@ -220,6 +205,8 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 		maxRHSLen,
 		rules,
 		compressedRules,
+		prefixes,
+		maxPrefixLen,
 		precMatrix,
 		bitPackedMatrix,
 		fn,

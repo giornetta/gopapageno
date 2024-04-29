@@ -83,8 +83,7 @@ func (p *parserDescriptor) deleteRepeatedRHS() {
 	newRulesDict := newRulesDictionary(dictRules.Len())
 
 	// Range over the current rules, check if the RHS contains any nonterminal
-	// If it doesn't (i.e. it is a *terminal rule*), add it to the new rules dictionary,
-	// and remove it from the old dict.
+	// If it doesn't (i.e. it is a *terminal rule*), add it to the new rules dictionary and remove it from the old dict.
 	copyDictRules := dictRules.Copy()
 	for i, _ := range copyDictRules.KeysRHS {
 		keyRHS := copyDictRules.KeysRHS[i]
@@ -113,18 +112,24 @@ func (p *parserDescriptor) deleteRepeatedRHS() {
 	}
 
 	V := dictRules.LHSSets()
+
+	// Replace token names in prefixes
+	newPrefixes := make([][]string, 0)
+	for _, prefix := range p.prefixes {
+		newPrefixes = append(newPrefixes, p.replaceTokenNames(prefix, V)...)
+	}
+	p.prefixes = newPrefixes
+
 	dictRulesForIteration := newRulesDictionary(0)
 	loop := true
 	for loop {
+		// Substitutes RHS keys with newly formatted ones.
 		for i, _ := range dictRules.KeysRHS {
 			keyRHS := dictRules.KeysRHS[i]
 			valueLHS := dictRules.ValuesLHS[i]
 			semAction := dictRules.SemActions[i]
 
-			newRuleRHS := make([]string, 0)
-			addNewRules(dictRulesForIteration,
-				keyRHS, valueLHS, semAction,
-				p.nonterminals, V, newRuleRHS)
+			addNewRules(dictRulesForIteration, p, keyRHS, valueLHS, semAction, V)
 		}
 
 		valueLHSSets := dictRulesForIteration.LHSSets()
@@ -180,12 +185,10 @@ func (p *parserDescriptor) deleteRepeatedRHS() {
 				RHS:    []string{strings.Join(nontermSet.Slice(), "_")},
 				Action: newAxiomSemAction,
 			})
-
-			//p.axiom = newAxiom
 		}
 	}
 
-	//Create the rules from rulesDictionary
+	// Create the rules from rulesDictionary
 	for i, _ := range newRulesDict.KeysRHS {
 		keyRHS := newRulesDict.KeysRHS[i]
 		valueLHS := newRulesDict.ValuesLHS[i]
@@ -200,39 +203,61 @@ func (p *parserDescriptor) deleteRepeatedRHS() {
 	p.axiom = newAxiom
 }
 
-func addNewRules(dict *rulesDictionary,
-	keyRHS []string, valueLHS *set[string], semAction *string,
-	nonterminals *set[string], newNonterminals []*set[string], newRuleRHS []string) {
-	// If the provided key is empty, add new rules with the new RHS.
-	if len(keyRHS) == 0 {
-		for _, curLHS := range valueLHS.Iter {
+func (p *parserDescriptor) replaceTokenNames(keyRHS []string, newNonterminals []*set[string]) [][]string {
+	newTokenNames := make([][]string, 0)
+
+	var rec func(tokens []string, newTokens []string)
+	rec = func(tokens []string, newTokens []string) {
+		if len(tokens) == 0 {
+			newTokenNames = append(newTokenNames, newTokens)
+			return
+		}
+
+		token := tokens[0]
+		if p.nonterminals.Contains(token) {
+			for _, nonTermSuperSet := range newNonterminals {
+				if nonTermSuperSet.Contains(token) {
+					newTokens = append(newTokens, strings.Join(nonTermSuperSet.Slice(), "_"))
+					rec(tokens[1:], newTokens)
+
+					newTokensCopy := make([]string, len(newTokens)-1)
+					copy(newTokensCopy, newTokens)
+					newTokens = newTokensCopy
+				}
+			}
+		} else {
+			newTokens = append(newTokens, token)
+			rec(tokens[1:], newTokens)
+
+			newTokensCopy := make([]string, len(newTokens)-1)
+			copy(newTokensCopy, newTokens)
+			newTokens = newTokensCopy
+		}
+	}
+
+	newTokens := make([]string, 0)
+	rec(keyRHS, newTokens)
+
+	return newTokenNames
+}
+
+func addNewRules(dict *rulesDictionary, p *parserDescriptor,
+	keyRHS []string, valueLHS *set[string], semAction *string, newNonterminals []*set[string]) {
+
+	newRuleRHS := p.replaceTokenNames(keyRHS, newNonterminals)
+
+	for _, lhs := range valueLHS.Iter {
+		for _, rhs := range newRuleRHS {
 			dict.Add(&rule{
-				LHS:    curLHS,
-				RHS:    newRuleRHS,
+				LHS:    lhs,
+				RHS:    rhs,
 				Action: *semAction,
 			})
 		}
-		return
+
 	}
 
-	token := keyRHS[0]
-	if nonterminals.Contains(token) {
-		for _, nonTermSuperSet := range newNonterminals {
-			if nonTermSuperSet.Contains(token) {
-				newRuleRHS = append(newRuleRHS, strings.Join(nonTermSuperSet.Slice(), "_"))
-				addNewRules(dict, keyRHS[1:], valueLHS, semAction, nonterminals, newNonterminals, newRuleRHS)
-				newRuleRHSCopy := make([]string, len(newRuleRHS)-1)
-				copy(newRuleRHSCopy, newRuleRHS)
-				newRuleRHS = newRuleRHSCopy
-			}
-		}
-	} else {
-		newRuleRHS = append(newRuleRHS, token)
-		addNewRules(dict, keyRHS[1:], valueLHS, semAction, nonterminals, newNonterminals, newRuleRHS)
-		newRuleRHSCopy := make([]string, len(newRuleRHS)-1)
-		copy(newRuleRHSCopy, newRuleRHS)
-		newRuleRHS = newRuleRHSCopy
-	}
+	return
 }
 
 func (p *parserDescriptor) sortRulesByRHS() {

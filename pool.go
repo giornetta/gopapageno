@@ -16,6 +16,12 @@ type PoolOpt[T any] func(p *Pool[T])
 func WithConstructor[T any](constructor Constructor[T]) PoolOpt[T] {
 	return func(p *Pool[T]) {
 		p.constructor = constructor
+
+		if p.constructor != nil {
+			for i := 0; i < len(p.pool); i++ {
+				p.pool[i] = *p.constructor()
+			}
+		}
 	}
 }
 
