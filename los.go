@@ -111,7 +111,7 @@ func (l *ListOfStacks[T]) Pop() *T {
 	return &l.cur.Data[l.cur.Tos]
 }
 
-func CombineLOS(l *ListOfStacks[Token], stacks *ParserStack) *ListOfStacks[Token] {
+func CombineLOS(l *ListOfStacks[Token], stacks Stacker) *ListOfStacks[Token] {
 	var tok Token
 
 	list := NewListOfStacks[Token](l.pool)

@@ -177,7 +177,7 @@ func (s *ParserStack) Split(n int) ([]*ParserStack, error) {
 
 		curStack = next
 
-		lists[curList].UpdateFirstTerminal()
+		lists[curList].firstTerminal = lists[curList].findFirstTerminal()
 
 		remainder -= float64(stacksToAssign)
 		assignedStacks += stacksToAssign
@@ -188,7 +188,7 @@ func (s *ParserStack) Split(n int) ([]*ParserStack, error) {
 	return lists, nil
 }
 
-func (s *ParserStack) Combine() *ParserStack {
+func (s *ParserStack) Combine() Stacker {
 	var topLeft Token
 
 	// TODO: This could be moved in Push/Pop to allow constant time access.

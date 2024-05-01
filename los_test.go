@@ -5,7 +5,7 @@ import (
 )
 
 func TestListOfStacks_Get(t *testing.T) {
-	los := NewListOfStacks[Token](NewPool[stack[Token]](2))
+	los := NewListOfStacks[Token](NewPool[stack[Token]](2, WithConstructor[stack[Token]](newStack[Token])))
 
 	token := Token{
 		Type:       TokenType(0),
@@ -49,7 +49,7 @@ func TestListOfStacks_Get(t *testing.T) {
 }
 
 func TestListOfTokenPointerStacks_Combine(t *testing.T) {
-	list := newListOfTokenPointerStacks(NewPool[tokenPointerStack](1))
+	list := NewParserStack(NewPool[stack[*Token]](1))
 
 	list.Push(&Token{
 		Type:       0,

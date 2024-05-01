@@ -16,6 +16,10 @@ type Token struct {
 	Child *Token
 }
 
+func (t *Token) IsTerminal() bool {
+	return t.Type.IsTerminal()
+}
+
 type TokenType uint16
 
 const (
