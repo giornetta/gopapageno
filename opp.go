@@ -13,7 +13,19 @@ type parserWorker struct {
 	ntPool *Pool[Token]
 }
 
-func (w *parserWorker) parse(ctx context.Context, stack *ParserStack, tokens *ListOfStacks[Token], nextToken *Token, finalPass bool, resultCh chan<- parseResult, errCh chan<- error) {
+func (w *parserWorker) parse(ctx context.Context, stack Stacker, tokens *ListOfStacks[Token], nextToken *Token, finalPass bool, resultCh chan<- parseResult, errCh chan<- error) {
+	switch s := stack.(type) {
+	case *ParserStack:
+		w.parseAcyclic(ctx, s, tokens, nextToken, finalPass, resultCh, errCh)
+	case *CyclicParserStack:
+		w.parseCyclic(ctx, s, tokens, nextToken, finalPass, resultCh, errCh)
+	default:
+		panic("unreachable")
+	}
+}
+
+// parseAcyclic implements both OPP and AOPP strategies.
+func (w *parserWorker) parseAcyclic(ctx context.Context, stack *ParserStack, tokens *ListOfStacks[Token], nextToken *Token, finalPass bool, resultCh chan<- parseResult, errCh chan<- error) {
 	tokensIt := tokens.HeadIterator()
 
 	// If the thread is the first, push a # onto the stack
@@ -21,9 +33,8 @@ func (w *parserWorker) parse(ctx context.Context, stack *ParserStack, tokens *Li
 	if !finalPass {
 		if w.id == 0 {
 			stack.Push(&Token{
-				Type:  TokenTerm,
-				Value: nil,
-				// Lexeme:     "",
+				Type:       TokenTerm,
+				Value:      nil,
 				Precedence: PrecEmpty,
 				Next:       nil,
 				Child:      nil,
@@ -32,8 +43,6 @@ func (w *parserWorker) parse(ctx context.Context, stack *ParserStack, tokens *Li
 			t := tokensIt.Next()
 			t.Precedence = PrecEmpty
 			stack.Push(t)
-			// precToken.Precedence = PrecEmpty
-			// stack.Push(precToken)
 		}
 
 		// If the thread is the last, push a # onto the tokens m

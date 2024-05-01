@@ -6,15 +6,11 @@ import (
 	"slices"
 )
 
+// parseCyclic implements COPP.
 func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack, tokens *ListOfStacks[Token], nextToken *Token, finalPass bool, resultCh chan<- parseResult, errCh chan<- error) {
 	tokensIt := tokens.HeadIterator()
 
-	//curRhsPrefix := make([]*Token, w.parser.MaxPrefixLength+1)
-	// curRhsPrefixTokens := make([]TokenType, w.parser.MaxPrefixLength+1)
 	curRhsPrefixLen := 0
-
-	// prevRhsPrefix := make([]*Token, w.parser.MaxPrefixLength+1)
-	// prevRhsPrefixTokens := make([]TokenType, w.parser.MaxPrefixLength+1)
 	prevRhsPrefixLen := 0
 
 	state := CyclicAutomataState{
@@ -48,9 +44,8 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 		// Otherwise, push onto the tokens m the first inputToken of the next tokens m
 		if w.id == w.parser.concurrency-1 {
 			tokens.Push(Token{
-				Type:  TokenTerm,
-				Value: nil,
-				// Lexeme:     "",
+				Type:       TokenTerm,
+				Value:      nil,
 				Precedence: PrecEmpty,
 				Next:       nil,
 				Child:      nil,

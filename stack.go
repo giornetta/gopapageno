@@ -235,6 +235,16 @@ func (s *ParserStack) CombineNoAlloc() {
 	s.cur.Tos = topLeftPos
 }
 
+func (s *ParserStack) LastNonterminal() (*Token, error) {
+	for token := s.Pop(); token != nil; token = s.Pop() {
+		if !token.Type.IsTerminal() {
+			return token, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no nonterminal found")
+}
+
 // ParserStackIterator allows to iterate over a listOfTokenPointerStacks, either forward or backward.
 type ParserStackIterator struct {
 	los *ParserStack
