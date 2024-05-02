@@ -21,6 +21,8 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 	prefixTokens := make([]TokenType, w.parser.MaxPrefixLength*2+1)
 	prefix := make([]*Token, w.parser.MaxPrefixLength*2+1)
 
+	prevPrefix := make([]*Token, w.parser.MaxPrefixLength*2+1)
+
 	// If the thread is the first, push a # onto the stack
 	// Otherwise, push the first inputToken onto the stack
 	if !finalPass {
@@ -115,6 +117,7 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 
 			inputToken = tokensIt.Next()
 		} else if prec == PrecEquals {
+			inputToken.Precedence = prec
 			// If it is equals, it is probably a shift transition?
 
 			// If the current construction is a single nonterminal.
@@ -137,18 +140,6 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 			// If the construction has a suffix which is a double occurrence of a string produced by a Kleene-+.
 			for _, prefix := range w.parser.Prefixes {
 				if slices.Equal(prefix, prefixTokens[:curRhsPrefixLen]) {
-					// TODO: Fix! DEPST + DST + should be recognized!
-					/*
-						idx := findRepeatedSuffixIndex(prefixTokens[:curRhsPrefixLen])
-						if idx != -1 {
-							for i := idx; i < len(prefixTokens); i++ {
-								state.Current[i] = nil
-							}
-							curRhsPrefixLen = idx
-							break
-						}
-					*/
-
 					// Try this out: parse as rhs all tokens of the prefix except last one, and substitute the resulting lhs to them.
 					rhsTokens = state.Current[:curRhsPrefixLen-1]
 					rhs = prefix[:curRhsPrefixLen-1]
@@ -158,6 +149,7 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 						errCh <- fmt.Errorf("could not find match for rhs %v", rhs)
 						return
 					}
+
 					lhs = rhs[0]
 
 					newNonTerm.Type = lhs
@@ -184,73 +176,105 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 			//If there are no tokens yielding precedence on the stack, push inputToken onto the stack.
 			//Otherwise, perform a reduction. (Reduction == Pop/Shift move?)
 			if stack.YieldingPrecedence() == 0 {
+				tok := state.Current[0]
+
 				inputToken.Precedence = prec
-				stack.Push(inputToken, state)
+				state.Current[0] = inputToken
+
+				stack.Push(tok, state)
 
 				inputToken = tokensIt.Next()
 			} else {
 				_, st := stack.Pop2()
 
-				for i := range len(prefixTokens) {
-					prefixTokens[i] = TokenEmpty
-					prefix[i] = nil
-				}
-
-				var i int
-				// Prefix is not made of a single nonterminal
-				if curRhsPrefixLen == 1 && !state.Current[0].Type.IsTerminal() {
-					for i = 0; i < prevRhsPrefixLen && state.Previous[i] != nil; i++ {
-						prefixTokens[i] = state.Previous[i].Type
-						prefix[i] = state.Previous[i]
+				for failed := 0; failed >= 0; {
+					if failed != 0 {
+						_, st = stack.Pop2()
 					}
-				}
 
-				for j := 0; j < curRhsPrefixLen && state.Current[j] != nil; j++ {
-					prefixTokens[i] = state.Current[j].Type
-					prefix[i] = state.Current[j]
+					clear(prefixTokens)
+					clear(prefix)
 
-					i++
-				}
+					var i int
+					// Prefix is made of a single nonterminal
+					if curRhsPrefixLen == 1 && !state.Current[0].Type.IsTerminal() {
+						for i = 0; i < prevRhsPrefixLen && state.Previous[i] != nil; i++ {
+							prefixTokens[i] = state.Previous[i].Type
+							prefix[i] = state.Previous[i]
+						}
+					}
 
-				stack.UpdateFirstTerminal()
+					for j := 0; j < curRhsPrefixLen && state.Current[j] != nil; j++ {
+						prefixTokens[i] = state.Current[j].Type
+						prefix[i] = state.Current[j]
 
-				// Prefix is made of a single nonterminal
-				if w.parser.MaxPrefixLength > 0 && st.Current[0] != nil && !st.Current[0].Type.IsTerminal() && st.Current[1] == nil {
-					state.Previous = st.Previous
-				} else {
-					state.Previous = st.Current
-				}
-
-				rhsTokens = prefix[:i]
-				rhs = prefixTokens[:i]
-
-				lhs, ruleNum := w.parser.findMatch(rhs)
-				if lhs == TokenEmpty {
-					errCh <- fmt.Errorf("could not find match for rhs %v", rhs)
-					return
-				}
-
-				newNonTerm.Type = lhs
-				lhsToken = w.ntPool.Get()
-				*lhsToken = newNonTerm
-
-				//Execute the semantic action
-				w.parser.Func(ruleNum, lhsToken, rhsTokens, w.id)
-
-				// Reset state
-				for i := 1; i < len(state.Current); i++ {
-					state.Current[i] = nil
-				}
-				state.Current[0] = lhsToken
-				curRhsPrefixLen = 1
-
-				i = 0
-				for _, t := range state.Previous {
-					if t != nil {
 						i++
 					}
+
+					stack.UpdateFirstTerminal()
+
+					// Prefix is made of a single nonterminal
+					copy(prevPrefix, state.Previous)
+					if w.parser.MaxPrefixLength > 0 && st.Current[0] != nil && !st.Current[0].Type.IsTerminal() && st.Current[1] == nil {
+						state.Previous = st.Previous
+					} else {
+						state.Previous = st.Current
+					}
+
+					rhsTokens = prefix[:i]
+					rhs = prefixTokens[:i]
+
+					lhs, ruleNum := w.parser.findMatch(rhs)
+					if lhs == TokenEmpty {
+						failed++
+						copy(state.Current, state.Previous)
+						copy(state.Previous, rhsTokens)
+
+						l := 0
+						for _, t := range state.Current {
+							if t != nil {
+								l++
+							}
+						}
+						curRhsPrefixLen = l
+
+						prevRhsPrefixLen = i
+						continue
+						// errCh <- fmt.Errorf("could not find match for rhs %v", rhs)
+						// return
+					} else {
+						newNonTerm.Type = lhs
+						lhsToken = w.ntPool.Get()
+						*lhsToken = newNonTerm
+
+						//Execute the semantic action
+						w.parser.Func(ruleNum, lhsToken, rhsTokens, w.id)
+
+						// Reset state
+						if failed == 0 {
+							for i := 1; i < len(state.Current); i++ {
+								state.Current[i] = nil
+							}
+							state.Current[0] = lhsToken
+							curRhsPrefixLen = 1
+
+							i = 0
+							for _, t := range state.Previous {
+								if t != nil {
+									i++
+								}
+							}
+							prevRhsPrefixLen = i
+						} else {
+							state.Current[0] = lhsToken
+							copy(state.Current[1:], prevPrefix)
+
+							curRhsPrefixLen = prevRhsPrefixLen + 1
+						}
+						failed--
+					}
+
 				}
-				prevRhsPrefixLen = i
 			}
 		} else {
 			//If there's no precedence relation, abort the parsing
@@ -258,8 +282,6 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 			return
 		}
 	}
-
-	stack.Push(state.Current[0], state)
 
 	resultCh <- parseResult{w.id, stack}
 }

@@ -20,19 +20,16 @@ func ParserPreallocMem(inputSize int, numThreads int) {
 
 %%
 
-S : E
+S : T
 {
     $$.Value = $1.Value
 };
 
-E : (T PLUS)+ T
+T : (T PLUS)+ T
 {
     newValue := parserPools[thread].Get()
     *newValue = *$1.Value.(*int64) + *$3.Value.(*int64)
     $$.Value = newValue
-} | LPAR E RPAR
-{
-    $$.Value = $2.Value
 } | LPAR T RPAR
 {
      $$.Value = $2.Value
@@ -40,15 +37,3 @@ E : (T PLUS)+ T
 {
     $$.Value = $1.Value
 };
-
-T : LPAR T RPAR
-{
-    $$.Value = $2.Value
-} | LPAR E RPAR
-{
-    $$.Value = $2.Value
-} | NUMBER
-{
-    $$.Value = $1.Value
-};
-

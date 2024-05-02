@@ -128,6 +128,8 @@ func parseRules(input string, strategy gopapageno.ParsingStrategy) ([]rule, [][]
 		// Read Rhs
 		rule.RHS = make([]string, 0)
 
+		rightSides := make([][]string, 1)
+
 		for input[pos] != '{' {
 			var rhsToken string
 			if strategy != gopapageno.COPP {
@@ -140,22 +142,21 @@ func parseRules(input string, strategy gopapageno.ParsingStrategy) ([]rule, [][]
 			} else {
 				if input[pos] == '(' {
 					// If the next section is a ()+ part, get the list of all produced alternatives (even nested).
-					flattened, alternatives, err := getAlternatives(input, &pos)
+					_, alternatives, err := getAlternatives(input, &pos)
 					if err != nil {
 						return nil, nil, fmt.Errorf("rule %s is missing an alternative body for lhs", lhs)
 					}
 
 					// Add each produced alternative to every rhs found so far.
-					/*
-						newRightSides := make([][]string, len(alternatives)*len(rightSides), len(alternatives)*len(rightSides))
-						for i := 0; i < len(rightSides); i++ {
-							for j := 0; j < len(alternatives); j++ {
-								newRightSides[i*len(alternatives)+j] = append(rightSides[i], alternatives[j]...)
-							}
+					newRightSides := make([][]string, len(alternatives)*len(rightSides), len(alternatives)*len(rightSides))
+					for i := 0; i < len(rightSides); i++ {
+						for j := 0; j < len(alternatives); j++ {
+							newRightSides[i*len(alternatives)+j] = append(rightSides[i], alternatives[j]...)
 						}
-						rightSides = newRightSides
-					*/
-					rule.RHS = append(rule.RHS, flattened...)
+					}
+					rightSides = newRightSides
+
+					// rule.RHS = append(rule.RHS, flattened...)
 					prefixes = append(prefixes, alternatives...)
 				} else {
 					// Get a simple identifier
@@ -164,12 +165,11 @@ func parseRules(input string, strategy gopapageno.ParsingStrategy) ([]rule, [][]
 						return nil, nil, fmt.Errorf("rule %s is missing an identifier for rhs", lhs)
 					}
 
-					/*
-						for i := 0; i < len(rightSides); i++ {
-							rightSides[i] = append(rightSides[i], rhsToken)
-						}
-					*/
-					rule.RHS = append(rule.RHS, rhsToken)
+					for i := 0; i < len(rightSides); i++ {
+						rightSides[i] = append(rightSides[i], rhsToken)
+					}
+
+					// rule.RHS = append(rule.RHS, rhsToken)
 				}
 			}
 
@@ -182,7 +182,11 @@ func parseRules(input string, strategy gopapageno.ParsingStrategy) ([]rule, [][]
 		if strategy != gopapageno.COPP {
 			rules = append(rules, rule)
 		} else {
-			rules = append(rules, rule)
+			// rules = append(rules, rule)
+			for _, rhs := range rightSides {
+				rule.RHS = rhs
+				rules = append(rules, rule)
+			}
 		}
 
 		skipSpaces(input, &pos)
@@ -213,7 +217,7 @@ func (p *parserDescriptor) compile(opts *Options) error {
 		return fmt.Errorf("axiom isn't used in any rule")
 	}
 
-	p.deleteRepeatedRHS()
+	//p.deleteRepeatedRHS()
 
 	var precMatrix precedenceMatrix
 	var err error

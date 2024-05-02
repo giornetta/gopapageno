@@ -26,9 +26,8 @@ func ParserPreallocMem(inputSize int, numThreads int) {
 
 // Non-terminals
 const (
-	E_S = gopapageno.TokenEmpty + 1 + iota
-	E_S_T
-	NEW_AXIOM
+	S = gopapageno.TokenEmpty + 1 + iota
+	T
 )
 
 // Terminals
@@ -57,12 +56,10 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 		}
 
 		switch t.Type {
-		case E_S:
-			sb.WriteString("E_S")
-		case E_S_T:
-			sb.WriteString("E_S_T")
-		case NEW_AXIOM:
-			sb.WriteString("NEW_AXIOM")
+		case S:
+			sb.WriteString("S")
+		case T:
+			sb.WriteString("T")
 		case gopapageno.TokenEmpty:
 			sb.WriteString("Empty")
 		case LPAR:
@@ -96,104 +93,100 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 
 func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 	numTerminals := uint16(5)
-	numNonTerminals := uint16(4)
+	numNonTerminals := uint16(3)
 
-	maxRHSLen := 3
+	maxRHSLen := 5
 	rules := []gopapageno.Rule{
-		{NEW_AXIOM, []gopapageno.TokenType{E_S}},
-		{NEW_AXIOM, []gopapageno.TokenType{E_S_T}},
-		{E_S, []gopapageno.TokenType{E_S_T, PLUS, E_S_T}},
-		{E_S_T, []gopapageno.TokenType{LPAR, E_S, RPAR}},
-		{E_S_T, []gopapageno.TokenType{LPAR, E_S_T, RPAR}},
-		{E_S_T, []gopapageno.TokenType{NUMBER}},
+		{S, []gopapageno.TokenType{T}},
+		{T, []gopapageno.TokenType{T, PLUS, T}},
+		{T, []gopapageno.TokenType{T, PLUS, T, PLUS, T}},
+		{T, []gopapageno.TokenType{LPAR, T, RPAR}},
+		{T, []gopapageno.TokenType{NUMBER}},
 	}
-	compressedRules := []uint16{0, 0, 4, 1, 11, 2, 14, 32769, 27, 32770, 50, 3, 0, 0, 3, 1, 1, 32771, 19, 0, 0, 1, 2, 24, 1, 2, 0, 0, 0, 2, 1, 34, 2, 42, 0, 0, 1, 32772, 39, 2, 3, 0, 0, 0, 1, 32772, 47, 2, 4, 0, 2, 5, 0}
+	compressedRules := []uint16{0, 0, 3, 2, 9, 32769, 32, 32770, 45, 1, 0, 1, 32771, 14, 0, 0, 1, 2, 19, 2, 1, 1, 32771, 24, 0, 0, 1, 2, 29, 2, 2, 0, 0, 0, 1, 2, 37, 0, 0, 1, 32772, 42, 2, 3, 0, 2, 4, 0}
 
 	maxPrefixLen := 4
 	prefixes := [][]gopapageno.TokenType{
-		{E_S_T, PLUS},
-		{E_S_T, PLUS, E_S_T, PLUS},
+		{T, PLUS},
+		{T, PLUS, T, PLUS},
 	}
 	precMatrix := [][]gopapageno.Precedence{
-		{gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEmpty},
-		{gopapageno.PrecEmpty, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEquals},
+		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields},
+		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEquals},
 		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes},
-		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEmpty, gopapageno.PrecTakes},
+		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEquals, gopapageno.PrecTakes},
 		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes},
 	}
 	bitPackedMatrix := []uint64{
-		706460516438100,
+		706460516440406,
 	}
 
 	fn := func(rule uint16, lhs *gopapageno.Token, rhs []*gopapageno.Token, thread int) {
 		switch rule {
 		case 0:
-			NEW_AXIOM0 := lhs
-			E_S1 := rhs[0]
+			S0 := lhs
+			T1 := rhs[0]
 
-			NEW_AXIOM0.Child = E_S1
+			S0.Child = T1
 
 			{
-				NEW_AXIOM0.Value = E_S1.Value
+				S0.Value = T1.Value
 			}
 		case 1:
-			NEW_AXIOM0 := lhs
-			E_S_T1 := rhs[0]
-
-			NEW_AXIOM0.Child = E_S_T1
-
-			{
-				NEW_AXIOM0.Value = E_S_T1.Value
-			}
-		case 2:
-			E_S0 := lhs
-			E_S_T1 := rhs[0]
+			T0 := lhs
+			T1 := rhs[0]
 			PLUS2 := rhs[1]
-			E_S_T3 := rhs[2]
+			T3 := rhs[2]
 
-			E_S0.Child = E_S_T1
-			E_S_T1.Next = PLUS2
-			PLUS2.Next = E_S_T3
+			T0.Child = T1
+			T1.Next = PLUS2
+			PLUS2.Next = T3
 
 			{
 				newValue := parserPools[thread].Get()
-				*newValue = *E_S_T1.Value.(*int64) + *E_S_T3.Value.(*int64)
-				E_S0.Value = newValue
+				*newValue = *T1.Value.(*int64) + *T3.Value.(*int64)
+				T0.Value = newValue
+			}
+		case 2:
+			T0 := lhs
+			T1 := rhs[0]
+			PLUS2 := rhs[1]
+			T3 := rhs[2]
+			PLUS4 := rhs[3]
+			T5 := rhs[4]
+
+			T0.Child = T1
+			T1.Next = PLUS2
+			PLUS2.Next = T3
+			T3.Next = PLUS4
+			PLUS4.Next = T5
+
+			{
+				newValue := parserPools[thread].Get()
+				*newValue = *T1.Value.(*int64) + *T3.Value.(*int64)
+				T0.Value = newValue
 			}
 		case 3:
-			E_S_T0 := lhs
+			T0 := lhs
 			LPAR1 := rhs[0]
-			E_S2 := rhs[1]
+			T2 := rhs[1]
 			RPAR3 := rhs[2]
 
-			E_S_T0.Child = LPAR1
-			LPAR1.Next = E_S2
-			E_S2.Next = RPAR3
+			T0.Child = LPAR1
+			LPAR1.Next = T2
+			T2.Next = RPAR3
 
 			{
-				E_S_T0.Value = E_S2.Value
+				T0.Value = T2.Value
 			}
 		case 4:
-			E_S_T0 := lhs
-			LPAR1 := rhs[0]
-			E_S_T2 := rhs[1]
-			RPAR3 := rhs[2]
-
-			E_S_T0.Child = LPAR1
-			LPAR1.Next = E_S_T2
-			E_S_T2.Next = RPAR3
-
-			{
-				E_S_T0.Value = E_S_T2.Value
-			}
-		case 5:
-			E_S_T0 := lhs
+			T0 := lhs
 			NUMBER1 := rhs[0]
 
-			E_S_T0.Child = NUMBER1
+			T0.Child = NUMBER1
 
 			{
-				E_S_T0.Value = NUMBER1.Value
+				T0.Value = NUMBER1.Value
 			}
 		}
 	}

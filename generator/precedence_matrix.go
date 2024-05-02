@@ -477,11 +477,13 @@ func (p *parserDescriptor) newCyclicPrecedenceMatrix() (precedenceMatrix, error)
 				m[term1][term2] = gopapageno.PrecEquals
 			}
 		}
+	}
 
+	for _, rule := range p.rules {
 		// Takes
 		for _, term1 := range terminals {
 			for _, term2 := range terminals {
-				if m[term1][term2] == gopapageno.PrecTakes {
+				if m[term1][term2] == gopapageno.PrecTakes || m[term1][term2] == gopapageno.PrecEquals {
 					continue
 				}
 
@@ -509,7 +511,7 @@ func (p *parserDescriptor) newCyclicPrecedenceMatrix() (precedenceMatrix, error)
 
 		for _, term1 := range terminals {
 			for _, term2 := range terminals {
-				if m[term1][term2] == gopapageno.PrecYields {
+				if m[term1][term2] == gopapageno.PrecYields || m[term1][term2] == gopapageno.PrecEquals {
 					continue
 				}
 
@@ -535,17 +537,27 @@ func (p *parserDescriptor) newCyclicPrecedenceMatrix() (precedenceMatrix, error)
 	}
 
 	// Set precedence for #
-	for _, terminal := range terminals {
-		if terminal != "_TERM" {
-			if rts[p.axiom].Contains(terminal) {
-				m[terminal]["_TERM"] = gopapageno.PrecTakes
-			}
-			if lts[p.axiom].Contains(terminal) {
-				m["_TERM"][terminal] = gopapageno.PrecYields
+	/*
+		for _, terminal := range terminals {
+			if terminal != "_TERM" {
+				if rts[p.axiom].Contains(terminal) {
+					m[terminal]["_TERM"] = gopapageno.PrecTakes
+				}
+				if lts[p.axiom].Contains(terminal) {
+					m["_TERM"][terminal] = gopapageno.PrecYields
+				}
 			}
 		}
+		m["_TERM"]["_TERM"] = gopapageno.PrecEquals
+	*/
+
+	for _, terminal := range p.terminals.Iter {
+		if terminal != "_TERM" {
+			m["_TERM"][terminal] = gopapageno.PrecYields
+			m[terminal]["_TERM"] = gopapageno.PrecTakes
+		}
 	}
-	m["_TERM"]["_TERM"] = gopapageno.PrecEquals
+	m["_TERM"]["_TERM"] = gopapageno.PrecTakes
 
 	if err := moveToFront(terminals, "_TERM"); err != nil {
 		return nil, fmt.Errorf("could not move _TERM to front: %w", err)
