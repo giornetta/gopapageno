@@ -217,7 +217,7 @@ func (p *parserDescriptor) compile(opts *Options) error {
 		return fmt.Errorf("axiom isn't used in any rule")
 	}
 
-	//p.deleteRepeatedRHS()
+	p.deleteRepeatedRHS()
 
 	var precMatrix precedenceMatrix
 	var err error

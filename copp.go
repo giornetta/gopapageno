@@ -21,8 +21,6 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 	prefixTokens := make([]TokenType, w.parser.MaxPrefixLength*2+1)
 	prefix := make([]*Token, w.parser.MaxPrefixLength*2+1)
 
-	prevPrefix := make([]*Token, w.parser.MaxPrefixLength*2+1)
-
 	// If the thread is the first, push a # onto the stack
 	// Otherwise, push the first inputToken onto the stack
 	if !finalPass {
@@ -171,6 +169,11 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 				}
 			}
 
+			// Replace the topmost token on the stack, setting its precedence to Yield.
+			_, s := stack.Pop2()
+			inputToken.Precedence = PrecYields
+			stack.Push(inputToken, *s)
+
 			inputToken = tokensIt.Next()
 		} else if prec == PrecTakes {
 			//If there are no tokens yielding precedence on the stack, push inputToken onto the stack.
@@ -187,94 +190,61 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 			} else {
 				_, st := stack.Pop2()
 
-				for failed := 0; failed >= 0; {
-					if failed != 0 {
-						_, st = stack.Pop2()
+				var i int
+				// Prefix is made of a single nonterminal
+				if curRhsPrefixLen == 1 && !state.Current[0].Type.IsTerminal() {
+					for i = 0; i < prevRhsPrefixLen && state.Previous[i] != nil; i++ {
+						prefixTokens[i] = state.Previous[i].Type
+						prefix[i] = state.Previous[i]
 					}
+				}
 
-					clear(prefixTokens)
-					clear(prefix)
+				for j := 0; j < curRhsPrefixLen && state.Current[j] != nil; j++ {
+					prefixTokens[i] = state.Current[j].Type
+					prefix[i] = state.Current[j]
 
-					var i int
-					// Prefix is made of a single nonterminal
-					if curRhsPrefixLen == 1 && !state.Current[0].Type.IsTerminal() {
-						for i = 0; i < prevRhsPrefixLen && state.Previous[i] != nil; i++ {
-							prefixTokens[i] = state.Previous[i].Type
-							prefix[i] = state.Previous[i]
-						}
-					}
+					i++
+				}
 
-					for j := 0; j < curRhsPrefixLen && state.Current[j] != nil; j++ {
-						prefixTokens[i] = state.Current[j].Type
-						prefix[i] = state.Current[j]
+				stack.UpdateFirstTerminal()
 
+				// Prefix is made of a single nonterminal
+				if w.parser.MaxPrefixLength > 0 && st.Current[0] != nil && !st.Current[0].Type.IsTerminal() && st.Current[1] == nil {
+					state.Previous = st.Previous
+				} else {
+					state.Previous = st.Current
+				}
+
+				rhsTokens = prefix[:i]
+				rhs = prefixTokens[:i]
+
+				lhs, ruleNum := w.parser.findMatch(rhs)
+				if lhs == TokenEmpty {
+					errCh <- fmt.Errorf("could not find match for rhs %v", rhs)
+					return
+				}
+
+				newNonTerm.Type = lhs
+				lhsToken = w.ntPool.Get()
+				*lhsToken = newNonTerm
+
+				//Execute the semantic action
+				w.parser.Func(ruleNum, lhsToken, rhsTokens, w.id)
+
+				// Reset state
+				for i := 1; i < len(state.Current); i++ {
+					state.Current[i] = nil
+				}
+				state.Current[0] = lhsToken
+				curRhsPrefixLen = 1
+
+				i = 0
+				for _, t := range state.Previous {
+					if t != nil {
 						i++
 					}
-
-					stack.UpdateFirstTerminal()
-
-					// Prefix is made of a single nonterminal
-					copy(prevPrefix, state.Previous)
-					if w.parser.MaxPrefixLength > 0 && st.Current[0] != nil && !st.Current[0].Type.IsTerminal() && st.Current[1] == nil {
-						state.Previous = st.Previous
-					} else {
-						state.Previous = st.Current
-					}
-
-					rhsTokens = prefix[:i]
-					rhs = prefixTokens[:i]
-
-					lhs, ruleNum := w.parser.findMatch(rhs)
-					if lhs == TokenEmpty {
-						failed++
-						copy(state.Current, state.Previous)
-						copy(state.Previous, rhsTokens)
-
-						l := 0
-						for _, t := range state.Current {
-							if t != nil {
-								l++
-							}
-						}
-						curRhsPrefixLen = l
-
-						prevRhsPrefixLen = i
-						continue
-						// errCh <- fmt.Errorf("could not find match for rhs %v", rhs)
-						// return
-					} else {
-						newNonTerm.Type = lhs
-						lhsToken = w.ntPool.Get()
-						*lhsToken = newNonTerm
-
-						//Execute the semantic action
-						w.parser.Func(ruleNum, lhsToken, rhsTokens, w.id)
-
-						// Reset state
-						if failed == 0 {
-							for i := 1; i < len(state.Current); i++ {
-								state.Current[i] = nil
-							}
-							state.Current[0] = lhsToken
-							curRhsPrefixLen = 1
-
-							i = 0
-							for _, t := range state.Previous {
-								if t != nil {
-									i++
-								}
-							}
-							prevRhsPrefixLen = i
-						} else {
-							state.Current[0] = lhsToken
-							copy(state.Current[1:], prevPrefix)
-
-							curRhsPrefixLen = prevRhsPrefixLen + 1
-						}
-						failed--
-					}
-
 				}
+				prevRhsPrefixLen = i
 			}
 		} else {
 			//If there's no precedence relation, abort the parsing

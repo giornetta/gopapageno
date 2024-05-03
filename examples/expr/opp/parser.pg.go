@@ -125,6 +125,8 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 	}
 	compressedRules := []uint16{0, 0, 5, 1, 13, 2, 41, 3, 59, 32769, 87, 32770, 120, 4, 0, 2, 32771, 20, 32773, 33, 0, 0, 2, 1, 27, 3, 30, 2, 1, 0, 2, 2, 0, 0, 0, 1, 1, 38, 3, 3, 0, 4, 4, 1, 32771, 46, 0, 0, 2, 1, 53, 3, 56, 2, 5, 0, 2, 6, 0, 4, 7, 2, 32771, 66, 32773, 79, 0, 0, 2, 1, 73, 3, 76, 2, 8, 0, 2, 9, 0, 0, 0, 1, 1, 84, 3, 10, 0, 0, 0, 3, 1, 96, 2, 104, 3, 112, 0, 0, 1, 32772, 101, 1, 11, 0, 0, 0, 1, 32772, 109, 1, 12, 0, 0, 0, 1, 32772, 117, 1, 13, 0, 1, 14, 0}
 
+	maxPrefixLen := 0
+	prefixes := [][]gopapageno.TokenType{}
 	precMatrix := [][]gopapageno.Precedence{
 		{gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields},
 		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEquals, gopapageno.PrecYields},
@@ -344,6 +346,8 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 		maxRHSLen,
 		rules,
 		compressedRules,
+		prefixes,
+		maxPrefixLen,
 		precMatrix,
 		bitPackedMatrix,
 		fn,

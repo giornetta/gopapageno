@@ -25,7 +25,7 @@ S : T
     $$.Value = $1.Value
 };
 
-T : (T PLUS)+ T
+E : (T PLUS)+ T
 {
     newValue := parserPools[thread].Get()
     *newValue = *$1.Value.(*int64) + *$3.Value.(*int64)
@@ -33,6 +33,20 @@ T : (T PLUS)+ T
 } | LPAR T RPAR
 {
      $$.Value = $2.Value
+} | LPAR E RPAR
+{
+  $$.Value = $2.Value
+} | NUMBER
+{
+    $$.Value = $1.Value
+};
+
+T : LPAR T RPAR
+{
+    $$.Value = $2.Value
+} | LPAR E RPAR
+{
+    $$.Value = $2.Value
 } | NUMBER
 {
     $$.Value = $1.Value

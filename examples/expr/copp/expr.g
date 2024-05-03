@@ -48,7 +48,7 @@ P : (T PLUS)+ T
     $$.Value = $1.Value
 };
 
-T :  D DIVIDE E
+T : D DIVIDE E
 {
     newValue := parserInt64Pools[thread].Get()
     *newValue = *$1.Value.(*int64) / *$3.Value.(*int64)

@@ -105,23 +105,31 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 	numTerminals := uint16(6)
 	numNonTerminals := uint16(5)
 
-	maxRHSLen := 3
+	maxRHSLen := 5
 	rules := []gopapageno.Rule{
 		{NEW_AXIOM, []gopapageno.TokenType{D_E_P_S_T}},
 		{D_S_T, []gopapageno.TokenType{D_E_P_S_T, DIVIDE, D_E_P_S_T}},
 		{P_S, []gopapageno.TokenType{D_E_P_S_T, PLUS, D_E_P_S_T}},
+		{P_S, []gopapageno.TokenType{D_E_P_S_T, PLUS, D_E_P_S_T, PLUS, D_E_P_S_T}},
+		{P_S, []gopapageno.TokenType{D_E_P_S_T, PLUS, D_E_P_S_T, PLUS, D_S_T}},
 		{P_S, []gopapageno.TokenType{D_E_P_S_T, PLUS, D_S_T}},
+		{P_S, []gopapageno.TokenType{D_E_P_S_T, PLUS, D_S_T, PLUS, D_E_P_S_T}},
+		{P_S, []gopapageno.TokenType{D_E_P_S_T, PLUS, D_S_T, PLUS, D_S_T}},
 		{NEW_AXIOM, []gopapageno.TokenType{D_S_T}},
 		{D_S_T, []gopapageno.TokenType{D_S_T, DIVIDE, D_E_P_S_T}},
 		{P_S, []gopapageno.TokenType{D_S_T, PLUS, D_E_P_S_T}},
+		{P_S, []gopapageno.TokenType{D_S_T, PLUS, D_E_P_S_T, PLUS, D_E_P_S_T}},
+		{P_S, []gopapageno.TokenType{D_S_T, PLUS, D_E_P_S_T, PLUS, D_S_T}},
 		{P_S, []gopapageno.TokenType{D_S_T, PLUS, D_S_T}},
+		{P_S, []gopapageno.TokenType{D_S_T, PLUS, D_S_T, PLUS, D_E_P_S_T}},
+		{P_S, []gopapageno.TokenType{D_S_T, PLUS, D_S_T, PLUS, D_S_T}},
 		{NEW_AXIOM, []gopapageno.TokenType{P_S}},
 		{D_E_P_S_T, []gopapageno.TokenType{LPAR, D_E_P_S_T, RPAR}},
 		{D_E_P_S_T, []gopapageno.TokenType{LPAR, D_S_T, RPAR}},
 		{D_E_P_S_T, []gopapageno.TokenType{LPAR, P_S, RPAR}},
 		{D_E_P_S_T, []gopapageno.TokenType{NUMBER}},
 	}
-	compressedRules := []uint16{0, 0, 5, 1, 13, 2, 41, 4, 69, 32770, 72, 32771, 105, 3, 0, 2, 32769, 20, 32772, 28, 0, 0, 1, 1, 25, 2, 1, 0, 0, 0, 2, 1, 35, 2, 38, 4, 2, 0, 4, 3, 0, 3, 4, 2, 32769, 48, 32772, 56, 0, 0, 1, 1, 53, 2, 5, 0, 0, 0, 2, 1, 63, 2, 66, 4, 6, 0, 4, 7, 0, 3, 8, 0, 0, 0, 3, 1, 81, 2, 89, 4, 97, 0, 0, 1, 32773, 86, 1, 9, 0, 0, 0, 1, 32773, 94, 1, 10, 0, 0, 0, 1, 32773, 102, 1, 11, 0, 1, 12, 0}
+	compressedRules := []uint16{0, 0, 5, 1, 13, 2, 71, 4, 129, 32770, 132, 32771, 165, 3, 0, 2, 32769, 20, 32772, 28, 0, 0, 1, 1, 25, 2, 1, 0, 0, 0, 2, 1, 35, 2, 53, 4, 2, 1, 32772, 40, 0, 0, 2, 1, 47, 2, 50, 4, 3, 0, 4, 4, 0, 4, 5, 1, 32772, 58, 0, 0, 2, 1, 65, 2, 68, 4, 6, 0, 4, 7, 0, 3, 8, 2, 32769, 78, 32772, 86, 0, 0, 1, 1, 83, 2, 9, 0, 0, 0, 2, 1, 93, 2, 111, 4, 10, 1, 32772, 98, 0, 0, 2, 1, 105, 2, 108, 4, 11, 0, 4, 12, 0, 4, 13, 1, 32772, 116, 0, 0, 2, 1, 123, 2, 126, 4, 14, 0, 4, 15, 0, 3, 16, 0, 0, 0, 3, 1, 141, 2, 149, 4, 157, 0, 0, 1, 32773, 146, 1, 17, 0, 0, 0, 1, 32773, 154, 1, 18, 0, 0, 0, 1, 32773, 162, 1, 19, 0, 1, 20, 0}
 
 	maxPrefixLen := 4
 	prefixes := [][]gopapageno.TokenType{
@@ -133,15 +141,15 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 		{D_S_T, PLUS, D_S_T, PLUS},
 	}
 	precMatrix := [][]gopapageno.Precedence{
-		{gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEmpty},
+		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields},
 		{gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecTakes, gopapageno.PrecTakes},
-		{gopapageno.PrecEmpty, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEquals},
+		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEquals},
 		{gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes},
-		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEmpty, gopapageno.PrecTakes},
+		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEquals, gopapageno.PrecTakes},
 		{gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes},
 	}
 	bitPackedMatrix := []uint64{
-		12130059261139329364, 160,
+		12130059261172884822, 160,
 	}
 
 	fn := func(rule uint16, lhs *gopapageno.Token, rhs []*gopapageno.Token, thread int) {
@@ -189,6 +197,44 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			P_S0 := lhs
 			D_E_P_S_T1 := rhs[0]
 			PLUS2 := rhs[1]
+			D_E_P_S_T3 := rhs[2]
+			PLUS4 := rhs[3]
+			D_E_P_S_T5 := rhs[4]
+
+			P_S0.Child = D_E_P_S_T1
+			D_E_P_S_T1.Next = PLUS2
+			PLUS2.Next = D_E_P_S_T3
+			D_E_P_S_T3.Next = PLUS4
+			PLUS4.Next = D_E_P_S_T5
+
+			{
+				newValue := parserInt64Pools[thread].Get()
+				*newValue = *D_E_P_S_T1.Value.(*int64) + *D_E_P_S_T3.Value.(*int64)
+				P_S0.Value = newValue
+			}
+		case 4:
+			P_S0 := lhs
+			D_E_P_S_T1 := rhs[0]
+			PLUS2 := rhs[1]
+			D_E_P_S_T3 := rhs[2]
+			PLUS4 := rhs[3]
+			D_S_T5 := rhs[4]
+
+			P_S0.Child = D_E_P_S_T1
+			D_E_P_S_T1.Next = PLUS2
+			PLUS2.Next = D_E_P_S_T3
+			D_E_P_S_T3.Next = PLUS4
+			PLUS4.Next = D_S_T5
+
+			{
+				newValue := parserInt64Pools[thread].Get()
+				*newValue = *D_E_P_S_T1.Value.(*int64) + *D_E_P_S_T3.Value.(*int64)
+				P_S0.Value = newValue
+			}
+		case 5:
+			P_S0 := lhs
+			D_E_P_S_T1 := rhs[0]
+			PLUS2 := rhs[1]
 			D_S_T3 := rhs[2]
 
 			P_S0.Child = D_E_P_S_T1
@@ -200,7 +246,45 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 				*newValue = *D_E_P_S_T1.Value.(*int64) + *D_S_T3.Value.(*int64)
 				P_S0.Value = newValue
 			}
-		case 4:
+		case 6:
+			P_S0 := lhs
+			D_E_P_S_T1 := rhs[0]
+			PLUS2 := rhs[1]
+			D_S_T3 := rhs[2]
+			PLUS4 := rhs[3]
+			D_E_P_S_T5 := rhs[4]
+
+			P_S0.Child = D_E_P_S_T1
+			D_E_P_S_T1.Next = PLUS2
+			PLUS2.Next = D_S_T3
+			D_S_T3.Next = PLUS4
+			PLUS4.Next = D_E_P_S_T5
+
+			{
+				newValue := parserInt64Pools[thread].Get()
+				*newValue = *D_E_P_S_T1.Value.(*int64) + *D_S_T3.Value.(*int64)
+				P_S0.Value = newValue
+			}
+		case 7:
+			P_S0 := lhs
+			D_E_P_S_T1 := rhs[0]
+			PLUS2 := rhs[1]
+			D_S_T3 := rhs[2]
+			PLUS4 := rhs[3]
+			D_S_T5 := rhs[4]
+
+			P_S0.Child = D_E_P_S_T1
+			D_E_P_S_T1.Next = PLUS2
+			PLUS2.Next = D_S_T3
+			D_S_T3.Next = PLUS4
+			PLUS4.Next = D_S_T5
+
+			{
+				newValue := parserInt64Pools[thread].Get()
+				*newValue = *D_E_P_S_T1.Value.(*int64) + *D_S_T3.Value.(*int64)
+				P_S0.Value = newValue
+			}
+		case 8:
 			NEW_AXIOM0 := lhs
 			D_S_T1 := rhs[0]
 
@@ -209,7 +293,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			{
 				NEW_AXIOM0.Value = D_S_T1.Value
 			}
-		case 5:
+		case 9:
 			D_S_T0 := lhs
 			D_S_T1 := rhs[0]
 			DIVIDE2 := rhs[1]
@@ -224,7 +308,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 				*newValue = *D_S_T1.Value.(*int64) / *D_E_P_S_T3.Value.(*int64)
 				D_S_T0.Value = newValue
 			}
-		case 6:
+		case 10:
 			P_S0 := lhs
 			D_S_T1 := rhs[0]
 			PLUS2 := rhs[1]
@@ -239,7 +323,45 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 				*newValue = *D_S_T1.Value.(*int64) + *D_E_P_S_T3.Value.(*int64)
 				P_S0.Value = newValue
 			}
-		case 7:
+		case 11:
+			P_S0 := lhs
+			D_S_T1 := rhs[0]
+			PLUS2 := rhs[1]
+			D_E_P_S_T3 := rhs[2]
+			PLUS4 := rhs[3]
+			D_E_P_S_T5 := rhs[4]
+
+			P_S0.Child = D_S_T1
+			D_S_T1.Next = PLUS2
+			PLUS2.Next = D_E_P_S_T3
+			D_E_P_S_T3.Next = PLUS4
+			PLUS4.Next = D_E_P_S_T5
+
+			{
+				newValue := parserInt64Pools[thread].Get()
+				*newValue = *D_S_T1.Value.(*int64) + *D_E_P_S_T3.Value.(*int64)
+				P_S0.Value = newValue
+			}
+		case 12:
+			P_S0 := lhs
+			D_S_T1 := rhs[0]
+			PLUS2 := rhs[1]
+			D_E_P_S_T3 := rhs[2]
+			PLUS4 := rhs[3]
+			D_S_T5 := rhs[4]
+
+			P_S0.Child = D_S_T1
+			D_S_T1.Next = PLUS2
+			PLUS2.Next = D_E_P_S_T3
+			D_E_P_S_T3.Next = PLUS4
+			PLUS4.Next = D_S_T5
+
+			{
+				newValue := parserInt64Pools[thread].Get()
+				*newValue = *D_S_T1.Value.(*int64) + *D_E_P_S_T3.Value.(*int64)
+				P_S0.Value = newValue
+			}
+		case 13:
 			P_S0 := lhs
 			D_S_T1 := rhs[0]
 			PLUS2 := rhs[1]
@@ -254,7 +376,45 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 				*newValue = *D_S_T1.Value.(*int64) + *D_S_T3.Value.(*int64)
 				P_S0.Value = newValue
 			}
-		case 8:
+		case 14:
+			P_S0 := lhs
+			D_S_T1 := rhs[0]
+			PLUS2 := rhs[1]
+			D_S_T3 := rhs[2]
+			PLUS4 := rhs[3]
+			D_E_P_S_T5 := rhs[4]
+
+			P_S0.Child = D_S_T1
+			D_S_T1.Next = PLUS2
+			PLUS2.Next = D_S_T3
+			D_S_T3.Next = PLUS4
+			PLUS4.Next = D_E_P_S_T5
+
+			{
+				newValue := parserInt64Pools[thread].Get()
+				*newValue = *D_S_T1.Value.(*int64) + *D_S_T3.Value.(*int64)
+				P_S0.Value = newValue
+			}
+		case 15:
+			P_S0 := lhs
+			D_S_T1 := rhs[0]
+			PLUS2 := rhs[1]
+			D_S_T3 := rhs[2]
+			PLUS4 := rhs[3]
+			D_S_T5 := rhs[4]
+
+			P_S0.Child = D_S_T1
+			D_S_T1.Next = PLUS2
+			PLUS2.Next = D_S_T3
+			D_S_T3.Next = PLUS4
+			PLUS4.Next = D_S_T5
+
+			{
+				newValue := parserInt64Pools[thread].Get()
+				*newValue = *D_S_T1.Value.(*int64) + *D_S_T3.Value.(*int64)
+				P_S0.Value = newValue
+			}
+		case 16:
 			NEW_AXIOM0 := lhs
 			P_S1 := rhs[0]
 
@@ -263,7 +423,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			{
 				NEW_AXIOM0.Value = P_S1.Value
 			}
-		case 9:
+		case 17:
 			D_E_P_S_T0 := lhs
 			LPAR1 := rhs[0]
 			D_E_P_S_T2 := rhs[1]
@@ -276,7 +436,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			{
 				D_E_P_S_T0.Value = D_E_P_S_T2.Value
 			}
-		case 10:
+		case 18:
 			D_E_P_S_T0 := lhs
 			LPAR1 := rhs[0]
 			D_S_T2 := rhs[1]
@@ -289,7 +449,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			{
 				D_E_P_S_T0.Value = D_S_T2.Value
 			}
-		case 11:
+		case 19:
 			D_E_P_S_T0 := lhs
 			LPAR1 := rhs[0]
 			P_S2 := rhs[1]
@@ -302,7 +462,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			{
 				D_E_P_S_T0.Value = P_S2.Value
 			}
-		case 12:
+		case 20:
 			D_E_P_S_T0 := lhs
 			NUMBER1 := rhs[0]
 
