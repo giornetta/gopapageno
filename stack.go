@@ -235,6 +235,25 @@ func (s *ParserStack) CombineNoAlloc() {
 	s.cur.Tos = topLeftPos
 }
 
+func (s *ParserStack) CombineLOS(l *ListOfStacks[Token]) *ListOfStacks[Token] {
+	var tok Token
+
+	list := NewListOfStacks[Token](l.pool)
+
+	it := s.HeadIterator()
+
+	// Ignore first element
+	it.Next()
+
+	for t := it.Next(); t != nil && t.Precedence != PrecYields; t = it.Next() {
+		tok = *t
+		tok.Precedence = PrecEmpty
+		list.Push(tok)
+	}
+
+	return list
+}
+
 func (s *ParserStack) LastNonterminal() (*Token, error) {
 	for token := s.Pop(); token != nil; token = s.Pop() {
 		if !token.Type.IsTerminal() {

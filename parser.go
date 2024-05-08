@@ -21,6 +21,7 @@ type Rule struct {
 type Stacker interface {
 	HeadIterator() *ParserStackIterator
 	Combine() Stacker
+	CombineLOS(l *ListOfStacks[Token]) *ListOfStacks[Token]
 	LastNonterminal() (*Token, error)
 }
 
@@ -335,7 +336,8 @@ func (p *Parser) Parse(ctx context.Context, src []byte) (*Token, error) {
 					// Unfortunately the new stack depends on the content of tokensLists[i] since its elements are stored there.
 					// We can't erase the old input easily to reuse its storage.
 					// TODO: Maybe allocate 2 * c LOS so that we can alternate?
-					input := CombineLOS(tokensLists[i], stackRight)
+					// input := CombineLOS(tokensLists[i], stackRight)
+					input := stackRight.CombineLOS(tokensLists[i])
 
 					go workers[i].parse(ctx, stack, input, nil, true, resultCh, errCh)
 				}

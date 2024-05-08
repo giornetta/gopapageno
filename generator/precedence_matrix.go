@@ -557,7 +557,7 @@ func (p *parserDescriptor) newCyclicPrecedenceMatrix() (precedenceMatrix, error)
 			m[terminal]["_TERM"] = gopapageno.PrecTakes
 		}
 	}
-	m["_TERM"]["_TERM"] = gopapageno.PrecTakes
+	m["_TERM"]["_TERM"] = gopapageno.PrecEquals
 
 	if err := moveToFront(terminals, "_TERM"); err != nil {
 		return nil, fmt.Errorf("could not move _TERM to front: %w", err)

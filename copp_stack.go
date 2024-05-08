@@ -3,8 +3,11 @@ package gopapageno
 import "fmt"
 
 type CyclicAutomataState struct {
-	Current  []*Token
-	Previous []*Token
+	Current    []*Token
+	CurrentLen int
+
+	Previous    []*Token
+	PreviousLen int
 }
 
 func NewCyclicAutomataStateBuilder(maxPrefixLength int) func() *CyclicAutomataState {
@@ -19,6 +22,7 @@ func NewCyclicAutomataStateBuilder(maxPrefixLength int) func() *CyclicAutomataSt
 type CyclicParserStack struct {
 	*ParserStack
 	StatesLOS *ListOfStacks[CyclicAutomataState]
+	State     CyclicAutomataState
 
 	StatePool *Pool[CyclicAutomataState]
 }
@@ -38,6 +42,8 @@ func (s *CyclicParserStack) Push(token *Token, state CyclicAutomataState) *Token
 	st := s.StatePool.Get()
 	copy(st.Current, state.Current)
 	copy(st.Previous, state.Previous)
+	st.CurrentLen = state.CurrentLen
+	st.PreviousLen = state.PreviousLen
 
 	s.StatesLOS.Push(*st)
 
@@ -84,4 +90,32 @@ func (s *CyclicParserStack) Split(n int) ([]*CyclicParserStack, error) {
 	}
 
 	return newStacks, nil
+}
+
+func (s *CyclicParserStack) Combine() Stacker {
+	return s
+}
+
+func (s *CyclicParserStack) LastNonterminal() (*Token, error) {
+	if s.State.CurrentLen >= 1 {
+		return s.State.Current[0], nil
+	}
+
+	return nil, fmt.Errorf("no token stack current")
+}
+
+func (s *CyclicParserStack) CombineLOS(l *ListOfStacks[Token]) *ListOfStacks[Token] {
+	list := NewListOfStacks[Token](l.pool)
+
+	for i := 0; i < len(s.State.Previous) && s.State.Previous[i] != nil; i++ {
+		s.State.Previous[i].Precedence = PrecEmpty
+		list.Push(*s.State.Previous[i])
+	}
+
+	for i := 0; i < len(s.State.Current) && s.State.Current[i] != nil; i++ {
+		s.State.Current[i].Precedence = PrecEmpty
+		list.Push(*s.State.Current[i])
+	}
+
+	return list
 }

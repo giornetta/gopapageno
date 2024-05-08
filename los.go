@@ -111,25 +111,6 @@ func (l *ListOfStacks[T]) Pop() *T {
 	return &l.cur.Data[l.cur.Tos]
 }
 
-func CombineLOS(l *ListOfStacks[Token], stacks Stacker) *ListOfStacks[Token] {
-	var tok Token
-
-	list := NewListOfStacks[Token](l.pool)
-
-	it := stacks.HeadIterator()
-
-	// Ignore first element
-	it.Next()
-
-	for t := it.Next(); t != nil && t.Precedence != PrecYields; t = it.Next() {
-		tok = *t
-		tok.Precedence = PrecEmpty
-		list.Push(tok)
-	}
-
-	return list
-}
-
 // Get returns the topmost element from the ListOfStacks.
 func (l *ListOfStacks[T]) Get() *T {
 	if l.cur.Tos > 0 {
