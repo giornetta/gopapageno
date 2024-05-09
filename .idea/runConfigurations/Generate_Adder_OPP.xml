@@ -1,0 +1,15 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Generate Adder OPP" type="GoApplicationRunConfiguration" factoryName="Go Application" folderName="Generate Parsers">
+    <module name="gopapageno" />
+    <working_directory value="$PROJECT_DIR$/examples/adder" />
+    <parameters value="-l opp/adder.l -g opp/adder.g -o opp/" />
+    <envs>
+      <env name="GOEXPERIMENT" value="rangefunc" />
+    </envs>
+    <kind value="PACKAGE" />
+    <package value="github.com/giornetta/gopapageno/cmd/gopapageno" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$" />
+    <method v="2" />
+  </configuration>
+</component>
