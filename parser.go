@@ -20,9 +20,12 @@ type Rule struct {
 
 type Stacker interface {
 	HeadIterator() *ParserStackIterator
-	Combine() Stacker
+	Combine(o Stacker) Stacker
 	CombineLOS(l *ListOfStacks[Token]) *ListOfStacks[Token]
 	LastNonterminal() (*Token, error)
+}
+
+type StackerIterator interface {
 }
 
 type parseResult struct {
@@ -329,14 +332,13 @@ func (p *Parser) Parse(ctx context.Context, src []byte) (*Token, error) {
 					stackRight := parseResults[i+1]
 
 					// TODO: Fix CombineNoAlloc
-					stack := stackLeft.Combine()
+					stack := stackLeft.Combine(stackRight)
 					// stackLeft.CombineNoAlloc()
 
 					// TODO: I should find a way to make this work without creating a new LOS for the inputs.
 					// Unfortunately the new stack depends on the content of tokensLists[i] since its elements are stored there.
 					// We can't erase the old input easily to reuse its storage.
 					// TODO: Maybe allocate 2 * c LOS so that we can alternate?
-					// input := CombineLOS(tokensLists[i], stackRight)
 					input := stackRight.CombineLOS(tokensLists[i])
 
 					go workers[i].parse(ctx, stack, input, nil, true, resultCh, errCh)

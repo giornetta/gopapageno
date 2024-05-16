@@ -148,15 +148,15 @@ func parseRules(input string, strategy gopapageno.ParsingStrategy) ([]rule, [][]
 					}
 
 					// Add each produced alternative to every rhs found so far.
-					newRightSides := make([][]string, len(alternatives)*len(rightSides), len(alternatives)*len(rightSides))
+					newRightSides := make([][]string, len(rightSides)*len(alternatives))
 					for i := 0; i < len(rightSides); i++ {
 						for j := 0; j < len(alternatives); j++ {
 							newRightSides[i*len(alternatives)+j] = append(rightSides[i], alternatives[j]...)
 						}
+
 					}
 					rightSides = newRightSides
 
-					// rule.RHS = append(rule.RHS, flattened...)
 					prefixes = append(prefixes, alternatives...)
 				} else {
 					// Get a simple identifier
@@ -165,11 +165,17 @@ func parseRules(input string, strategy gopapageno.ParsingStrategy) ([]rule, [][]
 						return nil, nil, fmt.Errorf("rule %s is missing an identifier for rhs", lhs)
 					}
 
-					for i := 0; i < len(rightSides); i++ {
-						rightSides[i] = append(rightSides[i], rhsToken)
-					}
+					if len(rightSides) == 1 {
+						rightSides[0] = append(rightSides[0], rhsToken)
+					} else {
+						newRightSides := make([][]string, len(rightSides)*2)
+						for i := 0; i < len(rightSides); i++ {
+							newRightSides[i] = append(rightSides[i], lhs)
+							newRightSides[i + +len(rightSides)] = append(rightSides[i], rhsToken)
 
-					// rule.RHS = append(rule.RHS, rhsToken)
+						}
+						rightSides = newRightSides
+					}
 				}
 			}
 

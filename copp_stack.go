@@ -33,6 +33,7 @@ func NewCyclicParserStack(tokenStackPool *Pool[stack[*Token]], stateStackPool *P
 		ParserStack: NewParserStack(tokenStackPool),
 		StatesLOS:   NewListOfStacks[CyclicAutomataState](stateStackPool),
 		StatePool:   statePool,
+		State:       *statePool.Get(),
 	}
 }
 
@@ -92,8 +93,65 @@ func (s *CyclicParserStack) Split(n int) ([]*CyclicParserStack, error) {
 	return newStacks, nil
 }
 
-func (s *CyclicParserStack) Combine() Stacker {
-	return s
+func (s *CyclicParserStack) Combine(o Stacker) Stacker {
+	var topLeft Token
+	var topLeftState CyclicAutomataState
+
+	// TODO: This could be moved in Push/Pop to allow constant time access.
+	it := s.Iterator()
+	for t, s := it.Next(); t != nil && t.Precedence != PrecYields; t, s = it.Next() {
+		topLeft = *t
+		topLeftState = *s
+	}
+
+	stack := NewCyclicParserStack(s.ParserStack.pool, s.StatesLOS.pool, s.StatePool)
+
+	if topLeft.Type != TokenEmpty {
+		topLeft.Precedence = PrecEmpty
+		stack.Push(&topLeft, topLeftState)
+	}
+
+	for t, s := it.Cur(); t != nil && t.Precedence != PrecTakes; t, s = it.Next() {
+		stack.Push(t, *s)
+	}
+
+	stack.UpdateFirstTerminal()
+
+	os := o.(*CyclicParserStack)
+	oit := os.Iterator()
+
+	tok, state := oit.Next()
+	if tok.Type == TokenTerm {
+		copy(stack.State.Previous, s.State.Current)
+		stack.State.PreviousLen = s.State.CurrentLen
+
+		copy(stack.State.Current, state.Current)
+		stack.State.CurrentLen = state.CurrentLen
+	} else {
+		var lastState *CyclicAutomataState
+		tok, state := oit.Next()
+		if tok != nil && tok.Precedence != PrecYields {
+			lastState = state
+		}
+
+		// Other stack only has the first "forced" token in it.
+		// It means it managed to reduce everything about its input chunk.
+		if lastState == nil {
+			copy(stack.State.Previous, s.State.Previous)
+			stack.State.PreviousLen = s.State.PreviousLen
+
+			copy(stack.State.Current, s.State.Current)
+			stack.State.CurrentLen = s.State.CurrentLen
+		} else {
+			copy(stack.State.Previous, s.State.Current)
+			stack.State.PreviousLen = s.State.CurrentLen
+
+			copy(stack.State.Current, lastState.Current)
+			stack.State.CurrentLen = lastState.CurrentLen
+		}
+	}
+
+	return stack
 }
 
 func (s *CyclicParserStack) LastNonterminal() (*Token, error) {
@@ -104,17 +162,57 @@ func (s *CyclicParserStack) LastNonterminal() (*Token, error) {
 	return nil, fmt.Errorf("no token stack current")
 }
 
+func (s *CyclicParserStack) Iterator() *CyclicParserStackIterator {
+	return &CyclicParserStackIterator{
+		TokensIt: s.ParserStack.HeadIterator(),
+		StatesIt: s.StatesLOS.HeadIterator(),
+	}
+}
+
+type CyclicParserStackIterator struct {
+	TokensIt *ParserStackIterator
+	StatesIt *LosIterator[CyclicAutomataState]
+}
+
+func (i *CyclicParserStackIterator) Next() (*Token, *CyclicAutomataState) {
+	return i.TokensIt.Next(), i.StatesIt.Next()
+}
+
+func (i *CyclicParserStackIterator) Cur() (*Token, *CyclicAutomataState) {
+	return i.TokensIt.Cur(), i.StatesIt.Cur()
+}
+
 func (s *CyclicParserStack) CombineLOS(l *ListOfStacks[Token]) *ListOfStacks[Token] {
+	var tok Token
+
 	list := NewListOfStacks[Token](l.pool)
 
-	for i := 0; i < len(s.State.Previous) && s.State.Previous[i] != nil; i++ {
-		s.State.Previous[i].Precedence = PrecEmpty
-		list.Push(*s.State.Previous[i])
+	it := s.HeadIterator()
+
+	// Ignore first element
+	t := it.Next()
+	if t.Type == TokenTerm {
+		tok = *t
+		tok.Precedence = PrecEmpty
+		list.Push(tok)
+
+		return list
 	}
 
-	for i := 0; i < len(s.State.Current) && s.State.Current[i] != nil; i++ {
-		s.State.Current[i].Precedence = PrecEmpty
-		list.Push(*s.State.Current[i])
+	firstTerm := true
+	for t := it.Next(); t != nil && t.Precedence != PrecYields; t = it.Next() {
+		if t.Type != TokenTerm || firstTerm {
+			tok = *t
+			tok.Precedence = PrecEmpty
+			list.Push(tok)
+		} else {
+			for i := 0; i < s.State.CurrentLen; i++ {
+				tok = *s.State.Current[i]
+				tok.Precedence = PrecEmpty
+				list.Push(tok)
+			}
+		}
+		firstTerm = false
 	}
 
 	return list

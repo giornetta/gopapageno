@@ -38,6 +38,9 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 			t := tokensIt.Next()
 			t.Precedence = PrecEmpty
 
+			//state.Current[0] = t
+			//state.CurrentLen = 1
+
 			// TODO: State should probably be changed once I implement parallel parsing.
 			stack.Push(t, state)
 		}
@@ -77,6 +80,7 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 		//If the current inputToken is a non-terminal, push it onto the stack with no precedence relation
 		var prec Precedence
 
+		pushTakes := false
 		if !inputToken.Type.IsTerminal() {
 			prec = PrecYields
 		} else {
@@ -87,6 +91,11 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 				prec = w.parser.precedence(TokenTerm, inputToken.Type)
 			} else {
 				prec = w.parser.precedence(firstTerminal.Type, inputToken.Type)
+
+				if firstTerminal.Precedence == PrecEmpty && inputToken.Type != TokenTerm && prec == PrecTakes {
+					prec = PrecYields
+					pushTakes = true
+				}
 			}
 		}
 
@@ -94,7 +103,12 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 		if prec == PrecYields {
 			t := inputToken
 			if inputToken.Type.IsTerminal() {
-				inputToken.Precedence = prec
+				if pushTakes {
+					inputToken.Precedence = PrecTakes
+				} else {
+					inputToken.Precedence = prec
+				}
+
 				t = stack.Push(inputToken, state)
 			}
 			// If the current construction is a single nonterminal.
@@ -116,6 +130,7 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 			inputToken.Precedence = prec
 			// If it is equals, it is probably a shift transition?
 			if inputToken.Type == TokenTerm {
+				stack.Push(inputToken, state)
 				break
 			}
 
@@ -185,6 +200,7 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 				stack.Push(tok, state)*/
 				inputToken.Precedence = prec
 				stack.Push(inputToken, state)
+
 				state.Current[state.CurrentLen] = inputToken
 				state.CurrentLen++
 
@@ -201,7 +217,7 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 					}
 				}
 
-				for j := 0; j < state.CurrentLen && state.Current[j] != nil; j++ {
+				for j := 0; j < state.CurrentLen; j++ {
 					prefixTokens[i] = state.Current[j].Type
 					prefix[i] = state.Current[j]
 
