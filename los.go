@@ -24,12 +24,36 @@ type stack[T any] struct {
 	Next *stack[T]
 }
 
+type ValueConstructor[T any] func() T
+
 func newStack[T any]() *stack[T] {
 	typeSize := reflect.TypeFor[T]().Size()
 	stackLen := 1024 * 1024 / typeSize
+
 	return &stack[T]{
 		Data: make([]T, stackLen),
 		Size: int(stackLen),
+	}
+
+}
+
+func newStackBuilder[T any](c ValueConstructor[T]) func() *stack[T] {
+	typeSize := reflect.TypeFor[T]().Size()
+	stackLen := 1024 * 1024 / typeSize
+
+	return func() *stack[T] {
+		s := &stack[T]{
+			Data: make([]T, stackLen),
+			Size: int(stackLen),
+		}
+
+		if c != nil {
+			for i, _ := range s.Data {
+				s.Data[i] = c()
+			}
+		}
+
+		return s
 	}
 }
 

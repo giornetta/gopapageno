@@ -386,8 +386,8 @@ func (p *Parser) init(src []byte) {
 		p.pools.stacks[thread] = NewPool[stack[*Token]](int(stackPoolBaseSize), WithConstructor[stack[*Token]](newStack[*Token]))
 
 		if p.ParsingStrategy == COPP {
-			p.pools.stateStacks[thread] = NewPool[stack[CyclicAutomataState]](int(stackPoolBaseSize), WithConstructor[stack[CyclicAutomataState]](newStack[CyclicAutomataState]))
-			p.pools.states[thread] = NewPool[CyclicAutomataState](int(stackPoolBaseSize), WithConstructor[CyclicAutomataState](NewCyclicAutomataStateBuilder(p.MaxPrefixLength)))
+			p.pools.stateStacks[thread] = NewPool[stack[CyclicAutomataState]](int(stackPoolBaseSize), WithConstructor[stack[CyclicAutomataState]](newStackBuilder[CyclicAutomataState](NewCyclicAutomataStateValueBuilder(p.MaxRHSLength))))
+			p.pools.states[thread] = NewPool[CyclicAutomataState](int(stackPoolBaseSize), WithConstructor[CyclicAutomataState](NewCyclicAutomataStateBuilder(p.MaxRHSLength)))
 		}
 
 		p.pools.nonterminals[thread] = NewPool[Token](int(ntPoolBaseSize))
@@ -399,8 +399,8 @@ func (p *Parser) init(src []byte) {
 		p.pools.sweepStack = NewPool[stack[*Token]](int(math.Ceil(stackPoolBaseSize*0.1)), WithConstructor[stack[*Token]](newStack[*Token]))
 
 		if p.ParsingStrategy == COPP {
-			p.pools.sweepStateStack = NewPool[stack[CyclicAutomataState]](int(stackPoolBaseSize), WithConstructor[stack[CyclicAutomataState]](newStack[CyclicAutomataState]))
-			p.pools.sweepStates = NewPool[CyclicAutomataState](int(stackPoolBaseSize), WithConstructor[CyclicAutomataState](NewCyclicAutomataStateBuilder(p.MaxPrefixLength)))
+			p.pools.sweepStateStack = NewPool[stack[CyclicAutomataState]](int(stackPoolBaseSize), WithConstructor[stack[CyclicAutomataState]](newStackBuilder[CyclicAutomataState](NewCyclicAutomataStateValueBuilder(p.MaxRHSLength))))
+			p.pools.sweepStates = NewPool[CyclicAutomataState](int(stackPoolBaseSize), WithConstructor[CyclicAutomataState](NewCyclicAutomataStateBuilder(p.MaxRHSLength)))
 		}
 	}
 }

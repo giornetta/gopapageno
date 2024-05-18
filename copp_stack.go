@@ -1,20 +1,28 @@
 package gopapageno
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type CyclicAutomataState struct {
-	Current    []*Token
-	CurrentLen int
-
-	Previous    []*Token
-	PreviousLen int
+	Current  []*Token
+	Previous []*Token
 }
 
-func NewCyclicAutomataStateBuilder(maxPrefixLength int) func() *CyclicAutomataState {
+func NewCyclicAutomataStateBuilder(maxLength int) func() *CyclicAutomataState {
 	return func() *CyclicAutomataState {
 		return &CyclicAutomataState{
-			Current:  make([]*Token, maxPrefixLength*2+1),
-			Previous: make([]*Token, maxPrefixLength*2+1),
+			Current:  make([]*Token, 0, maxLength),
+			Previous: make([]*Token, 0, maxLength),
+		}
+	}
+}
+
+func NewCyclicAutomataStateValueBuilder(maxLength int) func() CyclicAutomataState {
+	return func() CyclicAutomataState {
+		return CyclicAutomataState{
+			Current:  make([]*Token, 0, maxLength),
+			Previous: make([]*Token, 0, maxLength),
 		}
 	}
 }
@@ -41,14 +49,21 @@ func (s *CyclicParserStack) Push(token *Token, state CyclicAutomataState) *Token
 	t := s.ParserStack.Push(token)
 
 	st := s.StatePool.Get()
-	copy(st.Current, state.Current)
-	copy(st.Previous, state.Previous)
-	st.CurrentLen = state.CurrentLen
-	st.PreviousLen = state.PreviousLen
+
+	st.Current = append(st.Current, state.Current...)
+	st.Previous = append(st.Previous, state.Previous...)
 
 	s.StatesLOS.Push(*st)
 
 	return t
+}
+
+func (s *CyclicParserStack) YieldingPrecedence() int {
+	if s.firstTerminal.Precedence == PrecYields {
+		return s.yieldsPrec
+	}
+
+	return 0
 }
 
 func (s *CyclicParserStack) Pop2() (*Token, *CyclicAutomataState) {
@@ -122,14 +137,11 @@ func (s *CyclicParserStack) Combine(o Stacker) Stacker {
 
 	tok, state := oit.Next()
 	if tok.Type == TokenTerm {
-		copy(stack.State.Previous, s.State.Current)
-		stack.State.PreviousLen = s.State.CurrentLen
-
-		copy(stack.State.Current, state.Current)
-		stack.State.CurrentLen = state.CurrentLen
+		stack.State.Previous = append([]*Token{}, s.State.Current...)
+		stack.State.Current = append([]*Token{}, state.Current...)
 	} else {
 		var lastState *CyclicAutomataState
-		tok, state := oit.Next()
+		tok, state = oit.Next()
 		if tok != nil && tok.Precedence != PrecYields {
 			lastState = state
 		}
@@ -137,17 +149,11 @@ func (s *CyclicParserStack) Combine(o Stacker) Stacker {
 		// Other stack only has the first "forced" token in it.
 		// It means it managed to reduce everything about its input chunk.
 		if lastState == nil {
-			copy(stack.State.Previous, s.State.Previous)
-			stack.State.PreviousLen = s.State.PreviousLen
-
-			copy(stack.State.Current, s.State.Current)
-			stack.State.CurrentLen = s.State.CurrentLen
+			stack.State.Previous = append(stack.State.Previous, s.State.Previous...)
+			stack.State.Current = append(stack.State.Current, s.State.Current...)
 		} else {
-			copy(stack.State.Previous, s.State.Current)
-			stack.State.PreviousLen = s.State.CurrentLen
-
-			copy(stack.State.Current, lastState.Current)
-			stack.State.CurrentLen = lastState.CurrentLen
+			stack.State.Previous = append(stack.State.Previous, s.State.Current...)
+			stack.State.Current = append(stack.State.Current, lastState.Current...)
 		}
 	}
 
@@ -155,7 +161,7 @@ func (s *CyclicParserStack) Combine(o Stacker) Stacker {
 }
 
 func (s *CyclicParserStack) LastNonterminal() (*Token, error) {
-	if s.State.CurrentLen >= 1 {
+	if len(s.State.Current) >= 1 {
 		return s.State.Current[0], nil
 	}
 
@@ -206,7 +212,7 @@ func (s *CyclicParserStack) CombineLOS(l *ListOfStacks[Token]) *ListOfStacks[Tok
 			tok.Precedence = PrecEmpty
 			list.Push(tok)
 		} else {
-			for i := 0; i < s.State.CurrentLen; i++ {
+			for i := 0; i < len(s.State.Current); i++ {
 				tok = *s.State.Current[i]
 				tok.Precedence = PrecEmpty
 				list.Push(tok)
@@ -214,6 +220,7 @@ func (s *CyclicParserStack) CombineLOS(l *ListOfStacks[Token]) *ListOfStacks[Tok
 		}
 		firstTerm = false
 	}
+	_ = firstTerm
 
 	return list
 }

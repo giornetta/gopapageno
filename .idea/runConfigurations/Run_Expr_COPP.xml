@@ -2,7 +2,7 @@
   <configuration default="false" name="Run Expr COPP" type="GoApplicationRunConfiguration" factoryName="Go Application" folderName="Run Parsers">
     <module name="gopapageno" />
     <working_directory value="$PROJECT_DIR$/examples/expr" />
-    <parameters value="-f data/copp_example.txt -c 4" />
+    <parameters value="-f data/small.txt -c 2 -s parallel" />
     <kind value="PACKAGE" />
     <package value="github.com/giornetta/gopapageno/examples/expr/copp" />
     <directory value="$PROJECT_DIR$" />
