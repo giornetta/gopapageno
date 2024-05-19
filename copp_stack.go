@@ -148,7 +148,7 @@ func (s *CyclicParserStack) Combine(o Stacker) Stacker {
 
 		// Other stack only has the first "forced" token in it.
 		// It means it managed to reduce everything about its input chunk.
-		if lastState == nil {
+		if lastState == nil || len(lastState.Current) == 0 {
 			stack.State.Previous = append(stack.State.Previous, s.State.Previous...)
 			stack.State.Current = append(stack.State.Current, s.State.Current...)
 		} else {
