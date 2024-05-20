@@ -17,7 +17,7 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 			Previous: make([]*Token, 0, w.parser.MaxRHSLength),
 		}
 	} else {
-		state = stack.State
+		state = *stack.State
 	}
 
 	prefixTokens := make([]TokenType, w.parser.MaxRHSLength)
@@ -276,7 +276,7 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 		}
 	}
 
-	stack.State = state
+	stack.State = &state
 
 	resultCh <- parseResult{w.id, stack}
 }

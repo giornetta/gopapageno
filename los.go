@@ -148,6 +148,19 @@ func (l *ListOfStacks[T]) Get() *T {
 	return &l.cur.Prev.Data[l.cur.Prev.Tos-1]
 }
 
+// GetNext returns the first empty element from the ListOfStacks.
+func (l *ListOfStacks[T]) GetNext() *T {
+	if l.cur.Tos >= 0 {
+		return &l.cur.Data[l.cur.Tos]
+	}
+
+	if l.cur.Prev == nil {
+		return nil
+	}
+
+	return &l.cur.Prev.Data[l.cur.Prev.Tos]
+}
+
 // Clear empties the ListOfStacks.
 func (l *ListOfStacks[T]) Clear() {
 	// Reset length

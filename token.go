@@ -38,21 +38,45 @@ func (t TokenType) Value() uint16 {
 // Height computes the height of the AST rooted in `t`.
 // It can be used as an evaluation metric for tree-balance, as left/right-skewed trees will have a bigger height compared to balanced trees.
 func (t *Token) Height() int {
-	var rec func(t *Token, root bool) int
+	if t == nil {
+		return 0
+	}
 
-	rec = func(t *Token, root bool) int {
-		if t == nil {
-			return 0
-		}
+	type StackFrame struct {
+		node  *Token
+		depth int
+	}
 
-		if root {
-			return 1 + rec(t.Child, false)
-		} else {
-			return max(1+rec(t.Child, false), rec(t.Next, false))
+	maxDepth := 0
+	stack := []StackFrame{{t, 1}}
+
+	for len(stack) > 0 {
+		frame := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+
+		if frame.node != nil {
+			maxDepth = max(maxDepth, frame.depth)
+			stack = append(stack, StackFrame{frame.node.Child, frame.depth + 1})
+			stack = append(stack, StackFrame{frame.node.Next, frame.depth})
 		}
 	}
 
-	return rec(t, true)
+	return maxDepth
+	//var rec func(t *Token, root bool) int
+	//
+	//rec = func(t *Token, root bool) int {
+	//	if t == nil {
+	//		return 0
+	//	}
+	//
+	//	if root {
+	//		return 1 + rec(t.Child, false)
+	//	} else {
+	//		return max(1+rec(t.Child, false), rec(t.Next, false))
+	//	}
+	//}
+	//
+	//return rec(t, true)
 }
 
 // Size returns the number of tokens in the AST rooted in `t`.
