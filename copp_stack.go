@@ -33,6 +33,8 @@ type CyclicParserStack struct {
 	State     CyclicAutomataState
 
 	StatePool *Pool[CyclicAutomataState]
+
+	St CyclicAutomataState
 }
 
 // NewCyclicParserStack creates a new CyclicParserStack initialized with one empty stack.
@@ -42,18 +44,17 @@ func NewCyclicParserStack(tokenStackPool *Pool[stack[*Token]], stateStackPool *P
 		StatesLOS:   NewListOfStacks[CyclicAutomataState](stateStackPool),
 		StatePool:   statePool,
 		State:       *statePool.Get(),
+		St:          *statePool.Get(),
 	}
 }
 
 func (s *CyclicParserStack) Push(token *Token, state CyclicAutomataState) *Token {
 	t := s.ParserStack.Push(token)
 
-	st := s.StatePool.Get()
+	s.St.Current = append([]*Token{}, state.Current...)
+	s.St.Previous = append([]*Token{}, state.Previous...)
 
-	st.Current = append(st.Current, state.Current...)
-	st.Previous = append(st.Previous, state.Previous...)
-
-	s.StatesLOS.Push(*st)
+	s.StatesLOS.Push(s.St)
 
 	return t
 }
