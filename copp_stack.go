@@ -51,8 +51,11 @@ func NewCyclicParserStack(tokenStackPool *Pool[stack[*Token]], stateStackPool *P
 func (s *CyclicParserStack) Push(token *Token, state CyclicAutomataState) *Token {
 	t := s.ParserStack.Push(token)
 
-	s.St.Current = append([]*Token{}, state.Current...)
-	s.St.Previous = append([]*Token{}, state.Previous...)
+	s.St.Current = s.St.Current[:0]
+	s.St.Current = append(s.St.Current, state.Current...)
+
+	s.St.Previous = s.St.Previous[:0]
+	s.St.Previous = append(s.St.Previous, state.Previous...)
 
 	s.StatesLOS.Push(s.St)
 
