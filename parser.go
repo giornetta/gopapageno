@@ -94,8 +94,9 @@ type Parser struct {
 
 	ParsingStrategy ParsingStrategy
 
-	concurrency       int
-	reductionStrategy ReductionStrategy
+	concurrency        int
+	initialConcurrency int
+	reductionStrategy  ReductionStrategy
 
 	logger *log.Logger
 
@@ -135,7 +136,7 @@ func WithConcurrency(n int) ParserOpt {
 			n = 1
 		}
 
-		p.concurrency = n
+		p.initialConcurrency = n
 	}
 }
 
@@ -197,6 +198,7 @@ func NewParser(
 		Func:                      fn,
 		ParsingStrategy:           strategy,
 		concurrency:               1,
+		initialConcurrency:        1,
 		reductionStrategy:         ReductionSweep,
 		logger:                    discardLogger,
 		cpuProfileWriter:          nil,
@@ -211,6 +213,8 @@ func NewParser(
 }
 
 func (p *Parser) Parse(ctx context.Context, src []byte) (*Token, error) {
+	p.concurrency = p.initialConcurrency
+
 	// Profiling
 	cleanupFunc := p.startProfiling()
 	defer cleanupFunc()
