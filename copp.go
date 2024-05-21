@@ -29,10 +29,7 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 		if w.id == 0 {
 			stack.Push(&Token{
 				Type:       TokenTerm,
-				Value:      nil,
 				Precedence: PrecEmpty,
-				Next:       nil,
-				Child:      nil,
 			}, state)
 		} else {
 			t := tokensIt.Next()
@@ -45,28 +42,15 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 		if w.id == w.parser.concurrency-1 {
 			tokens.Push(Token{
 				Type:       TokenTerm,
-				Value:      nil,
 				Precedence: PrecEmpty,
-				Next:       nil,
-				Child:      nil,
 			})
 		} else if nextToken != nil {
 			tokens.Push(*nextToken)
 		}
 	}
 
-	var lhsToken *Token
-
 	var rhs []TokenType
 	var rhsTokens []*Token
-
-	newNonTerm := Token{
-		Type:       TokenEmpty,
-		Value:      nil,
-		Precedence: PrecEmpty,
-		Next:       nil,
-		Child:      nil,
-	}
 
 	// Iterate over the tokens
 	// If this is the first worker, start reading from the input stack, otherwise begin with the last
@@ -108,16 +92,17 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 					inputToken.Precedence = prec
 				}
 
-				t = stack.Push(inputToken, state)
+				inputToken = stack.Push(inputToken, state)
 			}
+
 			// If the current construction is a single nonterminal.
 			if len(state.Current) == 1 && !state.Current[0].Type.IsTerminal() {
 				// Append input character to the current construction.
-				// state.Current[state.CurrentLen] = t
 				state.Current = append(state.Current, t)
 			} else {
 				// Otherwise, swap.
-				state.Previous = append([]*Token{}, state.Current...)
+				state.Previous = state.Previous[:0]
+				state.Previous = append(state.Previous, state.Current...)
 
 				state.Current = state.Current[:0]
 				state.Current = append(state.Current, t)
@@ -161,20 +146,10 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 					rhsTokens = state.Current[:len(state.Current)-1]
 					rhs = prefix[:len(state.Current)-1]
 
-					lhs, ruleNum := w.parser.findMatch(rhs)
-					if lhs == TokenEmpty {
-						errCh <- fmt.Errorf("could not find match for rhs %v", rhs)
-						return
+					lhsToken, err := w.match(rhs, rhsTokens, true)
+					if err != nil {
+						errCh <- fmt.Errorf("worker %d could not match prefix: %v", w.id, err)
 					}
-
-					lhs = rhs[0]
-
-					newNonTerm.Type = lhs
-					lhsToken = w.ntPool.Get()
-					*lhsToken = newNonTerm
-
-					//Execute the semantic action
-					w.parser.Func(ruleNum, lhsToken, rhsTokens, w.id)
 
 					// Reset state
 					state.Current = state.Current[:2]
@@ -198,24 +173,6 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 				inputToken.Precedence = prec
 				stack.Push(inputToken, state)
 
-				//if len(state.Current) > 1 {
-				//	state.Current = append(state.Current, inputToken)
-				//} else {
-				//	state.Current = state.Current[:len(state.Current)+len(state.Previous)]
-				//	if len(state.Current)+len(state.Previous) > cap(state.Current) {
-				//		newCurrent := make([]*Token, 0, cap(state.Current)*2)
-				//		newCurrent = append(newCurrent, state.Current...)
-				//		state.Current = newCurrent
-				//	}
-				//
-				//	copy(state.Current[len(state.Previous):], state.Current[:len(state.Current)-len(state.Previous)])
-				//	copy(state.Current, state.Previous)
-				//
-				//	state.Current = append(state.Current, inputToken)
-				//}
-
-				// state.Previous = append([]*Token{}, state.Current...)
-				// state.Current = state.Current[:0]
 				state.Current = append(state.Current, inputToken)
 
 				inputToken = tokensIt.Next()
@@ -239,31 +196,24 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 					i++
 				}
 
-				rhsTokens = prefix[:i]
-				rhs = prefixTokens[:i]
-
 				_, st := stack.Pop2()
 				stack.UpdateFirstTerminal()
 
-				// Prefix is made of a single nonterminal
+				// Prefix is made of a single nonterminal\
+				state.Previous = state.Previous[:0]
 				if len(st.Current) == 1 && !st.Current[0].Type.IsTerminal() {
-					state.Previous = append([]*Token{}, st.Previous...)
+					state.Previous = append(state.Previous, st.Previous...)
 				} else {
-					state.Previous = append([]*Token{}, st.Current...)
+					state.Previous = append(state.Previous, st.Current...)
 				}
 
-				lhs, ruleNum := w.parser.findMatch(rhs)
-				if lhs == TokenEmpty {
-					errCh <- fmt.Errorf("could not find match for rhs %v", rhs)
-					return
+				rhsTokens = prefix[:i]
+				rhs = prefixTokens[:i]
+
+				lhsToken, err := w.match(rhs, rhsTokens, false)
+				if err != nil {
+					errCh <- fmt.Errorf("worker %d could not match: %v", w.id, err)
 				}
-
-				newNonTerm.Type = lhs
-				lhsToken = w.ntPool.Get()
-				*lhsToken = newNonTerm
-
-				//Execute the semantic action
-				w.parser.Func(ruleNum, lhsToken, rhsTokens, w.id)
 
 				// Reset state
 				state.Current = state.Current[:0]
@@ -279,4 +229,23 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 	stack.State = &state
 
 	resultCh <- parseResult{w.id, stack}
+}
+
+func (w *parserWorker) match(rhs []TokenType, rhsTokens []*Token, isPrefix bool) (*Token, error) {
+	lhs, ruleNum := w.parser.findMatch(rhs)
+	if lhs == TokenEmpty {
+		return nil, fmt.Errorf("could not find match for rhs %v", rhs)
+	}
+
+	if isPrefix {
+		lhs = rhs[0]
+	}
+
+	lhsToken := w.ntPool.Get()
+	lhsToken.Type = lhs
+
+	//Execute the semantic action
+	w.parser.Func(ruleNum, lhsToken, rhsTokens, w.id)
+
+	return lhsToken, nil
 }
