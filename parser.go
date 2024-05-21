@@ -384,13 +384,13 @@ func (p *Parser) init(src []byte) {
 
 	for thread := 0; thread < p.concurrency; thread++ {
 		p.pools.inputs[thread] = NewPool[stack[Token]](int(inputPoolBaseSize*0.8), WithConstructor[stack[Token]](newStack[Token]))
-		p.pools.stacks[thread] = NewPool[stack[*Token]](int(stackPoolBaseSize), WithConstructor[stack[*Token]](newStack[*Token]))
+		p.pools.stacks[thread] = NewPool[stack[*Token]](int(stackPoolBaseSize*1.2), WithConstructor[stack[*Token]](newStack[*Token]))
 
 		if p.ParsingStrategy == COPP {
 			p.pools.stateStacks[thread] = NewPool[stack[CyclicAutomataState]](int(stackPoolBaseSize), WithConstructor[stack[CyclicAutomataState]](newStackBuilder[CyclicAutomataState](NewCyclicAutomataStateValueBuilder(p.MaxRHSLength))))
 		}
 
-		p.pools.nonterminals[thread] = NewPool[Token](int(ntPoolBaseSize))
+		p.pools.nonterminals[thread] = NewPool[Token](int(ntPoolBaseSize * 1.8))
 	}
 
 	// TODO: Remove or change this part to reflect the correct sweep reductionStrategy.
