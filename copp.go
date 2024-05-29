@@ -149,6 +149,7 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 					lhsToken, err := w.match(rhs, rhsTokens, true)
 					if err != nil {
 						errCh <- fmt.Errorf("worker %d could not match prefix: %v", w.id, err)
+						return
 					}
 
 					// Reset state
@@ -199,7 +200,7 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 				_, st := stack.Pop2()
 				stack.UpdateFirstTerminal()
 
-				// Prefix is made of a single nonterminal\
+				// Prefix is made of a single nonterminal
 				state.Previous = state.Previous[:0]
 				if len(st.Current) == 1 && !st.Current[0].Type.IsTerminal() {
 					state.Previous = append(state.Previous, st.Previous...)
@@ -213,6 +214,7 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 				lhsToken, err := w.match(rhs, rhsTokens, false)
 				if err != nil {
 					errCh <- fmt.Errorf("worker %d could not match: %v", w.id, err)
+					return
 				}
 
 				// Reset state

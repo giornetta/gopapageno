@@ -14,21 +14,18 @@ import (
 const baseFolder = "../data/"
 
 const (
-	fileSmall = "small.txt"
-	fileMB    = "1MB.txt"
-	file10MB  = "10MB.txt"
+	fileMB   = "1MB.txt"
+	file10MB = "10MB.txt"
 )
 
 const (
-	resultSmall = 1111 + 2222 + 33 + (44 + 555) + 6 + 7777
-	resultMB    = (1 + 2 + 3 + 11 + 222 + 3333 + (1 + 2)) * 26000
-	result10MB  = (1 + 2 + 3 + 11 + 222 + 3333 + (1 + 2)) * 260000
+	resultMB   = (1 + 2 + 3 + 11 + 222 + 3333 + (1 + 2)) * 26000
+	result10MB = (1 + 2 + 3 + 11 + 222 + 3333 + (1 + 2)) * 260000
 )
 
 var table = map[string]int64{
-	fileSmall: resultSmall,
-	fileMB:    resultMB,
-	file10MB:  result10MB,
+	fileMB:   resultMB,
+	file10MB: result10MB,
 }
 
 func BenchmarkParse(b *testing.B) {

@@ -173,6 +173,48 @@ func (s *CyclicParserStack) Combine(o Stacker) Stacker {
 	return stack
 }
 
+func (s *CyclicParserStack) CombineLOS(l *ListOfStacks[Token]) *ListOfStacks[Token] {
+	list := NewListOfStacks[Token](l.pool)
+
+	it := s.Iterator()
+
+	// Ignore first element
+	t, _ := it.Next()
+	if t.Type == TokenTerm {
+		t.Precedence = PrecEmpty
+		list.Push(*t)
+
+		return list
+	}
+
+	var listToken *Token
+
+	first := true
+	for t, st := it.Next(); t != nil && t.Precedence != PrecYields; t, st = it.Next() {
+		if t.Type == TokenTerm && !first {
+			listIt := list.TailIterator()
+			for i := len(st.Current) - 1; i >= 0; i-- {
+				listToken = listIt.Prev()
+				if listToken != nil && listToken == st.Current[i] {
+					list.Pop()
+				}
+			}
+
+			for _, t := range st.Current {
+				t.Precedence = PrecEmpty
+				list.Push(*t)
+			}
+		}
+
+		t.Precedence = PrecEmpty
+		list.Push(*t)
+
+		first = false
+	}
+
+	return list
+}
+
 func (s *CyclicParserStack) LastNonterminal() (*Token, error) {
 	if len(s.State.Current) >= 1 {
 		return s.State.Current[0], nil
@@ -199,41 +241,4 @@ func (i *CyclicParserStackIterator) Next() (*Token, *CyclicAutomataState) {
 
 func (i *CyclicParserStackIterator) Cur() (*Token, *CyclicAutomataState) {
 	return i.TokensIt.Cur(), i.StatesIt.Cur()
-}
-
-func (s *CyclicParserStack) CombineLOS(l *ListOfStacks[Token]) *ListOfStacks[Token] {
-	var tok Token
-
-	list := NewListOfStacks[Token](l.pool)
-
-	it := s.HeadIterator()
-
-	// Ignore first element
-	t := it.Next()
-	if t.Type == TokenTerm {
-		tok = *t
-		tok.Precedence = PrecEmpty
-		list.Push(tok)
-
-		return list
-	}
-
-	firstTerm := true
-	for t := it.Next(); t != nil && t.Precedence != PrecYields; t = it.Next() {
-		if t.Type != TokenTerm || firstTerm {
-			tok = *t
-			tok.Precedence = PrecEmpty
-			list.Push(tok)
-		} else {
-			for i := 0; i < len(s.State.Current); i++ {
-				tok = *s.State.Current[i]
-				tok.Precedence = PrecEmpty
-				list.Push(tok)
-			}
-		}
-		firstTerm = false
-	}
-	_ = firstTerm
-
-	return list
 }

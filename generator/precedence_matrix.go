@@ -9,75 +9,129 @@ import (
 
 type precedenceMatrix [][]gopapageno.Precedence
 
-func (p *parserDescriptor) newPrecedenceMatrix() (precedenceMatrix, error) {
-	m := make(map[string]map[string]gopapageno.Precedence)
+type precedenceMap map[string]map[string]gopapageno.Precedence
+
+func newPrecedenceMap(terminals []string) precedenceMap {
+	m := make(precedenceMap)
 
 	// Initialize an empty matrix.
-	for _, term := range p.terminals.Iter {
+	for _, term := range terminals {
 		m[term] = make(map[string]gopapageno.Precedence)
 
-		for _, term2 := range p.terminals.Iter {
+		for _, term2 := range terminals {
 			m[term][term2] = gopapageno.PrecEmpty
 		}
 	}
 
-	lts, rts := p.getTerminalSets()
+	return m
+}
 
-	for _, rule := range p.rules {
-		rhs := rule.RHS
-
-		//Check digrams
-		for i := 0; i < len(rhs)-1; i++ {
-			token1 := rhs[i]
-			token2 := rhs[i+1]
-
-			if p.terminals.Contains(token1) && p.terminals.Contains(token2) {
-				//Check if the matrix already contains an entry for this couple
-				if m[token1][token2] != gopapageno.PrecEmpty && m[token1][token2] != gopapageno.PrecEquals {
-					return nil, fmt.Errorf("the precedence relation Equals is not unique between %s and %s", token1, token2)
+func (m precedenceMap) computeEqualsPrecedence(s gopapageno.ParsingStrategy, rules []rule, terminals []string, nonterminals *set[string]) error {
+	for _, r := range rules {
+		// Equals
+		for _, term1 := range terminals {
+			for _, term2 := range terminals {
+				if m[term1][term2] == gopapageno.PrecEquals {
+					continue
 				}
 
-				m[token1][token2] = gopapageno.PrecEquals
-			} else if p.nonterminals.Contains(token1) && p.terminals.Contains(token2) {
-				for _, token := range rts[token1].Iter {
-					//Check if the matrix already contains an entry for this couple
-					if m[token][token2] != gopapageno.PrecEmpty && m[token][token2] != gopapageno.PrecTakes {
-						return nil, fmt.Errorf("the precedence relation Takes is not unique between %s and %s", token, token2)
-					}
-					m[token][token2] = gopapageno.PrecTakes
-				}
-			} else if p.terminals.Contains(token1) && p.nonterminals.Contains(token2) {
-				for _, token := range lts[token2].Iter {
-					//Check if the matrix already contains an entry for this couple
-					if m[token1][token] != gopapageno.PrecEmpty && m[token1][token] != gopapageno.PrecYields {
-						return nil, fmt.Errorf("the precedence relation Yields is not unique between %s and %s", token1, token)
-					}
-					m[token1][token] = gopapageno.PrecYields
-				}
-			} else {
-				return nil, fmt.Errorf("the rule %s is not in operator precedence form", rule.String())
-			}
-		}
-
-		//Check trigrams
-		for i := 0; i < len(rhs)-2; i++ {
-			token1 := rhs[i]
-			token2 := rhs[i+1]
-			token3 := rhs[i+2]
-
-			if p.terminals.Contains(token1) && p.nonterminals.Contains(token2) && p.terminals.Contains(token3) {
-				//Check if the matrix already contains an entry for this couple
-				if m[token1][token3] != gopapageno.PrecEmpty && m[token1][token3] != gopapageno.PrecEquals {
-					return nil, fmt.Errorf("the precedence relation is not unique between %s and %s", token1, token3)
+				// Check if the two terminals are Eq in precedence.
+				i1 := slices.Index(r.RHS, term1)
+				if i1 == -1 {
+					continue
 				}
 
-				m[token1][token3] = gopapageno.PrecEquals
+				i2 := slices.Index(r.RHS[i1+1:], term2) + i1 + 1
+
+				// Check if the two terminals are present in the production, in the given order.
+				if i2 == i1 || i1 >= i2 {
+					continue
+				}
+
+				// Check if there is a token between them that isn't a nonterm
+				if i1 == i2-1 && !nonterminals.Contains(r.RHS[i2-1]) {
+					continue
+				}
+
+				if m[term1][term2] != gopapageno.PrecEmpty {
+					return fmt.Errorf("precedence conflict on terminals %s and %s (%v, %v)", term1, term2, m[term1][term2], gopapageno.PrecEquals)
+				}
+
+				m[term1][term2] = gopapageno.PrecEquals
 			}
 		}
 	}
 
-	//set precedence for #
-	for _, terminal := range p.terminals.Iter {
+	return nil
+}
+
+func (m precedenceMap) computeTakesPrecedence(s gopapageno.ParsingStrategy, rules []rule, terminals []string, nonterminals *set[string], rts map[string]*set[string]) error {
+	for _, rule := range rules {
+		for _, term1 := range terminals {
+			for _, term2 := range terminals {
+				if m[term1][term2] == gopapageno.PrecTakes || m[term1][term2] == gopapageno.PrecEquals {
+					continue
+				}
+
+				// Check if term2 is in the rhs
+				i2 := slices.Index(rule.RHS, term2)
+				if i2 == -1 {
+					continue
+				}
+
+				// If term2 has no nonterminal before it
+				if i2 == 0 || !nonterminals.Contains(rule.RHS[i2-1]) {
+					continue
+				}
+
+				if rts[rule.RHS[i2-1]].Contains(term1) {
+					if m[term1][term2] != gopapageno.PrecEmpty {
+						return fmt.Errorf("precedence conflict on terminals %s and %s (%v, %v)", term1, term2, m[term1][term2], gopapageno.PrecTakes)
+					}
+
+					m[term1][term2] = gopapageno.PrecTakes
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func (m precedenceMap) computeYieldsPrecedence(s gopapageno.ParsingStrategy, rules []rule, terminals []string, nonterminals *set[string], lts map[string]*set[string]) error {
+	for _, rule := range rules {
+		for _, term1 := range terminals {
+			for _, term2 := range terminals {
+				if m[term1][term2] == gopapageno.PrecYields || m[term1][term2] == gopapageno.PrecEquals {
+					continue
+				}
+
+				// Check if term2 is in the rhs
+				i1 := slices.Index(rule.RHS, term1)
+				if i1 == -1 {
+					continue
+				}
+
+				// If term2 has no nonterminal after it
+				if i1 == len(rule.RHS)-1 || !nonterminals.Contains(rule.RHS[i1+1]) {
+					continue
+				}
+
+				if lts[rule.RHS[i1+1]].Contains(term2) {
+					if m[term1][term2] != gopapageno.PrecEmpty {
+						return fmt.Errorf("precedence conflict on terminals %s and %s (%v, %v)", term1, term2, m[term1][term2], gopapageno.PrecYields)
+					}
+					m[term1][term2] = gopapageno.PrecYields
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func (m precedenceMap) buildMatrix(opts *Options, terminals []string) (precedenceMatrix, error) {
+	for _, terminal := range terminals {
 		if terminal != "_TERM" {
 			m["_TERM"][terminal] = gopapageno.PrecYields
 			m[terminal]["_TERM"] = gopapageno.PrecTakes
@@ -85,7 +139,6 @@ func (p *parserDescriptor) newPrecedenceMatrix() (precedenceMatrix, error) {
 	}
 	m["_TERM"]["_TERM"] = gopapageno.PrecEquals
 
-	terminals := p.terminals.Slice()
 	if err := moveToFront(terminals, "_TERM"); err != nil {
 		return nil, fmt.Errorf("could not move _TERM to front: %w", err)
 	}
@@ -102,118 +155,30 @@ func (p *parserDescriptor) newPrecedenceMatrix() (precedenceMatrix, error) {
 	return precMatrix, nil
 }
 
-// getTerminalSets returns two maps mapping nonterminal tokens to possible terminal productions.
-func (p *parserDescriptor) getTerminalSets() (lts map[string]*set[string], rts map[string]*set[string]) {
-	lts = make(map[string]*set[string], p.nonterminals.Len())
-	rts = make(map[string]*set[string], p.nonterminals.Len())
-
-	// Initialize empty sets for every nonterminal token.
-	for _, nonterminal := range p.nonterminals.Iter {
-		lts[nonterminal] = newSet[string]()
-		rts[nonterminal] = newSet[string]()
+func (p *parserDescriptor) newPrecedenceMatrix(opts *Options) (precedenceMatrix, error) {
+	// TODO: Remove this when refactoring AOPP matrix creation.
+	if opts.Strategy == gopapageno.AOPP {
+		return p.newAssociativePrecedenceMatrix()
 	}
 
-	// Direct terminals.
-	// If a terminal token is found in any RHS, add it to the corresponding LHS' sets.
-	for _, rule := range p.rules {
-		for i := 0; i < len(rule.RHS); i++ {
-			token := rule.RHS[i]
-			if p.terminals.Contains(token) {
-				lts[rule.LHS].Add(token)
-				break
-			}
-		}
+	lts, rts := p.getTerminalSets()
+	terminals := p.terminals.Slice()
 
-		for i := len(rule.RHS) - 1; i >= 0; i-- {
-			token := rule.RHS[i]
-			if p.terminals.Contains(token) {
-				rts[rule.LHS].Add(token)
-				break
-			}
-		}
+	m := newPrecedenceMap(terminals)
+
+	if err := m.computeEqualsPrecedence(opts.Strategy, p.rules, terminals, p.nonterminals); err != nil {
+		return nil, err
 	}
 
-	// Indirect terminals.
-	// Loop until a fixed point is found.
-	modified := true
-	for modified {
-		modified = false
-
-		for _, rule := range p.rules {
-			lhs := rule.LHS
-			rhs := rule.RHS
-
-			// If the first token on the RHS is a nonterminal,
-			// Try adding every terminal token produced by firstToken directly
-			// to the tokens produced by the considered lhs nonterminal.
-			firstToken := rhs[0]
-			if p.nonterminals.Contains(firstToken) {
-				for _, token := range lts[firstToken].Iter {
-					if !lts[lhs].Contains(token) {
-						lts[lhs].Add(token)
-						modified = true
-					}
-				}
-			}
-
-			// Do the same for the last token of the RHS.
-			lastToken := rhs[len(rhs)-1]
-			if p.nonterminals.Contains(lastToken) {
-				for _, token := range rts[lastToken].Iter {
-					if !rts[lhs].Contains(token) {
-						rts[lhs].Add(token)
-						modified = true
-					}
-				}
-			}
-		}
+	if err := m.computeTakesPrecedence(opts.Strategy, p.rules, terminals, p.nonterminals, rts); err != nil {
+		return nil, err
 	}
 
-	return lts, rts
-}
-
-// bitPack packs the matrix into a slice of uint64 where a precedence value is represented by just 2 bits.
-func bitPack(matrix [][]gopapageno.Precedence) []uint64 {
-	newSize := int(math.Ceil(float64(len(matrix)*len(matrix)) / float64(32)))
-
-	newMatrix := make([]uint64, newSize)
-
-	setPrec := func(elem *uint64, pos uint, prec gopapageno.Precedence) {
-		bitMask := uint64(0x3 << pos)
-		*elem = (*elem & ^bitMask) | (uint64(prec) << pos)
+	if err := m.computeYieldsPrecedence(opts.Strategy, p.rules, terminals, p.nonterminals, lts); err != nil {
+		return nil, err
 	}
 
-	for i, _ := range matrix {
-		for j, prec := range matrix[i] {
-			flatElemPos := i*len(matrix) + j
-			newElemPtr := &newMatrix[flatElemPos/32]
-			newElemPos := uint((flatElemPos % 32) * 2)
-			setPrec(newElemPtr, newElemPos, prec)
-		}
-	}
-
-	return newMatrix
-}
-
-func moveToFront[T comparable](slice []T, e T) error {
-	index := -1
-
-	for i, v := range slice {
-		if v == e {
-			index = i
-		}
-	}
-
-	if index == -1 {
-		return fmt.Errorf("could not find element %v in given slice", e)
-	}
-
-	newSlice := append(slice[:index], slice[index+1:]...)
-	newSlice = append([]T{e}, newSlice...)
-
-	copy(slice, newSlice)
-
-	return nil
+	return m.buildMatrix(opts, terminals)
 }
 
 type conflict struct {
@@ -386,191 +351,116 @@ func (p *parserDescriptor) newAssociativePrecedenceMatrix() (precedenceMatrix, e
 	return precMatrix, nil
 }
 
-func (p *parserDescriptor) newCyclicPrecedenceMatrix() (precedenceMatrix, error) {
-	m := make(map[string]map[string]gopapageno.Precedence)
+// getTerminalSets returns two maps mapping nonterminal tokens to possible terminal productions.
+func (p *parserDescriptor) getTerminalSets() (lts map[string]*set[string], rts map[string]*set[string]) {
+	lts = make(map[string]*set[string], p.nonterminals.Len())
+	rts = make(map[string]*set[string], p.nonterminals.Len())
 
-	// Initialize an empty matrix.
-	for _, term := range p.terminals.Iter {
-		m[term] = make(map[string]gopapageno.Precedence)
-
-		for _, term2 := range p.terminals.Iter {
-			m[term][term2] = gopapageno.PrecEmpty
-		}
+	// Initialize empty sets for every nonterminal token.
+	for _, nonterminal := range p.nonterminals.Iter {
+		lts[nonterminal] = newSet[string]()
+		rts[nonterminal] = newSet[string]()
 	}
 
-	lts, rts := p.getTerminalSets()
-	terminals := p.terminals.Slice()
-
-	/*
-		for ridx, rule := range p.rules {
-			productions := RuleProductions(p.rules, ridx)
-
-			for _, term1 := range terminals {
-				for _, term2 := range terminals {
-					if m[term1][term2] == gopapageno.PrecEquals {
-						break
-					}
-					// Check if the two terminals are Eq in precedence.
-					for _, prod := range productions {
-						i1 := slices.Index(prod, term1)
-						i2 := slices.Index(prod, term2)
-
-						// Check if the two terminals are present in the production, in the given order.
-						if i1 == -1 || i2 == -1 || i1 > i2 {
-							continue
-						}
-
-						// Check that there is a token before t1 and a token after t2
-						if i1 == 0 || i2 == len(rule.RHS)-1 {
-							continue
-						}
-
-						// Check if there is a token between them that isn't a nonterm
-						if i1 == i2-1 && !p.nonterminals.Contains(rule.RHS[i2-1]) {
-							continue
-						}
-
-						m[term1][term2] = gopapageno.PrecEquals
-						break
-					}
-				}
-			}
-		}
-	*/
+	// Direct terminals.
+	// If a terminal token is found in any RHS, add it to the corresponding LHS' sets.
 	for _, rule := range p.rules {
-		// Equals
-		for _, term1 := range terminals {
-			for _, term2 := range terminals {
-				if m[term1][term2] == gopapageno.PrecEquals {
-					continue
-				}
+		for i := 0; i < len(rule.RHS); i++ {
+			token := rule.RHS[i]
+			if p.terminals.Contains(token) {
+				lts[rule.LHS].Add(token)
+				break
+			}
+		}
 
-				// Check if the two terminals are Eq in precedence.
-				i1 := slices.Index(rule.RHS, term1)
-				if i1 == -1 {
-					continue
-				}
+		for i := len(rule.RHS) - 1; i >= 0; i-- {
+			token := rule.RHS[i]
+			if p.terminals.Contains(token) {
+				rts[rule.LHS].Add(token)
+				break
+			}
+		}
+	}
 
-				i2 := slices.Index(rule.RHS[i1+1:], term2) + i1 + 1
+	// Indirect terminals.
+	// Loop until a fixed point is found.
+	modified := true
+	for modified {
+		modified = false
 
-				// Check if the two terminals are present in the production, in the given order.
-				if i2 == i1 || i1 >= i2 {
-					continue
-				}
+		for _, rule := range p.rules {
+			lhs := rule.LHS
+			rhs := rule.RHS
 
-				// Check that there is a token before t1 and a token after t2
-				// TODO: Not sure if this is required.
-				/*
-					if i1 == 0 || i2 == len(rule.RHS)-1 {
-						continue
+			// If the first token on the RHS is a nonterminal,
+			// Try adding every terminal token produced by firstToken directly
+			// to the tokens produced by the considered lhs nonterminal.
+			firstToken := rhs[0]
+			if p.nonterminals.Contains(firstToken) {
+				for _, token := range lts[firstToken].Iter {
+					if !lts[lhs].Contains(token) {
+						lts[lhs].Add(token)
+						modified = true
 					}
-				*/
-
-				// Check if there is a token between them that isn't a nonterm
-				if i1 == i2-1 && !p.nonterminals.Contains(rule.RHS[i2-1]) {
-					continue
 				}
-
-				if m[term1][term2] != gopapageno.PrecEmpty {
-					return nil, fmt.Errorf("precedence conflict on terminals %s and %s (%v, %v)", term1, term2, m[term1][term2], gopapageno.PrecEquals)
-				}
-				m[term1][term2] = gopapageno.PrecEquals
 			}
-		}
-	}
 
-	for _, rule := range p.rules {
-		// Takes
-		for _, term1 := range terminals {
-			for _, term2 := range terminals {
-				if m[term1][term2] == gopapageno.PrecTakes || m[term1][term2] == gopapageno.PrecEquals {
-					continue
-				}
-
-				// Check if term2 is in the rhs
-				i2 := slices.Index(rule.RHS, term2)
-				if i2 == -1 {
-					continue
-				}
-
-				// If term2 has no nonterminal before it
-				if i2 == 0 || !p.nonterminals.Contains(rule.RHS[i2-1]) {
-					continue
-				}
-
-				if rts[rule.RHS[i2-1]].Contains(term1) {
-					if m[term1][term2] != gopapageno.PrecEmpty {
-						return nil, fmt.Errorf("precedence conflict on terminals %s and %s (%v, %v)", term1, term2, m[term1][term2], gopapageno.PrecTakes)
+			// Do the same for the last token of the RHS.
+			lastToken := rhs[len(rhs)-1]
+			if p.nonterminals.Contains(lastToken) {
+				for _, token := range rts[lastToken].Iter {
+					if !rts[lhs].Contains(token) {
+						rts[lhs].Add(token)
+						modified = true
 					}
-
-					m[term1][term2] = gopapageno.PrecTakes
-				}
-
-			}
-		}
-
-		for _, term1 := range terminals {
-			for _, term2 := range terminals {
-				if m[term1][term2] == gopapageno.PrecYields || m[term1][term2] == gopapageno.PrecEquals {
-					continue
-				}
-
-				// Check if term2 is in the rhs
-				i1 := slices.Index(rule.RHS, term1)
-				if i1 == -1 {
-					continue
-				}
-
-				// If term2 has no nonterminal after it
-				if i1 == len(rule.RHS)-1 || !p.nonterminals.Contains(rule.RHS[i1+1]) {
-					continue
-				}
-
-				if lts[rule.RHS[i1+1]].Contains(term2) {
-					if m[term1][term2] != gopapageno.PrecEmpty {
-						return nil, fmt.Errorf("precedence conflict on terminals %s and %s (%v, %v)", term1, term2, m[term1][term2], gopapageno.PrecYields)
-					}
-					m[term1][term2] = gopapageno.PrecYields
 				}
 			}
 		}
 	}
 
-	// Set precedence for #
-	/*
-		for _, terminal := range terminals {
-			if terminal != "_TERM" {
-				if rts[p.axiom].Contains(terminal) {
-					m[terminal]["_TERM"] = gopapageno.PrecTakes
-				}
-				if lts[p.axiom].Contains(terminal) {
-					m["_TERM"][terminal] = gopapageno.PrecYields
-				}
-			}
-		}
-		m["_TERM"]["_TERM"] = gopapageno.PrecEquals
-	*/
+	return lts, rts
+}
 
-	for _, terminal := range p.terminals.Iter {
-		if terminal != "_TERM" {
-			m["_TERM"][terminal] = gopapageno.PrecYields
-			m[terminal]["_TERM"] = gopapageno.PrecTakes
-		}
-	}
-	m["_TERM"]["_TERM"] = gopapageno.PrecEquals
+// bitPack packs the matrix into a slice of uint64 where a precedence value is represented by just 2 bits.
+func bitPack(matrix [][]gopapageno.Precedence) []uint64 {
+	newSize := int(math.Ceil(float64(len(matrix)*len(matrix)) / float64(32)))
 
-	if err := moveToFront(terminals, "_TERM"); err != nil {
-		return nil, fmt.Errorf("could not move _TERM to front: %w", err)
+	newMatrix := make([]uint64, newSize)
+
+	setPrec := func(elem *uint64, pos uint, prec gopapageno.Precedence) {
+		bitMask := uint64(0x3 << pos)
+		*elem = (*elem & ^bitMask) | (uint64(prec) << pos)
 	}
 
-	precMatrix := make([][]gopapageno.Precedence, len(terminals))
-	for i, t1 := range terminals {
-		precMatrix[i] = make([]gopapageno.Precedence, len(terminals))
-
-		for j, t2 := range terminals {
-			precMatrix[i][j] = m[t1][t2]
+	for i, _ := range matrix {
+		for j, prec := range matrix[i] {
+			flatElemPos := i*len(matrix) + j
+			newElemPtr := &newMatrix[flatElemPos/32]
+			newElemPos := uint((flatElemPos % 32) * 2)
+			setPrec(newElemPtr, newElemPos, prec)
 		}
 	}
 
-	return precMatrix, nil
+	return newMatrix
+}
+
+func moveToFront[T comparable](slice []T, e T) error {
+	index := -1
+
+	for i, v := range slice {
+		if v == e {
+			index = i
+		}
+	}
+
+	if index == -1 {
+		return fmt.Errorf("could not find element %v in given slice", e)
+	}
+
+	newSlice := append(slice[:index], slice[index+1:]...)
+	newSlice = append([]T{e}, newSlice...)
+
+	copy(slice, newSlice)
+
+	return nil
 }

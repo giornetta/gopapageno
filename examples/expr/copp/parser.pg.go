@@ -40,6 +40,7 @@ const (
 	NUMBER
 	PLUS
 	RPAR
+	S
 )
 
 func SprintToken[TokenValue any](root *gopapageno.Token) string {
@@ -80,6 +81,8 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 			sb.WriteString("PLUS")
 		case RPAR:
 			sb.WriteString("RPAR")
+		case S:
+			sb.WriteString("S")
 		case gopapageno.TokenTerm:
 			sb.WriteString("Term")
 		default:
@@ -102,7 +105,7 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 }
 
 func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
-	numTerminals := uint16(6)
+	numTerminals := uint16(7)
 	numNonTerminals := uint16(5)
 
 	maxRHSLen := 5
@@ -133,9 +136,11 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 		{D_E_P_S_T, []gopapageno.TokenType{LPAR, D_E_P_S_T, RPAR}},
 		{D_E_P_S_T, []gopapageno.TokenType{LPAR, D_S_T, RPAR}},
 		{D_E_P_S_T, []gopapageno.TokenType{LPAR, P_S, RPAR}},
+		{D_E_P_S_T, []gopapageno.TokenType{LPAR, S, RPAR}},
 		{D_E_P_S_T, []gopapageno.TokenType{NUMBER}},
+		{NEW_AXIOM, []gopapageno.TokenType{S}},
 	}
-	compressedRules := []uint16{0, 0, 5, 1, 13, 2, 86, 4, 159, 32770, 162, 32771, 195, 3, 0, 2, 32769, 20, 32772, 28, 0, 0, 1, 1, 25, 2, 1, 0, 0, 0, 3, 1, 37, 2, 60, 4, 83, 4, 2, 1, 32772, 42, 0, 0, 3, 1, 51, 2, 54, 4, 57, 4, 3, 0, 4, 4, 0, 4, 5, 0, 4, 6, 1, 32772, 65, 0, 0, 3, 1, 74, 2, 77, 4, 80, 4, 7, 0, 4, 8, 0, 4, 9, 0, 4, 10, 0, 3, 11, 2, 32769, 93, 32772, 101, 0, 0, 1, 1, 98, 2, 12, 0, 0, 0, 3, 1, 110, 2, 133, 4, 156, 4, 13, 1, 32772, 115, 0, 0, 3, 1, 124, 2, 127, 4, 130, 4, 14, 0, 4, 15, 0, 4, 16, 0, 4, 17, 1, 32772, 138, 0, 0, 3, 1, 147, 2, 150, 4, 153, 4, 18, 0, 4, 19, 0, 4, 20, 0, 4, 21, 0, 3, 22, 0, 0, 0, 3, 1, 171, 2, 179, 4, 187, 0, 0, 1, 32773, 176, 1, 23, 0, 0, 0, 1, 32773, 184, 1, 24, 0, 0, 0, 1, 32773, 192, 1, 25, 0, 1, 26, 0}
+	compressedRules := []uint16{0, 0, 6, 1, 15, 2, 88, 4, 161, 32770, 164, 32771, 207, 32774, 210, 3, 0, 2, 32769, 22, 32772, 30, 0, 0, 1, 1, 27, 2, 1, 0, 0, 0, 3, 1, 39, 2, 62, 4, 85, 4, 2, 1, 32772, 44, 0, 0, 3, 1, 53, 2, 56, 4, 59, 4, 3, 0, 4, 4, 0, 4, 5, 0, 4, 6, 1, 32772, 67, 0, 0, 3, 1, 76, 2, 79, 4, 82, 4, 7, 0, 4, 8, 0, 4, 9, 0, 4, 10, 0, 3, 11, 2, 32769, 95, 32772, 103, 0, 0, 1, 1, 100, 2, 12, 0, 0, 0, 3, 1, 112, 2, 135, 4, 158, 4, 13, 1, 32772, 117, 0, 0, 3, 1, 126, 2, 129, 4, 132, 4, 14, 0, 4, 15, 0, 4, 16, 0, 4, 17, 1, 32772, 140, 0, 0, 3, 1, 149, 2, 152, 4, 155, 4, 18, 0, 4, 19, 0, 4, 20, 0, 4, 21, 0, 3, 22, 0, 0, 0, 4, 1, 175, 2, 183, 4, 191, 32774, 199, 0, 0, 1, 32773, 180, 1, 23, 0, 0, 0, 1, 32773, 188, 1, 24, 0, 0, 0, 1, 32773, 196, 1, 25, 0, 0, 0, 1, 32773, 204, 1, 26, 0, 1, 27, 0, 3, 28, 0}
 
 	maxPrefixLen := 4
 	prefixes := [][]gopapageno.TokenType{
@@ -147,15 +152,16 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 		{D_S_T, PLUS, D_S_T, PLUS},
 	}
 	precMatrix := [][]gopapageno.Precedence{
-		{gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields},
-		{gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecTakes, gopapageno.PrecTakes},
-		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEquals},
-		{gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes},
-		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEquals, gopapageno.PrecTakes},
-		{gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes},
+		{gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields},
+		{gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
+		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEquals, gopapageno.PrecEmpty},
+		{gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
+		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEquals, gopapageno.PrecTakes, gopapageno.PrecEmpty},
+		{gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
+		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty},
 	}
 	bitPackedMatrix := []uint64{
-		12130059261172884820, 160,
+		6208256158643688788, 17182130824,
 	}
 
 	fn := func(rule uint16, lhs *gopapageno.Token, rhs []*gopapageno.Token, thread int) {
@@ -576,12 +582,34 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			}
 		case 26:
 			D_E_P_S_T0 := lhs
+			LPAR1 := rhs[0]
+			S2 := rhs[1]
+			RPAR3 := rhs[2]
+
+			D_E_P_S_T0.Child = LPAR1
+			LPAR1.Next = S2
+			S2.Next = RPAR3
+
+			{
+				D_E_P_S_T0.Value = S2.Value
+			}
+		case 27:
+			D_E_P_S_T0 := lhs
 			NUMBER1 := rhs[0]
 
 			D_E_P_S_T0.Child = NUMBER1
 
 			{
 				D_E_P_S_T0.Value = NUMBER1.Value
+			}
+		case 28:
+			NEW_AXIOM0 := lhs
+			S1 := rhs[0]
+
+			NEW_AXIOM0.Child = S1
+
+			{
+				NEW_AXIOM0.Value = S1.Value
 			}
 		}
 	}

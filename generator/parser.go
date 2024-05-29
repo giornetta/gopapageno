@@ -228,13 +228,7 @@ func (p *parserDescriptor) compile(opts *Options) error {
 	var precMatrix precedenceMatrix
 	var err error
 
-	if opts.Strategy == gopapageno.OPP {
-		precMatrix, err = p.newPrecedenceMatrix()
-	} else if opts.Strategy == gopapageno.AOPP {
-		precMatrix, err = p.newAssociativePrecedenceMatrix()
-	} else if opts.Strategy == gopapageno.COPP {
-		precMatrix, err = p.newCyclicPrecedenceMatrix()
-	}
+	precMatrix, err = p.newPrecedenceMatrix(opts)
 	if err != nil {
 		return fmt.Errorf("could not create precedence matrix: %w", err)
 	}

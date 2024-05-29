@@ -84,7 +84,7 @@ func run() error {
 	h := root.Height()
 	fmt.Printf("Height: %d\n", h)
 	if h < 100 {
-		fmt.Println(SprintToken[any](root))
+		fmt.Println(SprintToken[int64](root))
 	}
 
 	return nil

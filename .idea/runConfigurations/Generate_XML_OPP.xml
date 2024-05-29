@@ -1,8 +1,8 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Generate XML" type="GoApplicationRunConfiguration" factoryName="Go Application" folderName="Generate Parsers">
+  <configuration default="false" name="Generate XML OPP" type="GoApplicationRunConfiguration" factoryName="Go Application" folderName="Generate Parsers">
     <module name="gopapageno" />
-    <working_directory value="$PROJECT_DIR$" />
-    <parameters value="-l examples/xml/xml.l -g examples/xml/xml.g -o examples/xml/" />
+    <working_directory value="$PROJECT_DIR$/examples/xml" />
+    <parameters value="-l opp/xml.l -g opp/xml.g -o opp/" />
     <envs>
       <env name="GOEXPERIMENT" value="rangefunc" />
     </envs>

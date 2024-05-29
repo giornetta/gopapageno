@@ -1,0 +1,25 @@
+version: '3'
+
+vars:
+  EXAMPLE: adder
+  STRAT: opp
+
+tasks:
+  generate:
+    cmds:
+      - go run ./cmd/gopapageno/main.go -l {{ .STRAT }}/{{ .EXAMPLE }}.l -g {{ .STRAT }}/{{ .EXAMPLE }}.g -o {{ .STRAT }}/ -strategy={{ .STRAT }} -log
+
+  benchmark:
+    vars:
+      COUNT: 10
+    cmds:
+      - go test github.com/giornetta/gopapageno/examples/{{ .EXAMPLE }}/{{ .STRAT }} -bench . -count={{ .COUNT }} > ./examples/{{ .EXAMPLE }}/benchmark_results/{{ .STRAT }}.txt
+
+  benchmark-all:
+    cmds:
+      - task: benchmark
+        vars: { .STRAT: 'opp'}
+      - task: benchmark
+        vars: { .STRAT: 'aopp' }
+      - task: benchmark
+        vars: { .STRAT: 'copp' }

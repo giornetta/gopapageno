@@ -2,7 +2,7 @@
   <configuration default="false" name="Generate Expr COPP" type="GoApplicationRunConfiguration" factoryName="Go Application" folderName="Generate Parsers">
     <module name="gopapageno" />
     <working_directory value="$PROJECT_DIR$/examples/expr" />
-    <parameters value="-l copp/expr.l -g copp/expr.g -o copp/ -strategy=copp" />
+    <parameters value="-l copp/expr.l -g copp/expr.g -o copp/ -strategy=copp -log" />
     <envs>
       <env name="GOEXPERIMENT" value="rangefunc" />
     </envs>

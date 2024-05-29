@@ -6,12 +6,11 @@ import (
 
 func (p *parserDescriptor) deleteCopyRules(rulesDict *rulesDictionary) {
 	copySets := make(map[string]*set[string], p.nonterminals.Len())
-
-	rhsDict := make(map[string][][]string)
-
 	for _, nonterminal := range p.nonterminals.Iter {
 		copySets[nonterminal] = newSet[string]()
 	}
+
+	rhsDict := make(map[string][][]string)
 
 	for _, rule := range p.rules {
 		// If the rule produces a single nonterminal token,
@@ -29,15 +28,12 @@ func (p *parserDescriptor) deleteCopyRules(rulesDict *rulesDictionary) {
 		}
 	}
 
-	changedCopySets := true
-	for changedCopySets {
-		changedCopySets = false
-
+	for hasChanged := true; hasChanged; {
+		hasChanged = false
 		for _, nonterminal := range p.nonterminals.Iter {
 			lenCopySet := copySets[nonterminal].Len()
 
 			iterCopy := copySets[nonterminal].Copy()
-
 			for _, copyRhs := range iterCopy.Iter {
 				for _, curNonterm := range copySets[copyRhs].Iter {
 					copySets[nonterminal].Add(curNonterm)
@@ -45,15 +41,14 @@ func (p *parserDescriptor) deleteCopyRules(rulesDict *rulesDictionary) {
 			}
 
 			if lenCopySet < copySets[nonterminal].Len() {
-				changedCopySets = true
+				hasChanged = true
 			}
 		}
 	}
 
 	for _, nonterminal := range p.nonterminals.Iter {
-		for _, curCopyRHS := range copySets[nonterminal].Iter {
-			rhsDictCopyRHSs := rhsDict[curCopyRHS]
-			for _, rhs := range rhsDictCopyRHSs {
+		for _, copiedNonterm := range copySets[nonterminal].Iter {
+			for _, rhs := range rhsDict[copiedNonterm] {
 				// There's no need to specify semantic actions
 				// because they are already linked to the proper rhs
 				rulesDict.Add(&rule{
@@ -74,10 +69,6 @@ func (p *parserDescriptor) deleteRepeatedRHS() {
 	for _, rule := range p.rules {
 		dictRules.Add(&rule)
 	}
-
-	// Delete copy rules from the dictionary
-	// TODO: Add explanation of why this is used from the Papers.
-	p.deleteCopyRules(dictRules)
 
 	// Create a dictionary that will contain the newly added rules.
 	newRulesDict := newRulesDictionary(dictRules.Len())
@@ -110,6 +101,10 @@ func (p *parserDescriptor) deleteRepeatedRHS() {
 			dictRules.Remove(keyRHS)
 		}
 	}
+
+	// Delete copy rules from the dictionary
+	// TODO: Add explanation of why this is used from the Papers.
+	p.deleteCopyRules(dictRules)
 
 	V := dictRules.LHSSets()
 
@@ -169,6 +164,21 @@ func (p *parserDescriptor) deleteRepeatedRHS() {
 	}
 
 	// TODO: remove unused nonterminals (see cpapageno)
+	nonterminals := p.nonterminals.Slice()
+	for _, nt := range nonterminals {
+		isUsed := false
+
+		for _, lhsSet := range newRulesDict.ValuesLHS {
+			if lhsSet.Contains(nt) {
+				isUsed = true
+				break
+			}
+		}
+
+		if !isUsed {
+
+		}
+	}
 
 	newAxiom := "NEW_AXIOM"
 	newAxiomSet := newSet[string]()
@@ -198,6 +208,7 @@ func (p *parserDescriptor) deleteRepeatedRHS() {
 	}
 
 	p.rules = newRules
+
 	p.inferTokens()
 
 	p.axiom = newAxiom
@@ -223,6 +234,8 @@ func (p *parserDescriptor) replaceTokenNames(keyRHS []string, newNonterminals []
 					newTokensCopy := make([]string, len(newTokens)-1)
 					copy(newTokensCopy, newTokens)
 					newTokens = newTokensCopy
+				} else {
+
 				}
 			}
 		} else {
@@ -281,20 +294,6 @@ func (p *parserDescriptor) sortRulesByRHS() {
 	}
 
 	p.rules = sortedRules
-}
-
-func rhsEquals(rhs1 []string, rhs2 []string) bool {
-	if len(rhs1) != len(rhs2) {
-		return false
-	}
-
-	for i, _ := range rhs1 {
-		if rhs1[i] != rhs2[i] {
-			return false
-		}
-	}
-
-	return true
 }
 
 func (p *parserDescriptor) rhsLessThan(rhs1 []string, rhs2 []string) bool {

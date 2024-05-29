@@ -48,8 +48,8 @@ func TestListOfStacks_Get(t *testing.T) {
 	}
 }
 
-func TestListOfTokenPointerStacks_Combine(t *testing.T) {
-	list := NewParserStack(NewPool[stack[*Token]](1))
+func TestParserStack_Combine(t *testing.T) {
+	list := NewParserStack(NewPool[stack[*Token]](1, WithConstructor[stack[*Token]](newStack[*Token])))
 
 	list.Push(&Token{
 		Type:       0,
@@ -83,7 +83,7 @@ func TestListOfTokenPointerStacks_Combine(t *testing.T) {
 		Precedence: PrecTakes,
 	})
 
-	combined := list.Combine()
+	combined := list.Combine(nil)
 	combinedIt := combined.HeadIterator()
 
 	var lastTok *Token

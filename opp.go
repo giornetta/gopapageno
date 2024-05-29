@@ -125,6 +125,7 @@ func (w *parserWorker) parseAcyclic(ctx context.Context, stack *ParserStack, tok
 					rhsBuf[pos] = token.Type
 					pos--
 				}
+
 				rhsTokensBuf[pos] = token
 				rhsBuf[pos] = token.Type
 
