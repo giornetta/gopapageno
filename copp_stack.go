@@ -187,27 +187,37 @@ func (s *CyclicParserStack) CombineLOS(l *ListOfStacks[Token]) *ListOfStacks[Tok
 		return list
 	}
 
-	var listToken *Token
+	/*var listToken *Token
 
+	checkState := false
+	if s.State.Current[len(s.State.Current)-1].Type == TokenTerm {
+		checkState = true
+	}
+
+	*/
 	first := true
-	for t, st := it.Next(); t != nil && t.Precedence != PrecYields; t, st = it.Next() {
-		if t.Type == TokenTerm && !first {
-			listIt := list.TailIterator()
-			for i := len(st.Current) - 1; i >= 0; i-- {
-				listToken = listIt.Prev()
-				if listToken != nil && listToken == st.Current[i] {
-					list.Pop()
-				}
-			}
+	tokenSet := make(map[*Token]struct{}, s.Length())
 
-			for _, t := range st.Current {
-				t.Precedence = PrecEmpty
-				list.Push(*t)
+	for t, st := it.Next(); t != nil && t.Precedence != PrecYields; t, st = it.Next() {
+		for _, stateToken := range st.Current {
+			_, ok := tokenSet[stateToken]
+			if !ok {
+				if !first {
+					stateToken.Precedence = PrecEmpty
+					list.Push(*stateToken)
+				}
+
+				tokenSet[stateToken] = struct{}{}
 			}
 		}
 
-		t.Precedence = PrecEmpty
-		list.Push(*t)
+		_, ok := tokenSet[t]
+		if !ok {
+			t.Precedence = PrecEmpty
+			list.Push(*t)
+
+			tokenSet[t] = struct{}{}
+		}
 
 		first = false
 	}

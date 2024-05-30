@@ -7,9 +7,14 @@ RSQUARE \]
 COMMA ,
 COLON :
 QUOTE "
-CHAR [!#-\[\]-ÿ]
+CHAR [!#-\[\]-ÿ ]
+DIGIT [0-9]
+DOT \.
 SPACE [ \t]
 NEWLINE [\r\n]
+
+TRUE true
+FALSE false
 
 %%
 
@@ -43,6 +48,26 @@ NEWLINE [\r\n]
 {QUOTE}{CHAR}*{QUOTE}
 {
     token.Type = STRING
+}
+
+{DIGIT}+
+{
+    token.Type = NUMBER
+}
+
+{DIGIT}+{DOT}{DIGIT}+
+{
+    token.Type = NUMBER
+}
+
+{TRUE}
+{
+    token.Type = BOOL
+}
+
+{FALSE}
+{
+    token.Type = BOOL
 }
 
 {SPACE}

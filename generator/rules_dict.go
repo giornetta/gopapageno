@@ -1,6 +1,8 @@
 package generator
 
-import "slices"
+import (
+	"slices"
+)
 
 // rulesDictionary is a data structure used to store unique RHS -> LHS mappings.
 // It is useful to remove repeated RHS productions.

@@ -1,7 +1,9 @@
 {
-  "key1": [
-    "stringa1",
-    "stringa2"
-  ],
-  "key2": "stringa3"
+  "key1": "false",
+  "key2": false,
+  "Key3": 12.124,
+  "key4": 1,
+  "keyzon": {
+    "keyy": "godo"
+  }
 }
