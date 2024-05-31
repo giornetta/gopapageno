@@ -35,6 +35,8 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 			t := tokensIt.Next()
 			t.Precedence = PrecEmpty
 			stack.Push(t, state)
+
+			state.Current = append(state.Current, t)
 		}
 
 		// If the thread is the last, push a # onto the tokens m
@@ -71,12 +73,7 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 			} else {
 				prec = w.parser.precedence(firstTerminal.Type, inputToken.Type)
 
-				if firstTerminal.Precedence == PrecEmpty && inputToken.Type != TokenTerm && prec == PrecTakes {
-					prec = PrecYields
-					pushTakes = true
-				}
-
-				if prec == PrecEquals && (firstTerminal.Precedence == PrecTakes || firstTerminal.Precedence == PrecEmpty) {
+				if prec == PrecEquals && (firstTerminal.Precedence == PrecTakes) {
 					prec = PrecYields
 				}
 			}
@@ -120,12 +117,12 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 			// If the current construction is a single nonterminal.
 			if len(state.Current) == 1 && !state.Current[0].Type.IsTerminal() {
 				// Prepend previous construction to current one; leaving the previous one untouched.
-				state.Current = state.Current[:len(state.Current)+len(state.Previous)]
 				if len(state.Current)+len(state.Previous) > cap(state.Current) {
 					newCurrent := make([]*Token, 0, cap(state.Current)*2)
 					newCurrent = append(newCurrent, state.Current...)
 					state.Current = newCurrent
 				}
+				state.Current = state.Current[:len(state.Current)+len(state.Previous)]
 
 				copy(state.Current[len(state.Previous):], state.Current[:len(state.Current)-len(state.Previous)])
 				copy(state.Current, state.Previous)

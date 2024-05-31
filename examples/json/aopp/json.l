@@ -1,4 +1,4 @@
-%cut ,
+%cut \n
 
 LCURLY {
 RCURLY }

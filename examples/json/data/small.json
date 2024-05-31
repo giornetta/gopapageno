@@ -1,9 +1,7 @@
 {
   "key1": "false",
   "key2": false,
-  "Key3": 12.124,
-  "key4": 1,
-  "keyzon": {
-    "keyy": "godo"
-  }
+  "Key3": 72.234,
+  "key4": "hello",
+  "key5": "hello"
 }

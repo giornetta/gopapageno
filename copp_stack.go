@@ -127,9 +127,12 @@ func (s *CyclicParserStack) Combine(o Stacker) Stacker {
 
 	// TODO: This could be moved in Push/Pop to allow constant time access.
 	it := s.Iterator()
-	for t, s := it.Next(); t != nil && t.Precedence != PrecYields; t, s = it.Next() {
+	first := true
+	for t, s := it.Next(); t != nil && (t.Precedence != PrecYields || (first && t.Type != TokenTerm)); t, s = it.Next() {
 		topLeft = *t
 		topLeftState = *s
+
+		first = false
 	}
 
 	stack := NewCyclicParserStack(s.ParserStack.pool, s.StatesLOS.pool, s.maxRhsLen)
@@ -148,20 +151,30 @@ func (s *CyclicParserStack) Combine(o Stacker) Stacker {
 	os := o.(*CyclicParserStack)
 	oit := os.Iterator()
 
+	oldTok, st := stack.Pop2()
 	tok, state := oit.Next()
-	if tok.Type == TokenTerm {
-		stack.State.Previous = append([]*Token{}, s.State.Current...)
-		stack.State.Current = append([]*Token{}, state.Current...)
+	tok.Precedence = oldTok.Precedence
+
+	stack.Push(tok, *st)
+	if oldTok.Type != tok.Type {
+		if !tok.IsTerminal() {
+			s.State.Current = s.State.Current[:0]
+		}
+		s.State.Current = append(s.State.Current, tok)
+	}
+	tok, state = oit.Next()
+	if tok == nil || tok.Type == TokenTerm {
+		stack.State.Previous = append(stack.State.Previous, s.State.Previous...)
+		stack.State.Current = append(stack.State.Current, s.State.Current...)
 	} else {
 		var lastState *CyclicAutomataState
-		tok, state = oit.Next()
-		if tok != nil && tok.Precedence != PrecYields {
+		if tok.Precedence != PrecYields {
 			lastState = state
 		}
 
 		// Other stack only has the first "forced" token in it.
 		// It means it managed to reduce everything about its input chunk.
-		if lastState == nil || len(lastState.Current) == 0 {
+		if lastState == nil || (len(lastState.Current) == 1 && lastState.Current[0].IsTerminal()) {
 			stack.State.Previous = append(stack.State.Previous, s.State.Previous...)
 			stack.State.Current = append(stack.State.Current, s.State.Current...)
 		} else {
@@ -187,22 +200,14 @@ func (s *CyclicParserStack) CombineLOS(l *ListOfStacks[Token]) *ListOfStacks[Tok
 		return list
 	}
 
-	/*var listToken *Token
-
-	checkState := false
-	if s.State.Current[len(s.State.Current)-1].Type == TokenTerm {
-		checkState = true
-	}
-
-	*/
 	first := true
 	tokenSet := make(map[*Token]struct{}, s.Length())
 
-	for t, st := it.Next(); t != nil && t.Precedence != PrecYields; t, st = it.Next() {
+	for t, st := it.Next(); t != nil && (t.Precedence != PrecYields); t, st = it.Next() {
 		for _, stateToken := range st.Current {
 			_, ok := tokenSet[stateToken]
 			if !ok {
-				if !first {
+				if !first || t.Precedence == PrecYields || t.Type == TokenTerm {
 					stateToken.Precedence = PrecEmpty
 					list.Push(*stateToken)
 				}

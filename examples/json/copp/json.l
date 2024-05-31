@@ -1,4 +1,4 @@
-%cut ,
+%cut \n
 
 LCURLY {
 RCURLY }
@@ -6,15 +6,19 @@ LSQUARE \[
 RSQUARE \]
 COMMA ,
 COLON :
+
 QUOTE "
-CHAR [!#-\[\]-ÿ ]
-DIGIT [0-9]
-DOT \.
-SPACE [ \t]
-NEWLINE [\r\n]
+CHAR [^"\n]
 
 TRUE true
 FALSE false
+
+DIGIT [0-9]
+DOT \.
+MINUS \-
+
+SPACE [ \t]
+NEWLINE [\r\n]
 
 %%
 
@@ -54,8 +58,15 @@ FALSE false
 {
     token.Type = NUMBER
 }
-
+{MINUS}{DIGIT}+
+{
+    token.Type = NUMBER
+}
 {DIGIT}+{DOT}{DIGIT}+
+{
+    token.Type = NUMBER
+}
+{MINUS}{DIGIT}+{DOT}{DIGIT}+
 {
     token.Type = NUMBER
 }

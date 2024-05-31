@@ -23,7 +23,8 @@ const (
 
 // Terminals
 const (
-	COLON = gopapageno.TokenTerm + 1 + iota
+	BOOL = gopapageno.TokenTerm + 1 + iota
+	COLON
 	COMMA
 	Document_Elements_Value
 	LCURLY
@@ -68,6 +69,8 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 			sb.WriteString("NEW_AXIOM")
 		case gopapageno.TokenEmpty:
 			sb.WriteString("Empty")
+		case BOOL:
+			sb.WriteString("BOOL")
 		case COLON:
 			sb.WriteString("COLON")
 		case COMMA:
@@ -108,7 +111,7 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 }
 
 func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
-	numTerminals := uint16(10)
+	numTerminals := uint16(11)
 	numNonTerminals := uint16(8)
 
 	maxRHSLen := 3
@@ -132,6 +135,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 		{Elements, []gopapageno.TokenType{Elements_Value, COMMA, Document_Elements_Value}},
 		{Members, []gopapageno.TokenType{Members, COMMA, Members_Pair}},
 		{Members, []gopapageno.TokenType{Members_Pair, COMMA, Members_Pair}},
+		{Elements_Value, []gopapageno.TokenType{BOOL}},
 		{NEW_AXIOM, []gopapageno.TokenType{Document_Elements_Value}},
 		{Elements, []gopapageno.TokenType{Document_Elements_Value, COMMA, Array_Elements_Value}},
 		{Elements, []gopapageno.TokenType{Document_Elements_Value, COMMA, Document_Elements_Object_Value}},
@@ -153,24 +157,25 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 		{Members_Pair, []gopapageno.TokenType{STRING, COLON, Elements_Value}},
 		{Members_Pair, []gopapageno.TokenType{STRING, COLON, Document_Elements_Value}},
 	}
-	compressedRules := []uint16{0, 0, 11, 1, 25, 2, 53, 3, 81, 4, 109, 5, 137, 6, 150, 32771, 163, 32772, 191, 32773, 219, 32774, 277, 32777, 280, 0, 0, 1, 32770, 30, 0, 0, 4, 1, 41, 2, 44, 4, 47, 32771, 50, 3, 0, 0, 3, 1, 0, 3, 2, 0, 3, 3, 0, 7, 4, 1, 32770, 58, 0, 0, 4, 1, 69, 2, 72, 4, 75, 32771, 78, 3, 5, 0, 3, 6, 0, 3, 7, 0, 3, 8, 0, 0, 0, 1, 32770, 86, 0, 0, 4, 1, 97, 2, 100, 4, 103, 32771, 106, 3, 9, 0, 3, 10, 0, 3, 11, 0, 3, 12, 0, 0, 0, 1, 32770, 114, 0, 0, 4, 1, 125, 2, 128, 4, 131, 32771, 134, 3, 13, 0, 3, 14, 0, 3, 15, 0, 3, 16, 0, 0, 0, 1, 32770, 142, 0, 0, 1, 6, 147, 5, 17, 0, 0, 0, 1, 32770, 155, 0, 0, 1, 6, 160, 5, 18, 0, 7, 19, 1, 32770, 168, 0, 0, 4, 1, 179, 2, 182, 4, 185, 32771, 188, 3, 20, 0, 3, 21, 0, 3, 22, 0, 3, 23, 0, 0, 0, 3, 5, 200, 6, 208, 32775, 216, 0, 0, 1, 32775, 205, 2, 24, 0, 0, 0, 1, 32775, 213, 2, 25, 0, 2, 26, 0, 0, 0, 6, 1, 234, 2, 242, 3, 250, 4, 258, 32771, 266, 32776, 274, 0, 0, 1, 32776, 239, 1, 27, 0, 0, 0, 1, 32776, 247, 1, 28, 0, 0, 0, 1, 32776, 255, 1, 29, 0, 0, 0, 1, 32776, 263, 1, 30, 0, 0, 0, 1, 32776, 271, 1, 31, 0, 1, 32, 0, 4, 33, 0, 4, 34, 1, 32769, 285, 0, 0, 4, 1, 296, 2, 299, 4, 302, 32771, 305, 6, 35, 0, 6, 36, 0, 6, 37, 0, 6, 38, 0}
+	compressedRules := []uint16{0, 0, 12, 1, 27, 2, 55, 3, 83, 4, 111, 5, 139, 6, 152, 32769, 165, 32772, 168, 32773, 196, 32774, 224, 32775, 282, 32778, 285, 0, 0, 1, 32771, 32, 0, 0, 4, 1, 43, 2, 46, 4, 49, 32772, 52, 3, 0, 0, 3, 1, 0, 3, 2, 0, 3, 3, 0, 7, 4, 1, 32771, 60, 0, 0, 4, 1, 71, 2, 74, 4, 77, 32772, 80, 3, 5, 0, 3, 6, 0, 3, 7, 0, 3, 8, 0, 0, 0, 1, 32771, 88, 0, 0, 4, 1, 99, 2, 102, 4, 105, 32772, 108, 3, 9, 0, 3, 10, 0, 3, 11, 0, 3, 12, 0, 0, 0, 1, 32771, 116, 0, 0, 4, 1, 127, 2, 130, 4, 133, 32772, 136, 3, 13, 0, 3, 14, 0, 3, 15, 0, 3, 16, 0, 0, 0, 1, 32771, 144, 0, 0, 1, 6, 149, 5, 17, 0, 0, 0, 1, 32771, 157, 0, 0, 1, 6, 162, 5, 18, 0, 4, 19, 0, 7, 20, 1, 32771, 173, 0, 0, 4, 1, 184, 2, 187, 4, 190, 32772, 193, 3, 21, 0, 3, 22, 0, 3, 23, 0, 3, 24, 0, 0, 0, 3, 5, 205, 6, 213, 32776, 221, 0, 0, 1, 32776, 210, 2, 25, 0, 0, 0, 1, 32776, 218, 2, 26, 0, 2, 27, 0, 0, 0, 6, 1, 239, 2, 247, 3, 255, 4, 263, 32772, 271, 32777, 279, 0, 0, 1, 32777, 244, 1, 28, 0, 0, 0, 1, 32777, 252, 1, 29, 0, 0, 0, 1, 32777, 260, 1, 30, 0, 0, 0, 1, 32777, 268, 1, 31, 0, 0, 0, 1, 32777, 276, 1, 32, 0, 1, 33, 0, 4, 34, 0, 4, 35, 1, 32770, 290, 0, 0, 4, 1, 301, 2, 304, 4, 307, 32772, 310, 6, 36, 0, 6, 37, 0, 6, 38, 0, 6, 39, 0}
 
 	maxPrefixLen := 0
 	prefixes := [][]gopapageno.TokenType{}
 	precMatrix := [][]gopapageno.Precedence{
-		{gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields},
-		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecYields},
-		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecYields},
-		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEquals, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
-		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecYields, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEquals, gopapageno.PrecEmpty, gopapageno.PrecYields},
-		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEmpty, gopapageno.PrecEquals, gopapageno.PrecYields},
-		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
-		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
-		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
-		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEquals, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
+		{gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields},
+		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
+		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecYields},
+		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecYields},
+		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEquals, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
+		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecYields, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEquals, gopapageno.PrecEmpty, gopapageno.PrecYields},
+		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecEmpty, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEmpty, gopapageno.PrecEquals, gopapageno.PrecYields},
+		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
+		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
+		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
+		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEquals, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
 	}
 	bitPackedMatrix := []uint64{
-		2780166043277284692, 2468347683884115970, 153826221472490112, 296,
+		2686505480168494420, 4655334419943961, 36635736178775140, 1301856705847434,
 	}
 
 	fn := func(rule uint16, lhs *gopapageno.Token, rhs []*gopapageno.Token, thread int) {
@@ -401,6 +406,14 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			{
 			}
 		case 19:
+			Elements_Value0 := lhs
+			BOOL1 := rhs[0]
+
+			Elements_Value0.Child = BOOL1
+
+			{
+			}
+		case 20:
 			NEW_AXIOM0 := lhs
 			Document_Elements_Value1 := rhs[0]
 
@@ -409,7 +422,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			{
 				NEW_AXIOM0.Value = Document_Elements_Value1.Value
 			}
-		case 20:
+		case 21:
 			Elements0 := lhs
 			Document_Elements_Value1 := rhs[0]
 			COMMA2 := rhs[1]
@@ -421,7 +434,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 
 			{
 			}
-		case 21:
+		case 22:
 			Elements0 := lhs
 			Document_Elements_Value1 := rhs[0]
 			COMMA2 := rhs[1]
@@ -433,7 +446,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 
 			{
 			}
-		case 22:
+		case 23:
 			Elements0 := lhs
 			Document_Elements_Value1 := rhs[0]
 			COMMA2 := rhs[1]
@@ -445,7 +458,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 
 			{
 			}
-		case 23:
+		case 24:
 			Elements0 := lhs
 			Document_Elements_Value1 := rhs[0]
 			COMMA2 := rhs[1]
@@ -457,7 +470,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 
 			{
 			}
-		case 24:
+		case 25:
 			Document_Elements_Object_Value0 := lhs
 			LCURLY1 := rhs[0]
 			Members2 := rhs[1]
@@ -469,7 +482,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 
 			{
 			}
-		case 25:
+		case 26:
 			Document_Elements_Object_Value0 := lhs
 			LCURLY1 := rhs[0]
 			Members_Pair2 := rhs[1]
@@ -481,7 +494,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 
 			{
 			}
-		case 26:
+		case 27:
 			Document_Elements_Object_Value0 := lhs
 			LCURLY1 := rhs[0]
 			RCURLY2 := rhs[1]
@@ -491,7 +504,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 
 			{
 			}
-		case 27:
+		case 28:
 			Array_Elements_Value0 := lhs
 			LSQUARE1 := rhs[0]
 			Array_Elements_Value2 := rhs[1]
@@ -503,7 +516,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 
 			{
 			}
-		case 28:
+		case 29:
 			Array_Elements_Value0 := lhs
 			LSQUARE1 := rhs[0]
 			Document_Elements_Object_Value2 := rhs[1]
@@ -515,7 +528,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 
 			{
 			}
-		case 29:
+		case 30:
 			Array_Elements_Value0 := lhs
 			LSQUARE1 := rhs[0]
 			Elements2 := rhs[1]
@@ -527,7 +540,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 
 			{
 			}
-		case 30:
+		case 31:
 			Array_Elements_Value0 := lhs
 			LSQUARE1 := rhs[0]
 			Elements_Value2 := rhs[1]
@@ -539,7 +552,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 
 			{
 			}
-		case 31:
+		case 32:
 			Array_Elements_Value0 := lhs
 			LSQUARE1 := rhs[0]
 			Document_Elements_Value2 := rhs[1]
@@ -551,7 +564,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 
 			{
 			}
-		case 32:
+		case 33:
 			Array_Elements_Value0 := lhs
 			LSQUARE1 := rhs[0]
 			RSQUARE2 := rhs[1]
@@ -561,7 +574,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 
 			{
 			}
-		case 33:
+		case 34:
 			Elements_Value0 := lhs
 			NUMBER1 := rhs[0]
 
@@ -569,7 +582,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 
 			{
 			}
-		case 34:
+		case 35:
 			Elements_Value0 := lhs
 			STRING1 := rhs[0]
 
@@ -577,7 +590,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 
 			{
 			}
-		case 35:
+		case 36:
 			Members_Pair0 := lhs
 			STRING1 := rhs[0]
 			COLON2 := rhs[1]
@@ -589,7 +602,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 
 			{
 			}
-		case 36:
+		case 37:
 			Members_Pair0 := lhs
 			STRING1 := rhs[0]
 			COLON2 := rhs[1]
@@ -601,7 +614,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 
 			{
 			}
-		case 37:
+		case 38:
 			Members_Pair0 := lhs
 			STRING1 := rhs[0]
 			COLON2 := rhs[1]
@@ -613,7 +626,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 
 			{
 			}
-		case 38:
+		case 39:
 			Members_Pair0 := lhs
 			STRING1 := rhs[0]
 			COLON2 := rhs[1]

@@ -1,4 +1,4 @@
-%cut \+
+%cut \n
 
 LPAR \(
 RPAR \)
