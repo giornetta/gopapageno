@@ -7,7 +7,7 @@ vars:
 tasks:
   generate:
     cmds:
-      - go run ./cmd/gopapageno/main.go -l {{ .STRAT }}/{{ .EXAMPLE }}.l -g {{ .STRAT }}/{{ .EXAMPLE }}.g -o {{ .STRAT }}/ -strategy={{ .STRAT }} -log
+      - go run ./cmd/gopapageno/main.go -l ./examples/{{ .STRAT }}/{{ .EXAMPLE }}.l -g {{ .STRAT }}/{{ .EXAMPLE }}.g -o {{ .STRAT }}/ -strategy={{ .STRAT }} -log
 
   benchmark:
     vars:
@@ -18,8 +18,13 @@ tasks:
   benchmark-all:
     cmds:
       - task: benchmark
-        vars: { .STRAT: 'opp'}
+        vars: { STRAT: 'opp'}
       - task: benchmark
-        vars: { .STRAT: 'aopp' }
+        vars: { STRAT: 'aopp' }
       - task: benchmark
-        vars: { .STRAT: 'copp' }
+        vars: { STRAT: 'copp' }
+
+  compare-benchmarks-win:
+    platforms: [windows]
+    cmds:
+      - (Get-Content -Path "./examples/{{ .EXAMPLE }}/benchmark_results/{{ .STRAT }}.txt") -replace "{{ .STRAT }}", "" | Set-Content -Path "./examples/{{ .EXAMPLE }}/benchmark_results/{{ .STRAT }}.txt"
