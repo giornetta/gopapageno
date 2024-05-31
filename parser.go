@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math"
 	"runtime/pprof"
 )
 
@@ -21,7 +20,7 @@ type Rule struct {
 type Stacker interface {
 	HeadIterator() *ParserStackIterator
 	Combine(o Stacker) Stacker
-	CombineLOS(l *ListOfStacks[Token]) *ListOfStacks[Token]
+	CombineLOS(pool *Pool[stack[Token]]) *ListOfStacks[Token]
 	LastNonterminal() (*Token, error)
 }
 
@@ -107,9 +106,7 @@ type Parser struct {
 }
 
 type parserPools struct {
-	inputs []*Pool[stack[Token]]
-	stacks []*Pool[stack[*Token]]
-
+	stacks       []*Pool[stack[*Token]]
 	nonterminals []*Pool[Token]
 
 	// These are only used when parsing using COPP.
@@ -341,7 +338,7 @@ func (p *Parser) Parse(ctx context.Context, src []byte) (*Token, error) {
 					// Unfortunately the new stack depends on the content of tokensLists[i] since its elements are stored there.
 					// We can't erase the old input easily to reuse its storage.
 					// TODO: Maybe allocate 2 * c LOS so that we can alternate?
-					input := stackRight.CombineLOS(tokensLists[i])
+					input := stackRight.CombineLOS(tokensLists[i].pool)
 
 					go workers[i].parse(ctx, stack, input, nil, true, resultCh, errCh)
 				}
@@ -362,14 +359,10 @@ func (p *Parser) init(src []byte) {
 	srcLen := len(src)
 
 	// TODO: Where does these numbers come from?
-	avgCharsPerToken := 4.0
+	avgCharsPerToken := 4
 
-	inputPoolBaseSize := math.Ceil(float64(srcLen) / avgCharsPerToken / float64(stackSize) / float64(p.concurrency))
-	stackPoolBaseSize := math.Ceil(float64(srcLen) / avgCharsPerToken / float64(pointerStackSize) / float64(p.concurrency))
-	ntPoolBaseSize := math.Ceil(float64(srcLen) / avgCharsPerToken / float64(p.concurrency))
-
-	// Initialize memory pools for input lists.
-	p.pools.inputs = make([]*Pool[stack[Token]], p.concurrency)
+	stackPoolBaseSize := stacksCount[*Token](src, p.concurrency)
+	ntPoolBaseSize := srcLen / avgCharsPerToken / p.concurrency
 
 	// Initialize memory pools for stacks.
 	p.pools.stacks = make([]*Pool[stack[*Token]], p.concurrency)
@@ -383,23 +376,29 @@ func (p *Parser) init(src []byte) {
 	p.pools.nonterminals = make([]*Pool[Token], p.concurrency)
 
 	for thread := 0; thread < p.concurrency; thread++ {
-		p.pools.inputs[thread] = NewPool[stack[Token]](int(inputPoolBaseSize*0.8), WithConstructor[stack[Token]](newStack[Token]))
-		p.pools.stacks[thread] = NewPool[stack[*Token]](int(stackPoolBaseSize*1.2), WithConstructor[stack[*Token]](newStack[*Token]))
-
-		if p.ParsingStrategy == COPP {
-			p.pools.stateStacks[thread] = NewPool[stack[CyclicAutomataState]](int(stackPoolBaseSize), WithConstructor[stack[CyclicAutomataState]](newStackBuilder[CyclicAutomataState](NewCyclicAutomataStateValueBuilder(p.MaxRHSLength))))
+		stackPoolMultiplier := 1
+		if p.reductionStrategy == ReductionParallel {
+			stackPoolMultiplier = p.concurrency - thread
 		}
 
-		p.pools.nonterminals[thread] = NewPool[Token](int(ntPoolBaseSize * 1.8))
+		p.pools.stacks[thread] = NewPool[stack[*Token]](stackPoolBaseSize*stackPoolMultiplier, WithConstructor[stack[*Token]](newStack[*Token]))
+
+		if p.ParsingStrategy == COPP {
+			p.pools.stateStacks[thread] = NewPool[stack[CyclicAutomataState]](stackPoolBaseSize*stackPoolMultiplier, WithConstructor[stack[CyclicAutomataState]](newStackBuilder[CyclicAutomataState](NewCyclicAutomataStateValueBuilder(p.MaxRHSLength))))
+		}
+
+		p.pools.nonterminals[thread] = NewPool[Token](ntPoolBaseSize)
 	}
 
 	// TODO: Remove or change this part to reflect the correct sweep reductionStrategy.
 	if p.reductionStrategy == ReductionSweep {
-		p.pools.sweepInput = NewPool[stack[Token]](int(math.Ceil(inputPoolBaseSize*0.1*float64(p.concurrency))), WithConstructor[stack[Token]](newStack[Token]))
-		p.pools.sweepStack = NewPool[stack[*Token]](int(math.Ceil(stackPoolBaseSize*0.1)), WithConstructor[stack[*Token]](newStack[*Token]))
+		inputPoolBaseSize := stacksCount[Token](src, p.concurrency)
+
+		p.pools.sweepInput = NewPool[stack[Token]](inputPoolBaseSize, WithConstructor[stack[Token]](newStack[Token]))
+		p.pools.sweepStack = NewPool[stack[*Token]](stackPoolBaseSize, WithConstructor[stack[*Token]](newStack[*Token]))
 
 		if p.ParsingStrategy == COPP {
-			p.pools.sweepStateStack = NewPool[stack[CyclicAutomataState]](int(stackPoolBaseSize), WithConstructor[stack[CyclicAutomataState]](newStackBuilder[CyclicAutomataState](NewCyclicAutomataStateValueBuilder(p.MaxRHSLength))))
+			p.pools.sweepStateStack = NewPool[stack[CyclicAutomataState]](stackPoolBaseSize, WithConstructor[stack[CyclicAutomataState]](newStackBuilder[CyclicAutomataState](NewCyclicAutomataStateValueBuilder(p.MaxRHSLength))))
 		}
 	}
 }

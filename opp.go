@@ -49,9 +49,8 @@ func (w *parserWorker) parseAcyclic(ctx context.Context, stack *ParserStack, tok
 		// Otherwise, push onto the tokens m the first inputToken of the next tokens m
 		if w.id == w.parser.concurrency-1 {
 			tokens.Push(Token{
-				Type:  TokenTerm,
-				Value: nil,
-				// Lexeme:     "",
+				Type:       TokenTerm,
+				Value:      nil,
 				Precedence: PrecEmpty,
 				Next:       nil,
 				Child:      nil,
@@ -153,7 +152,6 @@ func (w *parserWorker) parseAcyclic(ctx context.Context, stack *ParserStack, tok
 				}
 
 				newNonTerm.Type = lhs
-				// lhsToken = w.newNTList.Push(*newNonTerm)
 				lhsToken = w.ntPool.Get()
 				*lhsToken = newNonTerm
 

@@ -6,12 +6,6 @@ import (
 	"reflect"
 )
 
-// This is 1MB per stack (on 64 bit architecture)
-const stackSize int = 26214
-
-// This is 1MB per stack (on 64 bit architecture)
-const pointerStackSize int = 131072
-
 // stack contains a fixed size array of items,
 // the current position in the stack and pointers to the previous and next stacks.
 type stack[T any] struct {
@@ -27,14 +21,24 @@ type stack[T any] struct {
 type ValueConstructor[T any] func() T
 
 func newStack[T any]() *stack[T] {
-	typeSize := reflect.TypeFor[T]().Size()
-	stackLen := 1024 * 1024 / typeSize
+	stackLen := stackSize[T]()
 
 	return &stack[T]{
 		Data: make([]T, stackLen),
-		Size: int(stackLen),
+		Size: stackLen,
 	}
+}
 
+func stackSize[T any]() int {
+	typeSize := reflect.TypeFor[T]().Size()
+	return 1024 * 1024 / int(typeSize)
+}
+
+func stacksCount[T any](src []byte, concurrency int) int {
+	// TODO: Make this number customizable
+	avgTokenLen := 4.0
+
+	return int(math.Ceil(float64(len(src)) / avgTokenLen / float64(concurrency) / float64(stackSize[T]())))
 }
 
 func newStackBuilder[T any](c ValueConstructor[T]) func() *stack[T] {

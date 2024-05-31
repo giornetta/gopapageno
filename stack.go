@@ -235,10 +235,10 @@ func (s *ParserStack) CombineNoAlloc() {
 	s.cur.Tos = topLeftPos
 }
 
-func (s *ParserStack) CombineLOS(l *ListOfStacks[Token]) *ListOfStacks[Token] {
+func (s *ParserStack) CombineLOS(pool *Pool[stack[Token]]) *ListOfStacks[Token] {
 	var tok Token
 
-	list := NewListOfStacks[Token](l.pool)
+	list := NewListOfStacks[Token](pool)
 
 	it := s.HeadIterator()
 

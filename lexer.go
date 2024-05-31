@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"unsafe"
 )
 
@@ -62,15 +61,10 @@ func (l *Lexer) Scanner(src []byte, opts ...ScannerOpt) *Scanner {
 
 	s.pools = make([]*Pool[stack[Token]], s.concurrency)
 
-	sourceLen := len(s.source)
-
-	// TODO: Where does this number come from?
-	avgCharsPerToken := 4.0
-
-	stackPoolBaseSize := math.Ceil(float64(sourceLen) / avgCharsPerToken / float64(stackSize) / float64(s.concurrency))
+	stacksNum := stacksCount[Token](s.source, s.concurrency)
 
 	for thread := 0; thread < s.concurrency; thread++ {
-		s.pools[thread] = NewPool[stack[Token]](int(stackPoolBaseSize*1.2), WithConstructor[stack[Token]](newStack[Token]))
+		s.pools[thread] = NewPool[stack[Token]](stacksNum*(s.concurrency-thread), WithConstructor[stack[Token]](newStack[Token]))
 	}
 
 	return s

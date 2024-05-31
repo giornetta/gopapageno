@@ -48,8 +48,9 @@ func NewCyclicParserStack(tokenStackPool *Pool[stack[*Token]], stateStackPool *P
 	return &CyclicParserStack{
 		ParserStack: NewParserStack(tokenStackPool),
 		StatesLOS:   NewListOfStacks[CyclicAutomataState](stateStackPool),
-		State:       NewCyclicAutomataState(maxRhsLen),
-		maxRhsLen:   maxRhsLen,
+
+		State:     NewCyclicAutomataState(maxRhsLen),
+		maxRhsLen: maxRhsLen,
 	}
 }
 
@@ -186,8 +187,8 @@ func (s *CyclicParserStack) Combine(o Stacker) Stacker {
 	return stack
 }
 
-func (s *CyclicParserStack) CombineLOS(l *ListOfStacks[Token]) *ListOfStacks[Token] {
-	list := NewListOfStacks[Token](l.pool)
+func (s *CyclicParserStack) CombineLOS(pool *Pool[stack[Token]]) *ListOfStacks[Token] {
+	list := NewListOfStacks[Token](pool)
 
 	it := s.Iterator()
 
