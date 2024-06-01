@@ -63,8 +63,10 @@ func (l *Lexer) Scanner(src []byte, opts ...ScannerOpt) *Scanner {
 
 	stacksNum := stacksCount[Token](s.source, s.concurrency)
 
+	multiplier := 1 // (s.concurrency-thread)
+
 	for thread := 0; thread < s.concurrency; thread++ {
-		s.pools[thread] = NewPool[stack[Token]](stacksNum*(s.concurrency-thread), WithConstructor[stack[Token]](newStack[Token]))
+		s.pools[thread] = NewPool[stack[Token]](stacksNum*multiplier, WithConstructor[stack[Token]](newStack[Token]))
 	}
 
 	return s

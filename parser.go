@@ -378,7 +378,7 @@ func (p *Parser) init(src []byte) {
 	for thread := 0; thread < p.concurrency; thread++ {
 		stackPoolMultiplier := 1
 		if p.reductionStrategy == ReductionParallel {
-			stackPoolMultiplier = p.concurrency - thread
+			//stackPoolMultiplier = p.concurrency - thread
 		}
 
 		p.pools.stacks[thread] = NewPool[stack[*Token]](stackPoolBaseSize*stackPoolMultiplier, WithConstructor[stack[*Token]](newStack[*Token]))
