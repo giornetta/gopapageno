@@ -36,7 +36,7 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 			t.Precedence = PrecEmpty
 			stack.Push(t, state)
 
-			state.Current = append(state.Current, t)
+			//state.Current = append(state.Current, t)
 		}
 
 		// If the thread is the last, push a # onto the tokens m
@@ -61,20 +61,23 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 		//If the current inputToken is a non-terminal, push it onto the stack with no precedence relation
 		var prec Precedence
 
-		pushTakes := false
+		//Find the first terminal on the stack and get the precedence between it and the current tokens inputToken
+		firstTerminal := stack.FirstTerminal()
+
 		if !inputToken.Type.IsTerminal() {
 			prec = PrecYields
 		} else {
-			//Find the first terminal on the stack and get the precedence between it and the current tokens inputToken
-			firstTerminal := stack.FirstTerminal()
-
 			if firstTerminal == nil {
 				prec = w.parser.precedence(TokenTerm, inputToken.Type)
 			} else {
 				prec = w.parser.precedence(firstTerminal.Type, inputToken.Type)
 
-				if prec == PrecEquals && (firstTerminal.Precedence == PrecTakes) {
+				if prec == PrecEquals && firstTerminal.Precedence == PrecTakes {
 					prec = PrecYields
+				}
+
+				if prec == PrecEquals && firstTerminal.Precedence == PrecEmpty {
+					prec = PrecTakes
 				}
 			}
 		}
@@ -83,12 +86,7 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 		if prec == PrecYields {
 			t := inputToken
 			if inputToken.Type.IsTerminal() {
-				if pushTakes {
-					inputToken.Precedence = PrecTakes
-				} else {
-					inputToken.Precedence = prec
-				}
-
+				inputToken.Precedence = prec
 				inputToken = stack.Push(inputToken, state)
 			}
 
@@ -159,8 +157,8 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 			}
 
 			// Replace the topmost token on the stack, setting its precedence to Yield.
-			t, s := stack.Pop2()
-			inputToken.Precedence = t.Precedence
+			_, s := stack.Pop2()
+			// inputToken.Precedence = prec //t.Precedence
 			stack.Push(inputToken, *s)
 
 			inputToken = tokensIt.Next()
@@ -171,7 +169,12 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 				inputToken.Precedence = prec
 				stack.Push(inputToken, state)
 
-				state.Current = append(state.Current, inputToken)
+				if inputToken.Type != TokenTerm {
+					state.Previous = state.Previous[:0]
+					state.Previous = append(state.Previous, state.Current...)
+
+					state.Current = state.Current[:0]
+				}
 
 				inputToken = tokensIt.Next()
 			} else {

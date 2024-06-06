@@ -24,6 +24,91 @@ func (w *parserWorker) parse(ctx context.Context, stack Stacker, tokens *ListOfS
 	}
 }
 
+func (p *Parser) CombineSweepLOSCyclic(pool *Pool[stack[Token]], stacks []*CyclicParserStack) *ListOfStacks[Token] {
+	input := NewListOfStacks[Token](pool)
+
+	tokenSet := make(map[*Token]struct{}, stacks[0].Length())
+	for i := 0; i < p.concurrency-1; i++ {
+		it := stacks[i].Iterator()
+
+		//Ignore the first token.
+		t, st := it.Next()
+		tokenSet[t] = struct{}{}
+		for _, t := range st.Current {
+			tokenSet[t] = struct{}{}
+		}
+
+		for t, st := it.Next(); t != nil; t, st = it.Next() {
+			if t.Precedence == PrecEquals {
+				if !it.IsLast() {
+					continue
+				}
+
+				for _, stateToken := range stacks[i].State.Previous {
+					if _, ok := tokenSet[stateToken]; !ok {
+						stateToken.Precedence = PrecEmpty
+						input.Push(*stateToken)
+
+						tokenSet[stateToken] = struct{}{}
+					}
+				}
+
+				for _, stateToken := range stacks[i].State.Current {
+					if _, ok := tokenSet[stateToken]; !ok {
+						stateToken.Precedence = PrecEmpty
+						input.Push(*stateToken)
+
+						tokenSet[stateToken] = struct{}{}
+					}
+				}
+
+				continue
+			}
+
+			for _, stateToken := range st.Current {
+				if _, ok := tokenSet[stateToken]; !ok {
+					stateToken.Precedence = PrecEmpty
+					input.Push(*stateToken)
+
+					tokenSet[stateToken] = struct{}{}
+				}
+			}
+
+			if _, ok := tokenSet[t]; !ok {
+				t.Precedence = PrecEmpty
+				input.Push(*t)
+
+				tokenSet[t] = struct{}{}
+			}
+		}
+	}
+
+	return input
+}
+
+func (p *Parser) CombineSweepLOS(pool *Pool[stack[Token]], stacks []Stacker) *ListOfStacks[Token] {
+	if p.ParsingStrategy == COPP {
+		cstacks := make([]*CyclicParserStack, len(stacks))
+		for i, stack := range stacks {
+			cstacks[i] = stack.(*CyclicParserStack)
+		}
+		return p.CombineSweepLOSCyclic(pool, cstacks)
+	} else {
+		input := NewListOfStacks[Token](pool)
+		for i := 0; i < p.concurrency-1; i++ {
+			iterator := stacks[i].HeadIterator()
+
+			//Ignore the first token.
+			iterator.Next()
+
+			for token := iterator.Next(); token != nil; token = iterator.Next() {
+				input.Push(*token)
+			}
+		}
+		return input
+	}
+}
+
 // parseAcyclic implements both OPP and AOPP strategies.
 func (w *parserWorker) parseAcyclic(ctx context.Context, stack *ParserStack, tokens *ListOfStacks[Token], nextToken *Token, finalPass bool, resultCh chan<- parseResult, errCh chan<- error) {
 	tokensIt := tokens.HeadIterator()

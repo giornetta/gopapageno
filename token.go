@@ -10,7 +10,6 @@ type Token struct {
 	Precedence Precedence
 
 	Value any
-	// Lexeme string
 
 	Next  *Token
 	Child *Token

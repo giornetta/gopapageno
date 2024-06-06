@@ -73,8 +73,8 @@ func (s *CyclicParserStack) Push(token *Token, state CyclicAutomataState) *Token
 }
 
 func (s *CyclicParserStack) YieldingPrecedence() int {
-	if s.firstTerminal.Precedence == PrecYields {
-		return s.yieldsPrec
+	if s.firstTerminal.Precedence == PrecYields || s.firstTerminal.Precedence == PrecEquals {
+		return 1
 	}
 
 	return 0
@@ -129,7 +129,7 @@ func (s *CyclicParserStack) Combine(o Stacker) Stacker {
 	// TODO: This could be moved in Push/Pop to allow constant time access.
 	it := s.Iterator()
 	first := true
-	for t, s := it.Next(); t != nil && (t.Precedence != PrecYields || (first && t.Type != TokenTerm)); t, s = it.Next() {
+	for t, s := it.Next(); t != nil && ((t.Precedence != PrecYields && t.Precedence != PrecEquals) || (first && t.Type != TokenTerm)); t, s = it.Next() {
 		topLeft = *t
 		topLeftState = *s
 
@@ -149,40 +149,8 @@ func (s *CyclicParserStack) Combine(o Stacker) Stacker {
 
 	stack.UpdateFirstTerminal()
 
-	os := o.(*CyclicParserStack)
-	oit := os.Iterator()
-
-	oldTok, st := stack.Pop2()
-	tok, state := oit.Next()
-	tok.Precedence = oldTok.Precedence
-
-	stack.Push(tok, *st)
-	if oldTok.Type != tok.Type {
-		if !tok.IsTerminal() {
-			s.State.Current = s.State.Current[:0]
-		}
-		s.State.Current = append(s.State.Current, tok)
-	}
-	tok, state = oit.Next()
-	if tok == nil || tok.Type == TokenTerm {
-		stack.State.Previous = append(stack.State.Previous, s.State.Previous...)
-		stack.State.Current = append(stack.State.Current, s.State.Current...)
-	} else {
-		var lastState *CyclicAutomataState
-		if tok.Precedence != PrecYields {
-			lastState = state
-		}
-
-		// Other stack only has the first "forced" token in it.
-		// It means it managed to reduce everything about its input chunk.
-		if lastState == nil || (len(lastState.Current) == 1 && lastState.Current[0].IsTerminal()) {
-			stack.State.Previous = append(stack.State.Previous, s.State.Previous...)
-			stack.State.Current = append(stack.State.Current, s.State.Current...)
-		} else {
-			stack.State.Previous = append(stack.State.Previous, s.State.Current...)
-			stack.State.Current = append(stack.State.Current, lastState.Current...)
-		}
-	}
+	stack.State.Previous = append(stack.State.Previous, s.State.Previous...)
+	stack.State.Current = append(stack.State.Current, s.State.Current...)
 
 	return stack
 }
@@ -191,27 +159,29 @@ func (s *CyclicParserStack) CombineLOS(pool *Pool[stack[Token]]) *ListOfStacks[T
 	list := NewListOfStacks[Token](pool)
 
 	it := s.Iterator()
+	t, st := it.Next()
 
-	// Ignore first element
-	t, _ := it.Next()
-	if t.Type == TokenTerm {
-		t.Precedence = PrecEmpty
-		list.Push(*t)
+	tokenSet := make(map[*Token]struct{}, s.Length())
+	tokenSet[t] = struct{}{}
+	for _, t := range st.Current {
+		tokenSet[t] = struct{}{}
+	}
+
+	if s.Length() == 1 {
+		for _, t := range s.State.Current {
+			t.Precedence = PrecEmpty
+			list.Push(*t)
+		}
 
 		return list
 	}
 
-	first := true
-	tokenSet := make(map[*Token]struct{}, s.Length())
-
-	for t, st := it.Next(); t != nil && (t.Precedence != PrecYields); t, st = it.Next() {
+	for t, st := it.Next(); t != nil && (t.Precedence != PrecYields && t.Precedence != PrecEquals); t, st = it.Next() {
 		for _, stateToken := range st.Current {
 			_, ok := tokenSet[stateToken]
 			if !ok {
-				if !first || t.Precedence == PrecYields || t.Type == TokenTerm {
-					stateToken.Precedence = PrecEmpty
-					list.Push(*stateToken)
-				}
+				stateToken.Precedence = PrecEmpty
+				list.Push(*stateToken)
 
 				tokenSet[stateToken] = struct{}{}
 			}
@@ -224,8 +194,6 @@ func (s *CyclicParserStack) CombineLOS(pool *Pool[stack[Token]]) *ListOfStacks[T
 
 			tokenSet[t] = struct{}{}
 		}
-
-		first = false
 	}
 
 	return list
@@ -257,4 +225,16 @@ func (i *CyclicParserStackIterator) Next() (*Token, *CyclicAutomataState) {
 
 func (i *CyclicParserStackIterator) Cur() (*Token, *CyclicAutomataState) {
 	return i.TokensIt.Cur(), i.StatesIt.Cur()
+}
+
+func (i *CyclicParserStackIterator) IsLast() bool {
+	if i.TokensIt.pos+1 < i.TokensIt.cur.Tos {
+		return false
+	}
+
+	if i.TokensIt.cur.Next == nil {
+		return true
+	}
+
+	return false
 }

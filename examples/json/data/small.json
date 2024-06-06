@@ -1,7 +1,22 @@
 {
-  "key1": "false",
-  "key2": false,
-  "Key3": 72.234,
-  "key4": "hello",
-  "key5": "hello"
+  "web-app": {
+    "servlet": [
+      {
+        "servlet-name": "cofaxCDS",
+        "servlet-class": "org.cofax.cds.CDSServlet",
+        "init-param": {
+          "configGlossary:installationAt": "Philadelphia,PA",
+          "configGlossary:adminEmail": "ksm@pobox.com",
+          "configGlossary:poweredBy": "Cofax",
+          "configGlossary:poweredByIcon": "/images/cofax.gif",
+          "configGlossary:staticPath": "/content/static",
+          "useJSP": "bool"
+        }
+      },
+      {
+        "servlet-name": "cofaxCDS",
+        "servlet-class": "org.cofax.cds.CDSServlet"
+      }
+    ]
+  }
 }

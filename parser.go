@@ -296,28 +296,12 @@ func (p *Parser) Parse(ctx context.Context, src []byte) (*Token, error) {
 	if p.concurrency > 1 {
 		if p.reductionStrategy == ReductionSweep {
 			// Create the final input by joining together the stacks from the previous step.
-			input := NewListOfStacks[Token](p.pools.sweepInput)
-			for i := 0; i < p.concurrency; i++ {
-				iterator := parseResults[i].HeadIterator()
-
-				//Ignore the first token.
-				iterator.Next()
-
-				for token := iterator.Next(); token != nil; token = iterator.Next() {
-					input.Push(*token)
-				}
-			}
+			stack := parseResults[0].Combine(parseResults[1])
+			input := p.CombineSweepLOS(p.pools.sweepInput, parseResults[1:])
 
 			p.concurrency = 1
 
-			var s Stacker
-			if p.ParsingStrategy != COPP {
-				s = NewParserStack(p.pools.sweepStack)
-			} else {
-				s = NewCyclicParserStack(p.pools.sweepStack, p.pools.sweepStateStack, p.MaxRHSLength)
-			}
-
-			go workers[0].parse(ctx, s, input, nil, false, resultCh, errCh)
+			go workers[0].parse(ctx, stack, input, nil, true, resultCh, errCh)
 
 			if err := collectResults(parseResults, resultCh, errCh, 1); err != nil {
 				cancel()
@@ -332,7 +316,6 @@ func (p *Parser) Parse(ctx context.Context, src []byte) (*Token, error) {
 
 					// TODO: Fix CombineNoAlloc
 					stack := stackLeft.Combine(stackRight)
-					// stackLeft.CombineNoAlloc()
 
 					// TODO: I should find a way to make this work without creating a new LOS for the inputs.
 					// Unfortunately the new stack depends on the content of tokensLists[i] since its elements are stored there.

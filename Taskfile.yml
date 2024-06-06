@@ -3,6 +3,7 @@ version: '3'
 vars:
   EXAMPLE: adder
   STRAT: opp
+  FNAME: 'default'
 
 tasks:
   generate:
@@ -13,7 +14,7 @@ tasks:
     vars:
       COUNT: 10
     cmds:
-      - go test github.com/giornetta/gopapageno/examples/{{ .EXAMPLE }}/{{ .STRAT }} -bench . -count={{ .COUNT }} > ./examples/{{ .EXAMPLE }}/benchmark_results/{{ .STRAT }}.txt
+      - go test github.com/giornetta/gopapageno/examples/{{ .EXAMPLE }}/{{ .STRAT }} -bench . -count={{ .COUNT }} > ./examples/{{ .EXAMPLE }}/benchmark_results/{{ .STRAT }}-{{ .FNAME }}.txt
 
   benchmark-all:
     cmds:
