@@ -27,8 +27,8 @@ func ParserPreallocMem(inputSize int, numThreads int) {
 // Non-terminals
 const (
 	E = gopapageno.TokenEmpty + 1 + iota
-	E_S_T
 	NEW_AXIOM
+	S_T
 )
 
 // Terminals
@@ -60,10 +60,10 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 		switch t.Type {
 		case E:
 			sb.WriteString("E")
-		case E_S_T:
-			sb.WriteString("E_S_T")
 		case NEW_AXIOM:
 			sb.WriteString("NEW_AXIOM")
+		case S_T:
+			sb.WriteString("S_T")
 		case gopapageno.TokenEmpty:
 			sb.WriteString("Empty")
 		case LPAR:
@@ -101,25 +101,20 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 	numTerminals := uint16(6)
 	numNonTerminals := uint16(4)
 
-	maxRHSLen := 5
+	maxRHSLen := 3
 	rules := []gopapageno.Rule{
-		{NEW_AXIOM, []gopapageno.TokenType{E_S_T}},
-		{E, []gopapageno.TokenType{E_S_T, PLUS, E}},
-		{E, []gopapageno.TokenType{E_S_T, PLUS, E_S_T}},
-		{E, []gopapageno.TokenType{E_S_T, PLUS, E_S_T, PLUS, E}},
-		{E, []gopapageno.TokenType{E_S_T, PLUS, E_S_T, PLUS, E_S_T}},
-		{E_S_T, []gopapageno.TokenType{LPAR, E, RPAR}},
-		{E_S_T, []gopapageno.TokenType{LPAR, E_S_T, RPAR}},
-		{E_S_T, []gopapageno.TokenType{NUMBER}},
-		{NEW_AXIOM, []gopapageno.TokenType{S}},
+		{E, []gopapageno.TokenType{E, PLUS, E}, gopapageno.RuleCombine},
+		{E, []gopapageno.TokenType{E, PLUS, S_T}, gopapageno.RuleAppendRight},
+		{NEW_AXIOM, []gopapageno.TokenType{S_T}, gopapageno.RuleSimple},
+		{E, []gopapageno.TokenType{S_T, PLUS, E}, gopapageno.RuleAppendLeft},
+		{E, []gopapageno.TokenType{S_T, PLUS, S_T}, gopapageno.RuleCyclic},
+		{S_T, []gopapageno.TokenType{LPAR, E, RPAR}, gopapageno.RuleSimple},
+		{S_T, []gopapageno.TokenType{LPAR, S_T, RPAR}, gopapageno.RuleSimple},
+		{S_T, []gopapageno.TokenType{NUMBER}, gopapageno.RuleSimple},
+		{NEW_AXIOM, []gopapageno.TokenType{S}, gopapageno.RuleSimple},
 	}
-	compressedRules := []uint16{0, 0, 4, 2, 11, 32769, 44, 32770, 67, 32773, 70, 3, 0, 1, 32771, 16, 0, 0, 2, 1, 23, 2, 26, 1, 1, 0, 1, 2, 1, 32771, 31, 0, 0, 2, 1, 38, 2, 41, 1, 3, 0, 1, 4, 0, 0, 0, 2, 1, 51, 2, 59, 0, 0, 1, 32772, 56, 2, 5, 0, 0, 0, 1, 32772, 64, 2, 6, 0, 2, 7, 0, 3, 8, 0}
+	compressedRules := []uint16{0, 0, 5, 1, 13, 3, 31, 32769, 49, 32770, 72, 32773, 75, 0, 0, 1, 32771, 18, 0, 0, 2, 1, 25, 3, 28, 1, 0, 0, 1, 1, 0, 2, 2, 1, 32771, 36, 0, 0, 2, 1, 43, 3, 46, 1, 3, 0, 1, 4, 0, 0, 0, 2, 1, 56, 3, 64, 0, 0, 1, 32772, 61, 3, 5, 0, 0, 0, 1, 32772, 69, 3, 6, 0, 3, 7, 0, 2, 8, 0}
 
-	maxPrefixLen := 4
-	prefixes := [][]gopapageno.TokenType{
-		{E_S_T, PLUS},
-		{E_S_T, PLUS, E_S_T, PLUS},
-	}
 	precMatrix := [][]gopapageno.Precedence{
 		{gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields},
 		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEquals, gopapageno.PrecEmpty},
@@ -133,129 +128,170 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 	}
 
 	fn := func(rule uint16, lhs *gopapageno.Token, rhs []*gopapageno.Token, thread int) {
+		var ruleType gopapageno.RuleType
 		switch rule {
 		case 0:
-			NEW_AXIOM0 := lhs
-			E_S_T1 := rhs[0]
+			ruleType = gopapageno.RuleCombine
 
-			NEW_AXIOM0.Child = E_S_T1
-
-			{
-				NEW_AXIOM0.Value = E_S_T1.Value
-			}
-		case 1:
 			E0 := lhs
-			E_S_T1 := rhs[0]
+			E1 := rhs[0]
 			PLUS2 := rhs[1]
 			E3 := rhs[2]
 
-			E0.Child = E_S_T1
-			E_S_T1.Next = PLUS2
-			PLUS2.Next = E3
+			E0.LastChild.Next = PLUS2
+			PLUS2.Next = E3.Child
+			E0.LastChild = E3.LastChild
 
 			{
 				newValue := parserPools[thread].Get()
-				*newValue = *E_S_T1.Value.(*int64) + *E3.Value.(*int64)
+				*newValue = *E1.Value.(*int64) + *E3.Value.(*int64)
 				E0.Value = newValue
 			}
+			_ = E1
+			_ = PLUS2
+			_ = E3
+		case 1:
+			ruleType = gopapageno.RuleAppendRight
+
+			E0 := lhs
+			E1 := rhs[0]
+			PLUS2 := rhs[1]
+			S_T3 := rhs[2]
+
+			E0.LastChild.Next = PLUS2
+			PLUS2.Next = S_T3
+			E0.LastChild = S_T3
+
+			{
+				newValue := parserPools[thread].Get()
+				*newValue = *E1.Value.(*int64) + *S_T3.Value.(*int64)
+				E0.Value = newValue
+			}
+			_ = E1
+			_ = PLUS2
+			_ = S_T3
 		case 2:
-			E0 := lhs
-			E_S_T1 := rhs[0]
-			PLUS2 := rhs[1]
-			E_S_T3 := rhs[2]
+			ruleType = gopapageno.RuleSimple
 
-			E0.Child = E_S_T1
-			E_S_T1.Next = PLUS2
-			PLUS2.Next = E_S_T3
+			NEW_AXIOM0 := lhs
+			S_T1 := rhs[0]
+
+			NEW_AXIOM0.Child = S_T1
+			NEW_AXIOM0.LastChild = S_T1
 
 			{
-				newValue := parserPools[thread].Get()
-				*newValue = *E_S_T1.Value.(*int64) + *E_S_T3.Value.(*int64)
-				E0.Value = newValue
+				NEW_AXIOM0.Value = S_T1.Value
 			}
+			_ = S_T1
 		case 3:
-			E0 := lhs
-			E_S_T1 := rhs[0]
-			PLUS2 := rhs[1]
-			E_S_T3 := rhs[2]
-			PLUS4 := rhs[3]
-			E5 := rhs[4]
+			ruleType = gopapageno.RuleAppendLeft
 
-			E0.Child = E_S_T1
-			E_S_T1.Next = PLUS2
-			PLUS2.Next = E_S_T3
-			E_S_T3.Next = PLUS4
-			PLUS4.Next = E5
+			E0 := lhs
+			S_T1 := rhs[0]
+			PLUS2 := rhs[1]
+			E3 := rhs[2]
+
+			oldChild := E0
+			E0.Child = S_T1
+			S_T1.Next = PLUS2
+			PLUS2.Next = E3
+			E3.Next = oldChild
 
 			{
 				newValue := parserPools[thread].Get()
-				*newValue = *E_S_T1.Value.(*int64) + *E_S_T3.Value.(*int64)
+				*newValue = *S_T1.Value.(*int64) + *E3.Value.(*int64)
 				E0.Value = newValue
 			}
+			_ = S_T1
+			_ = PLUS2
+			_ = E3
 		case 4:
-			E0 := lhs
-			E_S_T1 := rhs[0]
-			PLUS2 := rhs[1]
-			E_S_T3 := rhs[2]
-			PLUS4 := rhs[3]
-			E_S_T5 := rhs[4]
+			ruleType = gopapageno.RuleCyclic
 
-			E0.Child = E_S_T1
-			E_S_T1.Next = PLUS2
-			PLUS2.Next = E_S_T3
-			E_S_T3.Next = PLUS4
-			PLUS4.Next = E_S_T5
+			E0 := lhs
+			S_T1 := rhs[0]
+			PLUS2 := rhs[1]
+			S_T3 := rhs[2]
+
+			E0.Child = S_T1
+			S_T1.Next = PLUS2
+			PLUS2.Next = S_T3
+			E0.LastChild = S_T3
 
 			{
 				newValue := parserPools[thread].Get()
-				*newValue = *E_S_T1.Value.(*int64) + *E_S_T3.Value.(*int64)
+				*newValue = *S_T1.Value.(*int64) + *S_T3.Value.(*int64)
 				E0.Value = newValue
 			}
+			_ = S_T1
+			_ = PLUS2
+			_ = S_T3
 		case 5:
-			E_S_T0 := lhs
+			ruleType = gopapageno.RuleSimple
+
+			S_T0 := lhs
 			LPAR1 := rhs[0]
 			E2 := rhs[1]
 			RPAR3 := rhs[2]
 
-			E_S_T0.Child = LPAR1
+			S_T0.Child = LPAR1
 			LPAR1.Next = E2
 			E2.Next = RPAR3
+			S_T0.LastChild = RPAR3
 
 			{
-				E_S_T0.Value = E2.Value
+				S_T0.Value = E2.Value
 			}
+			_ = LPAR1
+			_ = E2
+			_ = RPAR3
 		case 6:
-			E_S_T0 := lhs
+			ruleType = gopapageno.RuleSimple
+
+			S_T0 := lhs
 			LPAR1 := rhs[0]
-			E_S_T2 := rhs[1]
+			S_T2 := rhs[1]
 			RPAR3 := rhs[2]
 
-			E_S_T0.Child = LPAR1
-			LPAR1.Next = E_S_T2
-			E_S_T2.Next = RPAR3
+			S_T0.Child = LPAR1
+			LPAR1.Next = S_T2
+			S_T2.Next = RPAR3
+			S_T0.LastChild = RPAR3
 
 			{
-				E_S_T0.Value = E_S_T2.Value
+				S_T0.Value = S_T2.Value
 			}
+			_ = LPAR1
+			_ = S_T2
+			_ = RPAR3
 		case 7:
-			E_S_T0 := lhs
+			ruleType = gopapageno.RuleSimple
+
+			S_T0 := lhs
 			NUMBER1 := rhs[0]
 
-			E_S_T0.Child = NUMBER1
+			S_T0.Child = NUMBER1
+			S_T0.LastChild = NUMBER1
 
 			{
-				E_S_T0.Value = NUMBER1.Value
+				S_T0.Value = NUMBER1.Value
 			}
+			_ = NUMBER1
 		case 8:
+			ruleType = gopapageno.RuleSimple
+
 			NEW_AXIOM0 := lhs
 			S1 := rhs[0]
 
 			NEW_AXIOM0.Child = S1
+			NEW_AXIOM0.LastChild = S1
 
 			{
 				NEW_AXIOM0.Value = S1.Value
 			}
+			_ = S1
 		}
+		_ = ruleType
 	}
 
 	return gopapageno.NewParser(
@@ -265,8 +301,6 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 		maxRHSLen,
 		rules,
 		compressedRules,
-		prefixes,
-		maxPrefixLen,
 		precMatrix,
 		bitPackedMatrix,
 		fn,

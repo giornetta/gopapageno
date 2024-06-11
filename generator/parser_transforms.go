@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"github.com/giornetta/gopapageno"
 	"strings"
 )
 
@@ -73,47 +74,11 @@ func (p *parserDescriptor) deleteRepeatedRHS() {
 	// Create a dictionary that will contain the newly added rules.
 	newRulesDict := newRulesDictionary(dictRules.Len())
 
-	// Range over the current rules, check if the RHS contains any nonterminal
-	// If it doesn't (i.e. it is a *terminal rule*), add it to the new rules dictionary and remove it from the old dict.
-	copyDictRules := dictRules.Copy()
-	for i, _ := range copyDictRules.KeysRHS {
-		keyRHS := copyDictRules.KeysRHS[i]
-		valueLHS := copyDictRules.ValuesLHS[i]
-		semAction := copyDictRules.SemActions[i]
+	p.extractTerminalRules(dictRules, newRulesDict)
 
-		isTerminalRule := true
-		for _, token := range keyRHS {
-			if p.nonterminals.Contains(token) {
-				isTerminalRule = false
-				break
-			}
-		}
-
-		if isTerminalRule {
-			for _, curLHS := range valueLHS.Iter {
-				newRulesDict.Add(&rule{
-					LHS:    curLHS,
-					RHS:    keyRHS,
-					Action: *semAction,
-				})
-			}
-
-			dictRules.Remove(keyRHS)
-		}
-	}
-
-	// Delete copy rules from the dictionary
-	// TODO: Add explanation of why this is used from the Papers.
 	p.deleteCopyRules(dictRules)
 
 	V := dictRules.LHSSets()
-
-	// Replace token names in prefixes
-	newPrefixes := make([][]string, 0)
-	for _, prefix := range p.prefixes {
-		newPrefixes = append(newPrefixes, p.replaceTokenNames(prefix, V)...)
-	}
-	p.prefixes = newPrefixes
 
 	dictRulesForIteration := newRulesDictionary(0)
 	loop := true
@@ -123,8 +88,9 @@ func (p *parserDescriptor) deleteRepeatedRHS() {
 			keyRHS := dictRules.KeysRHS[i]
 			valueLHS := dictRules.ValuesLHS[i]
 			semAction := dictRules.SemActions[i]
+			isPrefix := dictRules.Types[i]
 
-			addNewRules(dictRulesForIteration, p, keyRHS, valueLHS, semAction, V)
+			addNewRules(dictRulesForIteration, p, keyRHS, valueLHS, semAction, isPrefix, V)
 		}
 
 		valueLHSSets := dictRulesForIteration.LHSSets()
@@ -148,12 +114,14 @@ func (p *parserDescriptor) deleteRepeatedRHS() {
 			keyRHS := dictRulesForIteration.KeysRHS[i]
 			valueLHS := dictRulesForIteration.ValuesLHS[i]
 			semAction := dictRulesForIteration.SemActions[i]
+			isPrefix := dictRulesForIteration.Types[i]
 
 			for _, curLHS := range valueLHS.Iter {
 				newRulesDict.Add(&rule{
 					LHS:    curLHS,
 					RHS:    keyRHS,
 					Action: *semAction,
+					Type:   isPrefix,
 				})
 			}
 		}
@@ -203,8 +171,9 @@ func (p *parserDescriptor) deleteRepeatedRHS() {
 		keyRHS := newRulesDict.KeysRHS[i]
 		valueLHS := newRulesDict.ValuesLHS[i]
 		semAction := newRulesDict.SemActions[i]
+		isPrefix := newRulesDict.Types[i]
 
-		newRules = append(newRules, rule{strings.Join(valueLHS.Slice(), "_"), keyRHS, *semAction})
+		newRules = append(newRules, rule{strings.Join(valueLHS.Slice(), "_"), keyRHS, *semAction, isPrefix})
 	}
 
 	p.rules = newRules
@@ -212,6 +181,39 @@ func (p *parserDescriptor) deleteRepeatedRHS() {
 	p.inferTokens()
 
 	p.axiom = newAxiom
+}
+
+func (p *parserDescriptor) extractTerminalRules(dictRules *rulesDictionary, newRulesDict *rulesDictionary) {
+	// Range over the current rules, check if the RHS contains any nonterminal
+	// If it doesn't (i.e. it is a *terminal rule*), add it to the new rules dictionary and remove it from the old dict.
+	dictCopy := dictRules.Copy()
+	for i, _ := range dictCopy.KeysRHS {
+		keyRHS := dictCopy.KeysRHS[i]
+		valueLHS := dictCopy.ValuesLHS[i]
+		semAction := dictCopy.SemActions[i]
+		isPrefix := dictCopy.Types[i]
+
+		isTerminalRule := true
+		for _, token := range keyRHS {
+			if p.nonterminals.Contains(token) {
+				isTerminalRule = false
+				break
+			}
+		}
+
+		if isTerminalRule {
+			for _, curLHS := range valueLHS.Iter {
+				newRulesDict.Add(&rule{
+					LHS:    curLHS,
+					RHS:    keyRHS,
+					Action: *semAction,
+					Type:   isPrefix,
+				})
+			}
+
+			dictRules.Remove(keyRHS)
+		}
+	}
 }
 
 func (p *parserDescriptor) replaceTokenNames(keyRHS []string, newNonterminals []*set[string]) [][]string {
@@ -255,7 +257,7 @@ func (p *parserDescriptor) replaceTokenNames(keyRHS []string, newNonterminals []
 }
 
 func addNewRules(dict *rulesDictionary, p *parserDescriptor,
-	keyRHS []string, valueLHS *set[string], semAction *string, newNonterminals []*set[string]) {
+	keyRHS []string, valueLHS *set[string], semAction *string, ruleType gopapageno.RuleType, newNonterminals []*set[string]) {
 
 	newRuleRHS := p.replaceTokenNames(keyRHS, newNonterminals)
 
@@ -265,6 +267,7 @@ func addNewRules(dict *rulesDictionary, p *parserDescriptor,
 				LHS:    lhs,
 				RHS:    rhs,
 				Action: *semAction,
+				Type:   ruleType,
 			})
 		}
 

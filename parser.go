@@ -12,11 +12,6 @@ var (
 	discardLogger = log.New(io.Discard, "", 0)
 )
 
-type Rule struct {
-	Lhs TokenType
-	Rhs []TokenType
-}
-
 type Stacker interface {
 	HeadIterator() *ParserStackIterator
 	Combine(o Stacker) Stacker
@@ -173,7 +168,6 @@ func NewParser(
 	lexer *Lexer,
 	numTerminals uint16, numNonterminals uint16, maxRHSLength int,
 	rules []Rule, compressedRules []uint16,
-	prefixes [][]TokenType, maxPrefixLength int,
 	precedenceMatrix [][]Precedence, bitPackedPrecedenceMatrix []uint64,
 	fn ParserFunc,
 	strategy ParsingStrategy,
@@ -186,8 +180,6 @@ func NewParser(
 		MaxRHSLength:              maxRHSLength,
 		Rules:                     rules,
 		CompressedRules:           compressedRules,
-		Prefixes:                  prefixes,
-		MaxPrefixLength:           maxPrefixLength,
 		PrecedenceMatrix:          precedenceMatrix,
 		BitPackedPrecedenceMatrix: bitPackedPrecedenceMatrix,
 		Func:                      fn,

@@ -1,6 +1,6 @@
 goos: windows
 goarch: amd64
-pkg: github.com/giornetta/gopapageno/examples/adder/
+pkg: github.com/giornetta/gopapageno/examples/adder
 cpu: AMD Ryzen 5 5600 6-Core Processor              
 BenchmarkParse/10MB.txt/1T-12         	       3	 367575167 ns/op
 BenchmarkParse/10MB.txt/1T-12         	       3	 351574133 ns/op
@@ -103,4 +103,4 @@ BenchmarkParse/1MB.txt/12T-12         	      15	  76375387 ns/op
 BenchmarkParse/1MB.txt/12T-12         	      14	  76030943 ns/op
 BenchmarkParse/1MB.txt/12T-12         	      15	  75249340 ns/op
 PASS
-ok  	github.com/giornetta/gopapageno/examples/adder/	181.692s
+ok  	github.com/giornetta/gopapageno/examples/adder	181.692s

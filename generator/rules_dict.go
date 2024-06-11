@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"github.com/giornetta/gopapageno"
 	"slices"
 )
 
@@ -11,13 +12,16 @@ type rulesDictionary struct {
 
 	ValuesLHS  []*set[string]
 	SemActions []*string
+	Types      []gopapageno.RuleType
 }
 
 func newRulesDictionary(capacity int) *rulesDictionary {
 	return &rulesDictionary{
 		KeysRHS:    make([][]string, 0, capacity),
 		ValuesLHS:  make([]*set[string], 0, capacity),
-		SemActions: make([]*string, 0, capacity)}
+		SemActions: make([]*string, 0, capacity),
+		Types:      make([]gopapageno.RuleType, 0, capacity),
+	}
 }
 
 func (d *rulesDictionary) Add(r *rule) {
@@ -35,6 +39,7 @@ func (d *rulesDictionary) Add(r *rule) {
 	d.ValuesLHS[len(d.ValuesLHS)-1].Add(r.LHS)
 
 	d.SemActions = append(d.SemActions, &r.Action)
+	d.Types = append(d.Types, r.Type)
 }
 
 func (d *rulesDictionary) Remove(rhs []string) {
@@ -43,6 +48,7 @@ func (d *rulesDictionary) Remove(rhs []string) {
 			d.KeysRHS = append(d.KeysRHS[:i], d.KeysRHS[i+1:]...)
 			d.ValuesLHS = append(d.ValuesLHS[:i], d.ValuesLHS[i+1:]...)
 			d.SemActions = append(d.SemActions[:i], d.SemActions[i+1:]...)
+			d.Types = append(d.Types[:i], d.Types[i+1:]...)
 		}
 	}
 }
@@ -59,8 +65,8 @@ func (d *rulesDictionary) Copy() *rulesDictionary {
 		copy(newDict.KeysRHS[i], d.KeysRHS[i])
 
 		newDict.ValuesLHS = append(newDict.ValuesLHS, d.ValuesLHS[i].Copy())
-
 		newDict.SemActions = append(newDict.SemActions, d.SemActions[i])
+		newDict.Types = append(newDict.Types, d.Types[i])
 	}
 
 	return newDict

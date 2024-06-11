@@ -3,7 +3,6 @@ package gopapageno
 import (
 	"context"
 	"fmt"
-	"slices"
 )
 
 // parseCyclic implements COPP.
@@ -129,31 +128,45 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 			// Append input character to the current construction.
 			state.Current = append(state.Current, inputToken)
 
-			prefixTokens = prefixTokens[:0]
-			for i := range len(state.Current) {
-				prefixTokens = append(prefixTokens, state.Current[i].Type)
+			rhs = rhs[:0]
+			for i := range len(state.Current) - 1 {
+				rhs = append(rhs, state.Current[i].Type)
 			}
+			rhsTokens = state.Current[:len(state.Current)-1]
 
 			// If the construction has a suffix which is a double occurrence of a string produced by a Kleene-+.
-			for _, prefix := range w.parser.Prefixes {
-				if slices.Equal(prefix, prefixTokens[:len(state.Current)]) {
-					// Try this out: parse as rhs all tokens of the prefix except last one, and substitute the resulting lhs to them.
-					rhsTokens = state.Current[:len(state.Current)-1]
-					rhs = prefix[:len(state.Current)-1]
-
-					lhsToken, err := w.match(rhs, rhsTokens, true)
-					if err != nil {
-						errCh <- fmt.Errorf("worker %d could not match prefix: %v", w.id, err)
-						return
-					}
-
-					// Reset state
-					state.Current = state.Current[:2]
-					state.Current[0] = lhsToken
-					state.Current[1] = inputToken
-
-					break
+			//for _, prefix := range w.parser.Prefixes {
+			//	if slices.Equal(prefix, prefixTokens[:len(state.Current)]) {
+			//		// Try this out: parse as rhs all tokens of the prefix except last one, and substitute the resulting lhs to them.
+			//		rhsTokens = state.Current[:len(state.Current)-1]
+			//		rhs = prefix[:len(state.Current)-1]
+			//
+			//		lhsToken, err := w.match(rhs, rhsTokens, true)
+			//		if err != nil {
+			//			errCh <- fmt.Errorf("worker %d could not match prefix: %v", w.id, err)
+			//			return
+			//		}
+			//
+			//		// Reset state
+			//		state.Current = state.Current[:2]
+			//		state.Current[0] = lhsToken
+			//		state.Current[1] = inputToken
+			//
+			//		break
+			//	}
+			//
+			lhs, ruleNum := w.parser.findMatch(rhs)
+			if lhs != TokenEmpty && w.parser.Rules[ruleNum].Type != RuleSimple {
+				lhsToken, err := w.match(rhs[:len(state.Current)-1], rhsTokens[:len(state.Current)-1], true)
+				if err != nil {
+					errCh <- fmt.Errorf("worker %d could not match: %v", w.id, err)
+					return
 				}
+
+				// Reset state
+				state.Current = state.Current[:2]
+				state.Current[0] = lhsToken
+				state.Current[1] = inputToken
 			}
 
 			// Replace the topmost token on the stack, setting its precedence to Yield.
@@ -239,15 +252,26 @@ func (w *parserWorker) match(rhs []TokenType, rhsTokens []*Token, isPrefix bool)
 		return nil, fmt.Errorf("could not find match for rhs %v", rhs)
 	}
 
-	if isPrefix {
-		lhs = rhs[0]
-	}
+	lhsToken := rhsTokens[0]
 
-	lhsToken := w.ntPool.Get()
-	lhsToken.Type = lhs
+	ruleType := w.parser.Rules[ruleNum].Type
+	if ruleType == RuleSimple || ruleType == RuleCyclic {
+		lhsToken = w.ntPool.Get()
+		lhsToken.Type = lhs
+	}
 
 	//Execute the semantic action
 	w.parser.Func(ruleNum, lhsToken, rhsTokens, w.id)
 
 	return lhsToken, nil
+}
+
+func (w *parserWorker) getNonterminal(rhsTokens []*Token) *Token {
+	// Try to find the token associated to the leftmost token.
+	lhsToken, ok := w.producedTokens[rhsTokens[0]]
+	if !ok {
+		lhsToken = w.ntPool.Get()
+	}
+
+	return lhsToken
 }

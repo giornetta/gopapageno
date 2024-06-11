@@ -105,6 +105,7 @@ func parseRules(input string, strategy gopapageno.ParsingStrategy) ([]rule, [][]
 	var lhs string
 	for pos < len(input) {
 		var rule rule
+		rule.Type = gopapageno.RuleSimple
 
 		// If we're reading an "alternate rule"
 		if lhs == "" {
@@ -147,17 +148,27 @@ func parseRules(input string, strategy gopapageno.ParsingStrategy) ([]rule, [][]
 						return nil, nil, fmt.Errorf("rule %s is missing an alternative body for lhs", lhs)
 					}
 
-					// Add each produced alternative to every rhs found so far.
+					//// Add each produced alternative to every rhs found so far.
 					newRightSides := make([][]string, len(rightSides)*len(alternatives))
 					for i := 0; i < len(rightSides); i++ {
+						//newRightSides[i*len(alternatives)] = append(rightSides[i], flattened...)
+						//
+						//newRightSides[i*len(alternatives)+1] = append(rightSides[i], lhs)
+						//newRightSides[i*len(alternatives)+1] = append(newRightSides[i*len(alternatives)+1], flattened[1:]...)
+						//
+						//newRightSides[i*len(alternatives)+2] = append(rightSides[i], lhs)
+						//newRightSides[i*len(alternatives)+2] = append(newRightSides[i*len(alternatives)+2], flattened[1:]...)
+
 						for j := 0; j < len(alternatives); j++ {
 							newRightSides[i*len(alternatives)+j] = append(rightSides[i], alternatives[j]...)
 						}
-
 					}
 					rightSides = newRightSides
 
-					prefixes = append(prefixes, alternatives...)
+					//prefixes = append(prefixes, alternatives...)
+
+					//rule.RHS = append(rule.RHS, flattened...)
+					rule.Type = gopapageno.RuleCyclic
 				} else {
 					// Get a simple identifier
 					rhsToken = getIdentifier(input, &pos)
@@ -168,14 +179,16 @@ func parseRules(input string, strategy gopapageno.ParsingStrategy) ([]rule, [][]
 					if len(rightSides) == 1 {
 						rightSides[0] = append(rightSides[0], rhsToken)
 					} else {
-						newRightSides := make([][]string, len(rightSides)*2)
+						//newRightSides := make([][]string, len(rightSides)*2)
 						for i := 0; i < len(rightSides); i++ {
-							newRightSides[i] = append(rightSides[i], lhs)
-							newRightSides[i + +len(rightSides)] = append(rightSides[i], rhsToken)
-
+							rightSides[i] = append(rightSides[i], rhsToken)
+							//rightSides[i+len(rightSides)] = append(rightSides[i], rhsToken)
+							//
 						}
-						rightSides = newRightSides
+						//rightSides[len(rightSides)-1] = append(rightSides[len(rightSides)-1], lhs)
+						//rightSides = newRightSides
 					}
+					//rule.RHS = append(rule.RHS, rhsToken)
 				}
 			}
 
@@ -186,17 +199,32 @@ func parseRules(input string, strategy gopapageno.ParsingStrategy) ([]rule, [][]
 		rule.Action = semFun
 
 		if strategy != gopapageno.COPP {
+			rule.Type = gopapageno.RuleSimple
 			rules = append(rules, rule)
 		} else {
 			// rules = append(rules, rule)
-			for _, rhs := range rightSides {
+
+			for i, rhs := range rightSides {
 				rule.RHS = rhs
+
+				if i == 0 {
+					if len(rightSides) == 1 {
+						rule.Type = gopapageno.RuleSimple
+					} else {
+						rule.Type = gopapageno.RuleCyclic
+					}
+				} else {
+					rule.Type = gopapageno.RulePrefix
+				}
+
 				rules = append(rules, rule)
 			}
 		}
+		//rules = append(rules, rule)
 
 		skipSpaces(input, &pos)
 
+		// rule.Type = gopapageno.RuleSimple
 		if input[pos] == ';' {
 			// We're done with rules with this lhs
 			// Reset current lhs
@@ -234,9 +262,76 @@ func (p *parserDescriptor) compile(opts *Options) error {
 	}
 	p.precMatrix = precMatrix
 
+	if opts.Strategy == gopapageno.COPP {
+		p.makeCyclicRules()
+	}
+
 	p.sortRulesByRHS()
 
 	return nil
+}
+
+func (p *parserDescriptor) makeCyclicRules() {
+	rules := make([]rule, 0)
+
+	for _, r := range p.rules {
+		if r.Type == gopapageno.RuleSimple {
+			rules = append(rules, r)
+			continue
+		}
+
+		if r.Type == gopapageno.RulePrefix {
+			continue
+		}
+
+		// E -> T + T
+		rules = append(rules, r)
+
+		// E -> T + E
+		rhs := make([]string, len(r.RHS))
+		for i := 0; i < len(rhs)-1; i++ {
+			rhs[i] = r.RHS[i]
+		}
+		rhs[len(rhs)-1] = r.LHS
+
+		rules = append(rules, rule{
+			LHS:    r.LHS,
+			RHS:    rhs,
+			Action: r.Action,
+			Type:   gopapageno.RuleAppendLeft,
+		})
+
+		// E -> E + T
+		rhs = make([]string, len(r.RHS))
+		rhs[0] = r.LHS
+		for i := 1; i < len(rhs); i++ {
+			rhs[i] = r.RHS[i]
+		}
+
+		rules = append(rules, rule{
+			LHS:    r.LHS,
+			RHS:    rhs,
+			Action: r.Action,
+			Type:   gopapageno.RuleAppendRight,
+		})
+
+		// E -> E + E
+		rhs = make([]string, len(r.RHS))
+		rhs[0] = r.LHS
+		for i := 1; i < len(rhs)-1; i++ {
+			rhs[i] = r.RHS[i]
+		}
+		rhs[len(rhs)-1] = r.LHS
+
+		rules = append(rules, rule{
+			LHS:    r.LHS,
+			RHS:    rhs,
+			Action: r.Action,
+			Type:   gopapageno.RuleCombine,
+		})
+	}
+
+	p.rules = rules
 }
 
 // inferTokens populates the two sets nonterminals and terminals
@@ -304,7 +399,7 @@ func (p *parserDescriptor) emit(f io.Writer, opts *Options) {
 	fmt.Fprintf(f, "\tmaxRHSLen := %d\n", maxRHSLen)
 	fmt.Fprint(f, "\trules := []gopapageno.Rule{\n")
 	for _, rule := range p.rules {
-		fmt.Fprintf(f, "\t\t{%s, []gopapageno.TokenType{%s}},\n", rule.LHS, strings.Join(rule.RHS, ", "))
+		fmt.Fprintf(f, "\t\t{%s, []gopapageno.TokenType{%s}, gopapageno.%s},\n", rule.LHS, strings.Join(rule.RHS, ", "), rule.Type)
 	}
 	fmt.Fprintf(f, "\t}\n")
 
@@ -325,22 +420,22 @@ func (p *parserDescriptor) emit(f io.Writer, opts *Options) {
 	}
 	fmt.Fprintf(f, "\t}\n\n")
 
-	/*****************
-	 * COPP Prefixes *
-	 *****************/
-	maxPrefixLen := 0
-	for _, prefix := range p.prefixes {
-		if len(prefix) > maxPrefixLen {
-			maxPrefixLen = len(prefix)
-		}
-	}
-
-	fmt.Fprintf(f, "\tmaxPrefixLen := %d\n", maxPrefixLen)
-	fmt.Fprint(f, "\tprefixes := [][]gopapageno.TokenType{\n")
-	for _, prefix := range p.prefixes {
-		fmt.Fprintf(f, "\t\t{%s},\n", strings.Join(prefix, ", "))
-	}
-	fmt.Fprintf(f, "\t}\n")
+	///*****************
+	// * COPP Prefixes *
+	// *****************/
+	//maxPrefixLen := 0
+	//for _, prefix := range p.prefixes {
+	//	if len(prefix) > maxPrefixLen {
+	//		maxPrefixLen = len(prefix)
+	//	}
+	//}
+	//
+	//fmt.Fprintf(f, "\tmaxPrefixLen := %d\n", maxPrefixLen)
+	//fmt.Fprint(f, "\tprefixes := [][]gopapageno.TokenType{\n")
+	//for _, prefix := range p.prefixes {
+	//	fmt.Fprintf(f, "\t\t{%s},\n", strings.Join(prefix, ", "))
+	//}
+	//fmt.Fprintf(f, "\t}\n")
 
 	/*********************
 	 * Precedence Matrix *
@@ -370,21 +465,80 @@ func (p *parserDescriptor) emit(f io.Writer, opts *Options) {
 	/*******************
 	 * Parser Function *
 	 *******************/
+	p.emitParserFunctions(f)
+
+	/********************
+	 * Construct Parser *
+	 ********************/
+	fmt.Fprintf(f, "\treturn gopapageno.NewParser(\n")
+	fmt.Fprintf(f, "\t\tNewLexer(),\n")
+	fmt.Fprintf(f, "\t\tnumTerminals,\n\t\tnumNonTerminals,\n")
+	fmt.Fprintf(f, "\t\tmaxRHSLen,\n")
+	fmt.Fprintf(f, "\t\trules,\n")
+	fmt.Fprintf(f, "\t\tcompressedRules,\n")
+	fmt.Fprintf(f, "\t\tprecMatrix,\n")
+	fmt.Fprintf(f, "\t\tbitPackedMatrix,\n")
+	fmt.Fprintf(f, "\t\tfn,\n")
+	fmt.Fprintf(f, "\t\tgopapageno.%s,\n", opts.Strategy)
+	fmt.Fprintf(f, "\t\topts...)\n}\n\n")
+}
+
+func (p *parserDescriptor) emitParserFunctions(f io.Writer) {
 	fmt.Fprintf(f, "\tfn := func(rule uint16, lhs *gopapageno.Token, rhs []*gopapageno.Token, thread int){\n")
+	fmt.Fprintf(f, "\t\tvar ruleType gopapageno.RuleType\n")
 	fmt.Fprintf(f, "\t\tswitch rule {\n")
 	for i, rule := range p.rules {
 		fmt.Fprintf(f, "\t\tcase %d:\n", i)
+		fmt.Fprintf(f, "\t\t\truleType = gopapageno.%s\n\n", rule.Type)
 		fmt.Fprintf(f, "\t\t\t%s0 := lhs\n", rule.LHS)
 		for j, _ := range rule.RHS {
 			fmt.Fprintf(f, "\t\t\t%s%d := rhs[%d]\n", rule.RHS[j], j+1, j)
 		}
 		fmt.Fprintf(f, "\n")
 
-		if len(rule.RHS) > 0 {
+		switch rule.Type {
+		case gopapageno.RuleSimple, gopapageno.RuleCyclic:
+			if len(rule.RHS) > 0 {
+				fmt.Fprintf(f, "\t\t\t%s0.Child = %s1\n", rule.LHS, rule.RHS[0])
+				for j := 0; j < len(rule.RHS)-1; j++ {
+					fmt.Fprintf(f, "\t\t\t%s%d.Next = %s%d\n", rule.RHS[j], j+1, rule.RHS[j+1], j+2)
+				}
+				fmt.Fprintf(f, "\t\t\t%s0.LastChild = %s%d\n", rule.LHS, rule.RHS[len(rule.RHS)-1], len(rule.RHS))
+			}
+		case gopapageno.RuleAppendLeft:
+			fmt.Fprintf(f, "\t\t\toldChild := %s0\n", rule.LHS)
 			fmt.Fprintf(f, "\t\t\t%s0.Child = %s1\n", rule.LHS, rule.RHS[0])
 			for j := 0; j < len(rule.RHS)-1; j++ {
 				fmt.Fprintf(f, "\t\t\t%s%d.Next = %s%d\n", rule.RHS[j], j+1, rule.RHS[j+1], j+2)
 			}
+			fmt.Fprintf(f, "\t\t\t%s%d.Next = oldChild\n", rule.RHS[len(rule.RHS)-1], len(rule.RHS))
+		case gopapageno.RuleAppendRight:
+			//fmt.Fprintf(f, "\t\t\tlastChild := %s0.Child\n", rule.LHS)
+			//fmt.Fprintf(f, "\t\t\tfor t := lastChild.Next; t != nil; t = t.Next {\n")
+			//fmt.Fprintf(f, "\t\t\t\tlastChild = t\n\t\t\t}\n\n")
+			//fmt.Fprintf(f, "\t\t\tlastChild.Next = %s2\n", rule.RHS[1])
+			fmt.Fprintf(f, "\t\t\t%s0.LastChild.Next = %s2\n", rule.LHS, rule.RHS[1])
+
+			for j := 1; j < len(rule.RHS)-1; j++ {
+				fmt.Fprintf(f, "\t\t\t%s%d.Next = %s%d\n", rule.RHS[j], j+1, rule.RHS[j+1], j+2)
+			}
+
+			fmt.Fprintf(f, "\t\t\t%s0.LastChild = %s%d\n", rule.LHS, rule.RHS[len(rule.RHS)-1], len(rule.RHS))
+		case gopapageno.RuleCombine:
+			//fmt.Fprintf(f, "\t\t\tlastChild := %s0.Child\n", rule.LHS)
+			//fmt.Fprintf(f, "\t\t\tfor t := lastChild.Next; t != nil; t = t.Next {\n")
+			//fmt.Fprintf(f, "\t\t\t\tlastChild = t\n\t\t\t}\n\n")
+			//fmt.Fprintf(f, "\t\t\tlastChild.Next = %s2\n", rule.RHS[1])
+			fmt.Fprintf(f, "\t\t\t%s0.LastChild.Next = %s2\n", rule.LHS, rule.RHS[1])
+
+			l := len(rule.RHS)
+			for j := 1; j < l-2; j++ {
+				fmt.Fprintf(f, "\t\t\t%s%d.Next = %s%d\n", rule.RHS[j], j+1, rule.RHS[j+1], j+2)
+			}
+
+			fmt.Fprintf(f, "\t\t\t%s%d.Next = %s%d.Child\n", rule.RHS[l-2], l-1, rule.RHS[l-1], l)
+
+			fmt.Fprintf(f, "\t\t\t%s0.LastChild = %s%d.LastChild\n", rule.LHS, rule.RHS[len(rule.RHS)-1], len(rule.RHS))
 		}
 		fmt.Fprintf(f, "\n")
 
@@ -399,26 +553,14 @@ func (p *parserDescriptor) emit(f io.Writer, opts *Options) {
 			fmt.Fprintf(f, line)
 			fmt.Fprintf(f, "\n")
 		}
+
+		for j, _ := range rule.RHS {
+			fmt.Fprintf(f, "\t\t\t_ = %s%d\n", rule.RHS[j], j+1)
+		}
 	}
 	fmt.Fprintf(f, "\t\t}\n")
+	fmt.Fprintf(f, "\t\t_ = ruleType\n")
 	fmt.Fprintf(f, "\t}\n\n")
-
-	/********************
-	 * Construct Parser *
-	 ********************/
-	fmt.Fprintf(f, "\treturn gopapageno.NewParser(\n")
-	fmt.Fprintf(f, "\t\tNewLexer(),\n")
-	fmt.Fprintf(f, "\t\tnumTerminals,\n\t\tnumNonTerminals,\n")
-	fmt.Fprintf(f, "\t\tmaxRHSLen,\n")
-	fmt.Fprintf(f, "\t\trules,\n")
-	fmt.Fprintf(f, "\t\tcompressedRules,\n")
-	fmt.Fprintf(f, "\t\tprefixes,\n")
-	fmt.Fprintf(f, "\t\tmaxPrefixLen,\n")
-	fmt.Fprintf(f, "\t\tprecMatrix,\n")
-	fmt.Fprintf(f, "\t\tbitPackedMatrix,\n")
-	fmt.Fprintf(f, "\t\tfn,\n")
-	fmt.Fprintf(f, "\t\tgopapageno.%s,\n", opts.Strategy)
-	fmt.Fprintf(f, "\t\topts...)\n}\n\n")
 }
 
 func (p *parserDescriptor) emitTokens(f io.Writer) {

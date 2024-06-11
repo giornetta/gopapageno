@@ -11,6 +11,9 @@ type parserWorker struct {
 	id int
 
 	ntPool *Pool[Token]
+
+	// producedTokens maps the rightmost rhs-token of a prefix production with its parent.
+	producedTokens map[*Token]*Token
 }
 
 func (w *parserWorker) parse(ctx context.Context, stack Stacker, tokens *ListOfStacks[Token], nextToken *Token, finalPass bool, resultCh chan<- parseResult, errCh chan<- error) {

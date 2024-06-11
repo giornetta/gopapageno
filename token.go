@@ -3,6 +3,7 @@ package gopapageno
 import (
 	"fmt"
 	"strings"
+	"sync"
 )
 
 type Token struct {
@@ -11,8 +12,9 @@ type Token struct {
 
 	Value any
 
-	Next  *Token
-	Child *Token
+	Next      *Token
+	Child     *Token
+	LastChild *Token
 }
 
 func (t *Token) IsTerminal() bool {
@@ -36,46 +38,57 @@ func (t TokenType) Value() uint16 {
 
 // Height computes the height of the AST rooted in `t`.
 // It can be used as an evaluation metric for tree-balance, as left/right-skewed trees will have a bigger height compared to balanced trees.
-func (t *Token) Height() int {
-	if t == nil {
-		return 0
-	}
-
-	type StackFrame struct {
-		node  *Token
+func (root *Token) Height() int {
+	// Helper struct to hold a token and its depth
+	type TokenWithDepth struct {
+		token *Token
 		depth int
 	}
 
-	maxDepth := 0
-	stack := []StackFrame{{t, 1}}
+	if root == nil {
+		return -1
+	}
 
-	for len(stack) > 0 {
-		frame := stack[len(stack)-1]
-		stack = stack[:len(stack)-1]
+	var maxHeight int
+	var wg sync.WaitGroup
+	resultChan := make(chan int)
 
-		if frame.node != nil {
-			maxDepth = max(maxDepth, frame.depth)
-			stack = append(stack, StackFrame{frame.node.Child, frame.depth + 1})
-			stack = append(stack, StackFrame{frame.node.Next, frame.depth})
+	// Launch the initial goroutine
+	wg.Add(1)
+	go bfs(root, 0, &wg, resultChan)
+
+	// Wait for all goroutines to finish
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
+
+	// Find the maximum height from the results
+	for height := range resultChan {
+		if height > maxHeight {
+			maxHeight = height
 		}
 	}
 
-	return maxDepth
-	//var rec func(t *Token, root bool) int
-	//
-	//rec = func(t *Token, root bool) int {
-	//	if t == nil {
-	//		return 0
-	//	}
-	//
-	//	if root {
-	//		return 1 + rec(t.Child, false)
-	//	} else {
-	//		return max(1+rec(t.Child, false), rec(t.Next, false))
-	//	}
-	//}
-	//
-	//return rec(t, true)
+	return maxHeight
+}
+func bfs(node *Token, depth int, wg *sync.WaitGroup, resultChan chan int) {
+	defer wg.Done()
+
+	// Send the current depth to the result channel
+	resultChan <- depth
+
+	// Process the child node
+	if node.Child != nil {
+		wg.Add(1)
+		go bfs(node.Child, depth+1, wg, resultChan)
+	}
+
+	// Process the next sibling node
+	if node.Next != nil {
+		wg.Add(1)
+		go bfs(node.Next, depth, wg, resultChan)
+	}
 }
 
 // Size returns the number of tokens in the AST rooted in `t`.
