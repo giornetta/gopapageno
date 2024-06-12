@@ -13,37 +13,30 @@ import (
 
 const baseFolder = "../data/"
 
-//const (
-//	fileMB   = "1MB.txt"
-//	file10MB = "10MB.txt"
-//)
-//
-//const (
-//	resultMB   = (1 + 2 + 3 + 11 + 222 + 3333 + (1 + 2)) * 26000
-//	result10MB = (1 + 2 + 3 + 11 + 222 + 3333 + (1 + 2)) * 260000
-//)
-//
-//var table = map[string]int64{
-//	fileMB:   resultMB,
-//	file10MB: result10MB,
-//}
+const (
+	file1000 = "generated-1000.json"
+	file2000 = "generated-2000.json"
+)
 
-var table = map[string]struct{}{}
+var table = []string{
+	file1000,
+	file2000,
+}
 
 func BenchmarkParse(b *testing.B) {
 	threads := runtime.NumCPU()
 
-	for filename, expected := range table {
+	for _, filename := range table {
 		for c := 1; c <= threads; c = min(c*2, threads) {
 			b.Run(fmt.Sprintf("%s/%dT", filename, c), func(b *testing.B) {
 				p := NewParser(
 					gopapageno.WithConcurrency(c),
 					gopapageno.WithPreallocFunc(ParserPreallocMem),
-					gopapageno.WithReductionStrategy(gopapageno.ReductionParallel))
+					gopapageno.WithReductionStrategy(gopapageno.ReductionSweep))
 
 				b.ResetTimer()
 
-				benchmark.Run[struct{}](b, p, path.Join(baseFolder, filename), expected)
+				benchmark.Run(b, p, path.Join(baseFolder, filename))
 			})
 
 			runtime.GC()
