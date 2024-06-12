@@ -9,18 +9,8 @@ import (
 func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack, tokens *ListOfStacks[Token], nextToken *Token, finalPass bool, resultCh chan<- parseResult, errCh chan<- error) {
 	tokensIt := tokens.HeadIterator()
 
-	var state CyclicAutomataState
-	if stack.State.Current == nil {
-		state = CyclicAutomataState{
-			Current:  make([]*Token, 0, w.parser.MaxRHSLength),
-			Previous: make([]*Token, 0, w.parser.MaxRHSLength),
-		}
-	} else {
-		state = *stack.State
-	}
-
-	prefixTokens := make([]TokenType, w.parser.MaxRHSLength)
-	prefix := make([]*Token, w.parser.MaxRHSLength)
+	prefix := make([]TokenType, w.parser.MaxRHSLength)
+	prefixTokens := make([]*Token, w.parser.MaxRHSLength)
 
 	// If the thread is the first, push a # onto the stack
 	// Otherwise, push the first inputToken onto the stack
@@ -29,13 +19,11 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 			stack.Push(&Token{
 				Type:       TokenTerm,
 				Precedence: PrecEmpty,
-			}, state)
+			})
 		} else {
 			t := tokensIt.Next()
 			t.Precedence = PrecEmpty
-			stack.Push(t, state)
-
-			//state.Current = append(state.Current, t)
+			stack.Push(t)
 		}
 
 		// If the thread is the last, push a # onto the tokens m
@@ -86,20 +74,17 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 			t := inputToken
 			if inputToken.Type.IsTerminal() {
 				inputToken.Precedence = prec
-				inputToken = stack.Push(inputToken, state)
+				inputToken = stack.Push(inputToken)
 			}
 
 			// If the current construction is a single nonterminal.
-			if len(state.Current) == 1 && !state.Current[0].Type.IsTerminal() {
+			if stack.IsCurrentSingleNonterminal() {
 				// Append input character to the current construction.
-				state.Current = append(state.Current, t)
+				stack.AppendStateToken(t)
 			} else {
 				// Otherwise, swap.
-				state.Previous = state.Previous[:0]
-				state.Previous = append(state.Previous, state.Current...)
-
-				state.Current = state.Current[:0]
-				state.Current = append(state.Current, t)
+				stack.SwapState()
+				stack.AppendStateToken(t)
 			}
 
 			inputToken = tokensIt.Next()
@@ -107,72 +92,45 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 			inputToken.Precedence = prec
 			// If it is equals, it is probably a shift transition?
 			if inputToken.Type == TokenTerm {
-				stack.Push(inputToken, state)
+				stack.Push(inputToken)
 				break
 			}
 
+			oldIndex := stack.State.CurrentIndex
 			// If the current construction is a single nonterminal.
-			if len(state.Current) == 1 && !state.Current[0].Type.IsTerminal() {
-				// Prepend previous construction to current one; leaving the previous one untouched.
-				if len(state.Current)+len(state.Previous) > cap(state.Current) {
-					newCurrent := make([]*Token, 0, cap(state.Current)*2)
-					newCurrent = append(newCurrent, state.Current...)
-					state.Current = newCurrent
-				}
-				state.Current = state.Current[:len(state.Current)+len(state.Previous)]
-
-				copy(state.Current[len(state.Previous):], state.Current[:len(state.Current)-len(state.Previous)])
-				copy(state.Current, state.Previous)
+			if stack.IsCurrentSingleNonterminal() {
+				stack.State.CurrentIndex = stack.State.PreviousIndex
+				stack.State.CurrentLen += stack.State.PreviousLen
 			}
 
-			// Append input character to the current construction.
-			state.Current = append(state.Current, inputToken)
-
+			rhsTokens = rhsTokens[:0]
+			rhsTokens = append(rhsTokens, stack.Current()...)
 			rhs = rhs[:0]
-			for i := range len(state.Current) - 1 {
-				rhs = append(rhs, state.Current[i].Type)
+			for i := range stack.State.CurrentLen {
+				rhs = append(rhs, rhsTokens[i].Type)
 			}
-			rhsTokens = state.Current[:len(state.Current)-1]
 
-			// If the construction has a suffix which is a double occurrence of a string produced by a Kleene-+.
-			//for _, prefix := range w.parser.Prefixes {
-			//	if slices.Equal(prefix, prefixTokens[:len(state.Current)]) {
-			//		// Try this out: parse as rhs all tokens of the prefix except last one, and substitute the resulting lhs to them.
-			//		rhsTokens = state.Current[:len(state.Current)-1]
-			//		rhs = prefix[:len(state.Current)-1]
-			//
-			//		lhsToken, err := w.match(rhs, rhsTokens, true)
-			//		if err != nil {
-			//			errCh <- fmt.Errorf("worker %d could not match prefix: %v", w.id, err)
-			//			return
-			//		}
-			//
-			//		// Reset state
-			//		state.Current = state.Current[:2]
-			//		state.Current[0] = lhsToken
-			//		state.Current[1] = inputToken
-			//
-			//		break
-			//	}
-			//
 			lhs, ruleNum := w.parser.findMatch(rhs)
 			if lhs != TokenEmpty && w.parser.Rules[ruleNum].Type != RuleSimple {
-				lhsToken, err := w.match(rhs[:len(state.Current)-1], rhsTokens[:len(state.Current)-1], true)
+				lhsToken, err := w.match(rhs, rhsTokens, true)
 				if err != nil {
 					errCh <- fmt.Errorf("worker %d could not match: %v", w.id, err)
 					return
 				}
 
 				// Reset state
-				state.Current = state.Current[:2]
-				state.Current[0] = lhsToken
-				state.Current[1] = inputToken
+				stack.StateTokenStack.Tos = stack.State.CurrentIndex
+				stack.State.CurrentLen = 0
+				stack.AppendStateToken(lhsToken)
+
+				_ = oldIndex
 			}
 
-			// Replace the topmost token on the stack, setting its precedence to Yield.
+			stack.AppendStateToken(inputToken)
+
+			// Replace the topmost token on the stack, keeping its state unchanged.
 			_, s := stack.Pop2()
-			// inputToken.Precedence = prec //t.Precedence
-			stack.Push(inputToken, *s)
+			stack.PushWithState(inputToken, *s)
 
 			inputToken = tokensIt.Next()
 		} else if prec == PrecTakes {
@@ -180,32 +138,29 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 			//Otherwise, perform a reduction. (Reduction == Pop/Shift move?)
 			if stack.YieldingPrecedence() == 0 {
 				inputToken.Precedence = prec
-				stack.Push(inputToken, state)
+				stack.Push(inputToken)
 
 				if inputToken.Type != TokenTerm {
-					state.Previous = state.Previous[:0]
-					state.Previous = append(state.Previous, state.Current...)
-
-					state.Current = state.Current[:0]
+					stack.SwapState()
 				}
 
 				inputToken = tokensIt.Next()
 			} else {
 				var i int
 				// Prefix is made of a single nonterminal
-				prefix = prefix[:0]
 				prefixTokens = prefixTokens[:0]
+				prefix = prefix[:0]
 
-				if len(state.Current) == 1 && !state.Current[0].Type.IsTerminal() {
-					for i = 0; i < len(state.Previous); i++ {
-						prefixTokens = append(prefixTokens, state.Previous[i].Type)
-						prefix = append(prefix, state.Previous[i])
+				if stack.IsCurrentSingleNonterminal() {
+					prefixTokens = append(prefixTokens, stack.Previous()...)
+					for i = 0; i < stack.State.PreviousLen; i++ {
+						prefix = append(prefix, prefixTokens[i].Type)
 					}
 				}
 
-				for j := 0; j < len(state.Current); j++ {
-					prefixTokens = append(prefixTokens, state.Current[j].Type)
-					prefix = append(prefix, state.Current[j])
+				prefixTokens = append(prefixTokens, stack.Current()...)
+				for j := 0; j < stack.State.CurrentLen; j++ {
+					prefix = append(prefix, prefixTokens[i].Type)
 
 					i++
 				}
@@ -214,15 +169,16 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 				stack.UpdateFirstTerminal()
 
 				// Prefix is made of a single nonterminal
-				state.Previous = state.Previous[:0]
-				if len(st.Current) == 1 && !st.Current[0].Type.IsTerminal() {
-					state.Previous = append(state.Previous, st.Previous...)
+				if st.CurrentLen == 1 && !stack.StateTokenStack.Data[st.CurrentIndex].IsTerminal() {
+					stack.State.PreviousIndex = st.PreviousIndex
+					stack.State.PreviousLen = st.PreviousLen
 				} else {
-					state.Previous = append(state.Previous, st.Current...)
+					stack.State.PreviousIndex = st.CurrentIndex
+					stack.State.PreviousLen = st.CurrentLen
 				}
 
-				rhsTokens = prefix[:i]
-				rhs = prefixTokens[:i]
+				rhsTokens = prefixTokens[:i]
+				rhs = prefix[:i]
 
 				lhsToken, err := w.match(rhs, rhsTokens, false)
 				if err != nil {
@@ -231,8 +187,10 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 				}
 
 				// Reset state
-				state.Current = state.Current[:0]
-				state.Current = append(state.Current, lhsToken)
+				stack.StateTokenStack.Tos = stack.State.PreviousIndex + stack.State.PreviousLen + 1
+				stack.State.CurrentIndex = stack.StateTokenStack.Tos - 1
+				stack.State.CurrentLen = 1
+				stack.StateTokenStack.Replace(lhsToken)
 			}
 		} else {
 			//If there's no precedence relation, abort the parsing
@@ -240,8 +198,6 @@ func (w *parserWorker) parseCyclic(ctx context.Context, stack *CyclicParserStack
 			return
 		}
 	}
-
-	stack.State = &state
 
 	resultCh <- parseResult{w.id, stack}
 }

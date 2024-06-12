@@ -188,7 +188,7 @@ func (s *ParserStack) Split(n int) ([]*ParserStack, error) {
 	return lists, nil
 }
 
-func (s *ParserStack) Combine(o Stacker) Stacker {
+func (s *ParserStack) Combine() Stacker {
 	var topLeft Token
 
 	// TODO: This could be moved in Push/Pop to allow constant time access.

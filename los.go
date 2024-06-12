@@ -18,6 +18,24 @@ type stack[T any] struct {
 	Next *stack[T]
 }
 
+func (s *stack[T]) Push(t T) {
+	if s.Tos >= s.Size {
+		panic("calculations were wrong.")
+	}
+
+	s.Data[s.Tos] = t
+
+	s.Tos++
+}
+
+func (s *stack[T]) Replace(t T) {
+	if s.Tos == 0 {
+		panic("calculations were wrong.")
+	}
+
+	s.Data[s.Tos-1] = t
+}
+
 type ValueConstructor[T any] func() T
 
 func newStack[T any]() *stack[T] {
@@ -27,6 +45,10 @@ func newStack[T any]() *stack[T] {
 		Data: make([]T, stackLen),
 		Size: stackLen,
 	}
+}
+
+func (s *stack[T]) Slice(from int, length int) []T {
+	return s.Data[from : from+length]
 }
 
 func stackSize[T any]() int {

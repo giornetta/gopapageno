@@ -37,7 +37,7 @@ func (p *Parser) CombineSweepLOSCyclic(pool *Pool[stack[Token]], stacks []*Cycli
 		//Ignore the first token.
 		t, st := it.Next()
 		tokenSet[t] = struct{}{}
-		for _, t := range st.Current {
+		for _, t := range stacks[i].StateTokenStack.Slice(st.CurrentIndex, st.CurrentLen) {
 			tokenSet[t] = struct{}{}
 		}
 
@@ -47,7 +47,7 @@ func (p *Parser) CombineSweepLOSCyclic(pool *Pool[stack[Token]], stacks []*Cycli
 					continue
 				}
 
-				for _, stateToken := range stacks[i].State.Previous {
+				for _, stateToken := range stacks[i].Previous() {
 					if _, ok := tokenSet[stateToken]; !ok {
 						stateToken.Precedence = PrecEmpty
 						input.Push(*stateToken)
@@ -56,7 +56,7 @@ func (p *Parser) CombineSweepLOSCyclic(pool *Pool[stack[Token]], stacks []*Cycli
 					}
 				}
 
-				for _, stateToken := range stacks[i].State.Current {
+				for _, stateToken := range stacks[i].Current() {
 					if _, ok := tokenSet[stateToken]; !ok {
 						stateToken.Precedence = PrecEmpty
 						input.Push(*stateToken)
@@ -68,7 +68,7 @@ func (p *Parser) CombineSweepLOSCyclic(pool *Pool[stack[Token]], stacks []*Cycli
 				continue
 			}
 
-			for _, stateToken := range st.Current {
+			for _, stateToken := range stacks[i].StateTokenStack.Slice(st.CurrentIndex, st.CurrentLen) {
 				if _, ok := tokenSet[stateToken]; !ok {
 					stateToken.Precedence = PrecEmpty
 					input.Push(*stateToken)

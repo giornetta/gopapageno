@@ -14,7 +14,7 @@ var (
 
 type Stacker interface {
 	HeadIterator() *ParserStackIterator
-	Combine(o Stacker) Stacker
+	Combine() Stacker
 	CombineLOS(pool *Pool[stack[Token]]) *ListOfStacks[Token]
 	LastNonterminal() (*Token, error)
 }
@@ -272,7 +272,7 @@ func (p *Parser) Parse(ctx context.Context, src []byte) (*Token, error) {
 		if p.ParsingStrategy != COPP {
 			s = NewParserStack(p.pools.stacks[thread])
 		} else {
-			s = NewCyclicParserStack(p.pools.stacks[thread], p.pools.stateStacks[thread], p.MaxRHSLength)
+			s = NewCyclicParserStack(p.pools.stacks[thread], p.pools.stateStacks[thread])
 		}
 
 		go workers[thread].parse(ctx, s, tokensLists[thread], nextToken, false, resultCh, errCh)
@@ -288,7 +288,7 @@ func (p *Parser) Parse(ctx context.Context, src []byte) (*Token, error) {
 	if p.concurrency > 1 {
 		if p.reductionStrategy == ReductionSweep {
 			// Create the final input by joining together the stacks from the previous step.
-			stack := parseResults[0].Combine(parseResults[1])
+			stack := parseResults[0].Combine()
 			input := p.CombineSweepLOS(p.pools.sweepInput, parseResults[1:])
 
 			p.concurrency = 1
@@ -307,7 +307,7 @@ func (p *Parser) Parse(ctx context.Context, src []byte) (*Token, error) {
 					stackRight := parseResults[i+1]
 
 					// TODO: Fix CombineNoAlloc
-					stack := stackLeft.Combine(stackRight)
+					stack := stackLeft.Combine()
 
 					// TODO: I should find a way to make this work without creating a new LOS for the inputs.
 					// Unfortunately the new stack depends on the content of tokensLists[i] since its elements are stored there.
@@ -359,7 +359,7 @@ func (p *Parser) init(src []byte) {
 		p.pools.stacks[thread] = NewPool[stack[*Token]](stackPoolBaseSize*stackPoolMultiplier, WithConstructor[stack[*Token]](newStack[*Token]))
 
 		if p.ParsingStrategy == COPP {
-			p.pools.stateStacks[thread] = NewPool[stack[CyclicAutomataState]](stackPoolBaseSize*stackPoolMultiplier, WithConstructor[stack[CyclicAutomataState]](newStackBuilder[CyclicAutomataState](NewCyclicAutomataStateValueBuilder(p.MaxRHSLength))))
+			p.pools.stateStacks[thread] = NewPool[stack[CyclicAutomataState]](stackPoolBaseSize*stackPoolMultiplier, WithConstructor[stack[CyclicAutomataState]](newStack[CyclicAutomataState]))
 		}
 
 		p.pools.nonterminals[thread] = NewPool[Token](ntPoolBaseSize)
@@ -373,7 +373,7 @@ func (p *Parser) init(src []byte) {
 		p.pools.sweepStack = NewPool[stack[*Token]](stackPoolBaseSize, WithConstructor[stack[*Token]](newStack[*Token]))
 
 		if p.ParsingStrategy == COPP {
-			p.pools.sweepStateStack = NewPool[stack[CyclicAutomataState]](stackPoolBaseSize, WithConstructor[stack[CyclicAutomataState]](newStackBuilder[CyclicAutomataState](NewCyclicAutomataStateValueBuilder(p.MaxRHSLength))))
+			p.pools.sweepStateStack = NewPool[stack[CyclicAutomataState]](stackPoolBaseSize, WithConstructor[stack[CyclicAutomataState]](newStack[CyclicAutomataState]))
 		}
 	}
 }

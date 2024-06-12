@@ -5,69 +5,66 @@ import (
 )
 
 type CyclicAutomataState struct {
-	Current  []*Token
-	Previous []*Token
-}
+	CurrentIndex int
+	CurrentLen   int
 
-func NewCyclicAutomataState(maxLength int) *CyclicAutomataState {
-	return &CyclicAutomataState{
-		Current:  make([]*Token, 0, maxLength),
-		Previous: make([]*Token, 0, maxLength),
-	}
-}
-
-func NewCyclicAutomataStateBuilder(maxLength int) func() *CyclicAutomataState {
-	return func() *CyclicAutomataState {
-		return &CyclicAutomataState{
-			Current:  make([]*Token, 0, maxLength),
-			Previous: make([]*Token, 0, maxLength),
-		}
-	}
-}
-
-func NewCyclicAutomataStateValueBuilder(maxLength int) func() CyclicAutomataState {
-	return func() CyclicAutomataState {
-		return CyclicAutomataState{
-			Current:  make([]*Token, 0, maxLength),
-			Previous: make([]*Token, 0, maxLength),
-		}
-	}
+	PreviousIndex int
+	PreviousLen   int
 }
 
 type CyclicParserStack struct {
 	*ParserStack
 
-	StatesLOS *ListOfStacks[CyclicAutomataState]
-	State     *CyclicAutomataState
-
-	maxRhsLen int
+	StatesLOS       *ListOfStacks[CyclicAutomataState]
+	StateTokenStack *stack[*Token]
+	State           *CyclicAutomataState
 }
 
 // NewCyclicParserStack creates a new CyclicParserStack initialized with one empty stack.
-func NewCyclicParserStack(tokenStackPool *Pool[stack[*Token]], stateStackPool *Pool[stack[CyclicAutomataState]], maxRhsLen int) *CyclicParserStack {
+func NewCyclicParserStack(tokenStackPool *Pool[stack[*Token]], stateStackPool *Pool[stack[CyclicAutomataState]]) *CyclicParserStack {
 	return &CyclicParserStack{
-		ParserStack: NewParserStack(tokenStackPool),
-		StatesLOS:   NewListOfStacks[CyclicAutomataState](stateStackPool),
+		ParserStack:     NewParserStack(tokenStackPool),
+		StatesLOS:       NewListOfStacks[CyclicAutomataState](stateStackPool),
+		StateTokenStack: tokenStackPool.Get(),
 
-		State:     NewCyclicAutomataState(maxRhsLen),
-		maxRhsLen: maxRhsLen,
+		State: new(CyclicAutomataState),
 	}
 }
 
-func (s *CyclicParserStack) Push(token *Token, state CyclicAutomataState) *Token {
+func (s *CyclicParserStack) Current() []*Token {
+	return s.StateTokenStack.Slice(s.State.CurrentIndex, s.State.CurrentLen)
+}
+
+func (s *CyclicParserStack) Previous() []*Token {
+	return s.StateTokenStack.Slice(s.State.PreviousIndex, s.State.PreviousLen)
+}
+
+func (s *CyclicParserStack) IsCurrentSingleNonterminal() bool {
+	return s.State.CurrentLen == 1 && !s.StateTokenStack.Data[s.State.CurrentIndex].IsTerminal()
+}
+
+func (s *CyclicParserStack) AppendStateToken(token *Token) {
+	s.StateTokenStack.Push(token)
+	s.State.CurrentLen++
+}
+
+func (s *CyclicParserStack) SwapState() {
+	s.State.PreviousIndex, s.State.PreviousLen = s.State.CurrentIndex, s.State.CurrentLen
+
+	s.State.CurrentIndex = s.StateTokenStack.Tos
+	s.State.CurrentLen = 0
+}
+
+func (s *CyclicParserStack) Push(token *Token) *Token {
 	t := s.ParserStack.Push(token)
+	s.StatesLOS.Push(*s.State)
 
-	// To avoid allocations, we load the next available state in the LOS
-	// Clear it and append the right elements.
-	st := s.StatesLOS.GetNext()
+	return t
+}
 
-	st.Current = st.Current[:0]
-	st.Current = append(st.Current, state.Current...)
-
-	st.Previous = st.Previous[:0]
-	st.Previous = append(st.Previous, state.Previous...)
-
-	s.StatesLOS.Push(*st)
+func (s *CyclicParserStack) PushWithState(token *Token, state CyclicAutomataState) *Token {
+	t := s.ParserStack.Push(token)
+	s.StatesLOS.Push(state)
 
 	return t
 }
@@ -122,7 +119,7 @@ func (s *CyclicParserStack) Split(n int) ([]*CyclicParserStack, error) {
 	return newStacks, nil
 }
 
-func (s *CyclicParserStack) Combine(o Stacker) Stacker {
+func (s *CyclicParserStack) Combine() Stacker {
 	var topLeft Token
 	var topLeftState CyclicAutomataState
 
@@ -136,21 +133,26 @@ func (s *CyclicParserStack) Combine(o Stacker) Stacker {
 		first = false
 	}
 
-	stack := NewCyclicParserStack(s.ParserStack.pool, s.StatesLOS.pool, s.maxRhsLen)
+	stack := &CyclicParserStack{
+		ParserStack:     NewParserStack(s.ParserStack.pool),
+		StatesLOS:       NewListOfStacks[CyclicAutomataState](s.StatesLOS.pool),
+		StateTokenStack: s.StateTokenStack,
+
+		State: new(CyclicAutomataState),
+	}
 
 	if topLeft.Type != TokenEmpty {
 		topLeft.Precedence = PrecEmpty
-		stack.Push(&topLeft, topLeftState)
+		stack.PushWithState(&topLeft, topLeftState)
 	}
 
 	for t, s := it.Cur(); t != nil && t.Precedence != PrecTakes; t, s = it.Next() {
-		stack.Push(t, *s)
+		stack.PushWithState(t, *s)
 	}
 
 	stack.UpdateFirstTerminal()
 
-	stack.State.Previous = append(stack.State.Previous, s.State.Previous...)
-	stack.State.Current = append(stack.State.Current, s.State.Current...)
+	stack.State = s.State
 
 	return stack
 }
@@ -163,12 +165,12 @@ func (s *CyclicParserStack) CombineLOS(pool *Pool[stack[Token]]) *ListOfStacks[T
 
 	tokenSet := make(map[*Token]struct{}, s.Length())
 	tokenSet[t] = struct{}{}
-	for _, t := range st.Current {
+	for _, t := range s.StateTokenStack.Slice(st.CurrentIndex, st.CurrentLen) {
 		tokenSet[t] = struct{}{}
 	}
 
 	if s.Length() == 1 {
-		for _, t := range s.State.Current {
+		for _, t := range s.StateTokenStack.Slice(s.State.CurrentIndex, s.State.CurrentLen) {
 			t.Precedence = PrecEmpty
 			list.Push(*t)
 		}
@@ -177,7 +179,7 @@ func (s *CyclicParserStack) CombineLOS(pool *Pool[stack[Token]]) *ListOfStacks[T
 	}
 
 	for t, st := it.Next(); t != nil && (t.Precedence != PrecYields && t.Precedence != PrecEquals); t, st = it.Next() {
-		for _, stateToken := range st.Current {
+		for _, stateToken := range s.StateTokenStack.Slice(st.CurrentIndex, st.CurrentLen) {
 			_, ok := tokenSet[stateToken]
 			if !ok {
 				stateToken.Precedence = PrecEmpty
@@ -200,8 +202,8 @@ func (s *CyclicParserStack) CombineLOS(pool *Pool[stack[Token]]) *ListOfStacks[T
 }
 
 func (s *CyclicParserStack) LastNonterminal() (*Token, error) {
-	if len(s.State.Current) >= 1 {
-		return s.State.Current[0], nil
+	if s.State.CurrentLen >= 1 {
+		return s.StateTokenStack.Slice(s.State.CurrentIndex, s.State.CurrentLen)[0], nil
 	}
 
 	return nil, fmt.Errorf("no token stack current")
