@@ -31,6 +31,8 @@ Value : STRING
 {
 } | NUMBER
 {
+} | BOOL
+{
 };
 
 Array : LSQUARE RSQUARE

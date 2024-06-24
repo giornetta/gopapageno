@@ -27,8 +27,8 @@ func ParserPreallocMem(inputSize int, numThreads int) {
 // Non-terminals
 const (
 	E = gopapageno.TokenEmpty + 1 + iota
-	NEW_AXIOM
-	S_T
+	S
+	T
 )
 
 // Terminals
@@ -37,7 +37,6 @@ const (
 	NUMBER
 	PLUS
 	RPAR
-	S
 )
 
 func SprintToken[TokenValue any](root *gopapageno.Token) string {
@@ -60,10 +59,10 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 		switch t.Type {
 		case E:
 			sb.WriteString("E")
-		case NEW_AXIOM:
-			sb.WriteString("NEW_AXIOM")
-		case S_T:
-			sb.WriteString("S_T")
+		case S:
+			sb.WriteString("S")
+		case T:
+			sb.WriteString("T")
 		case gopapageno.TokenEmpty:
 			sb.WriteString("Empty")
 		case LPAR:
@@ -74,8 +73,6 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 			sb.WriteString("PLUS")
 		case RPAR:
 			sb.WriteString("RPAR")
-		case S:
-			sb.WriteString("S")
 		case gopapageno.TokenTerm:
 			sb.WriteString("Term")
 		default:
@@ -98,33 +95,32 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 }
 
 func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
-	numTerminals := uint16(6)
+	numTerminals := uint16(5)
 	numNonTerminals := uint16(4)
 
 	maxRHSLen := 3
 	rules := []gopapageno.Rule{
 		{E, []gopapageno.TokenType{E, PLUS, E}, gopapageno.RuleCombine},
-		{E, []gopapageno.TokenType{E, PLUS, S_T}, gopapageno.RuleAppendRight},
-		{NEW_AXIOM, []gopapageno.TokenType{S_T}, gopapageno.RuleSimple},
-		{E, []gopapageno.TokenType{S_T, PLUS, E}, gopapageno.RuleAppendLeft},
-		{E, []gopapageno.TokenType{S_T, PLUS, S_T}, gopapageno.RuleCyclic},
-		{S_T, []gopapageno.TokenType{LPAR, E, RPAR}, gopapageno.RuleSimple},
-		{S_T, []gopapageno.TokenType{LPAR, S_T, RPAR}, gopapageno.RuleSimple},
-		{S_T, []gopapageno.TokenType{NUMBER}, gopapageno.RuleSimple},
-		{NEW_AXIOM, []gopapageno.TokenType{S}, gopapageno.RuleSimple},
+		{E, []gopapageno.TokenType{E, PLUS, T}, gopapageno.RuleAppendRight},
+		{S, []gopapageno.TokenType{S}, gopapageno.RuleSimple},
+		{S, []gopapageno.TokenType{T}, gopapageno.RuleSimple},
+		{E, []gopapageno.TokenType{T, PLUS, E}, gopapageno.RuleAppendLeft},
+		{E, []gopapageno.TokenType{T, PLUS, T}, gopapageno.RuleCyclic},
+		{T, []gopapageno.TokenType{LPAR, E, RPAR}, gopapageno.RuleSimple},
+		{T, []gopapageno.TokenType{LPAR, T, RPAR}, gopapageno.RuleSimple},
+		{T, []gopapageno.TokenType{NUMBER}, gopapageno.RuleSimple},
 	}
-	compressedRules := []uint16{0, 0, 5, 1, 13, 3, 31, 32769, 49, 32770, 72, 32773, 75, 0, 0, 1, 32771, 18, 0, 0, 2, 1, 25, 3, 28, 1, 0, 0, 1, 1, 0, 2, 2, 1, 32771, 36, 0, 0, 2, 1, 43, 3, 46, 1, 3, 0, 1, 4, 0, 0, 0, 2, 1, 56, 3, 64, 0, 0, 1, 32772, 61, 3, 5, 0, 0, 0, 1, 32772, 69, 3, 6, 0, 3, 7, 0, 2, 8, 0}
+	compressedRules := []uint16{0, 0, 5, 1, 13, 2, 31, 3, 34, 32769, 52, 32770, 75, 0, 0, 1, 32771, 18, 0, 0, 2, 1, 25, 3, 28, 1, 0, 0, 1, 1, 0, 2, 2, 0, 2, 3, 1, 32771, 39, 0, 0, 2, 1, 46, 3, 49, 1, 4, 0, 1, 5, 0, 0, 0, 2, 1, 59, 3, 67, 0, 0, 1, 32772, 64, 3, 6, 0, 0, 0, 1, 32772, 72, 3, 7, 0, 3, 8, 0}
 
 	precMatrix := [][]gopapageno.Precedence{
-		{gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields},
-		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEquals, gopapageno.PrecEmpty},
-		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
-		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEquals, gopapageno.PrecTakes, gopapageno.PrecEmpty},
-		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
-		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty},
+		{gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields},
+		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEquals},
+		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes},
+		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEquals, gopapageno.PrecTakes},
+		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes},
 	}
 	bitPackedMatrix := []uint64{
-		2486586651233838420, 256,
+		706460516440404,
 	}
 
 	fn := func(rule uint16, lhs *gopapageno.Token, rhs []*gopapageno.Token, thread int) {
@@ -156,140 +152,140 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			E0 := lhs
 			E1 := rhs[0]
 			PLUS2 := rhs[1]
-			S_T3 := rhs[2]
+			T3 := rhs[2]
 
 			E0.LastChild.Next = PLUS2
-			PLUS2.Next = S_T3
-			E0.LastChild = S_T3
+			PLUS2.Next = T3
+			E0.LastChild = T3
 
 			{
 				newValue := parserPools[thread].Get()
-				*newValue = *E1.Value.(*int64) + *S_T3.Value.(*int64)
+				*newValue = *E1.Value.(*int64) + *T3.Value.(*int64)
 				E0.Value = newValue
 			}
 			_ = E1
 			_ = PLUS2
-			_ = S_T3
+			_ = T3
 		case 2:
 			ruleType = gopapageno.RuleSimple
 
-			NEW_AXIOM0 := lhs
-			S_T1 := rhs[0]
+			S0 := lhs
+			S1 := rhs[0]
 
-			NEW_AXIOM0.Child = S_T1
-			NEW_AXIOM0.LastChild = S_T1
+			S0.Child = S1
+			S0.LastChild = S1
 
 			{
-				NEW_AXIOM0.Value = S_T1.Value
+				S0.Value = S1.Value
 			}
-			_ = S_T1
+			_ = S1
 		case 3:
+			ruleType = gopapageno.RuleSimple
+
+			S0 := lhs
+			T1 := rhs[0]
+
+			S0.Child = T1
+			S0.LastChild = T1
+
+			{
+				S0.Value = T1.Value
+			}
+			_ = T1
+		case 4:
 			ruleType = gopapageno.RuleAppendLeft
 
 			E0 := lhs
-			S_T1 := rhs[0]
+			T1 := rhs[0]
 			PLUS2 := rhs[1]
 			E3 := rhs[2]
 
 			oldChild := E0
-			E0.Child = S_T1
-			S_T1.Next = PLUS2
+			E0.Child = T1
+			T1.Next = PLUS2
 			PLUS2.Next = E3
 			E3.Next = oldChild
 
 			{
 				newValue := parserPools[thread].Get()
-				*newValue = *S_T1.Value.(*int64) + *E3.Value.(*int64)
+				*newValue = *T1.Value.(*int64) + *E3.Value.(*int64)
 				E0.Value = newValue
 			}
-			_ = S_T1
+			_ = T1
 			_ = PLUS2
 			_ = E3
-		case 4:
+		case 5:
 			ruleType = gopapageno.RuleCyclic
 
 			E0 := lhs
-			S_T1 := rhs[0]
+			T1 := rhs[0]
 			PLUS2 := rhs[1]
-			S_T3 := rhs[2]
+			T3 := rhs[2]
 
-			E0.Child = S_T1
-			S_T1.Next = PLUS2
-			PLUS2.Next = S_T3
-			E0.LastChild = S_T3
+			E0.Child = T1
+			T1.Next = PLUS2
+			PLUS2.Next = T3
+			E0.LastChild = T3
 
 			{
 				newValue := parserPools[thread].Get()
-				*newValue = *S_T1.Value.(*int64) + *S_T3.Value.(*int64)
+				*newValue = *T1.Value.(*int64) + *T3.Value.(*int64)
 				E0.Value = newValue
 			}
-			_ = S_T1
+			_ = T1
 			_ = PLUS2
-			_ = S_T3
-		case 5:
+			_ = T3
+		case 6:
 			ruleType = gopapageno.RuleSimple
 
-			S_T0 := lhs
+			T0 := lhs
 			LPAR1 := rhs[0]
 			E2 := rhs[1]
 			RPAR3 := rhs[2]
 
-			S_T0.Child = LPAR1
+			T0.Child = LPAR1
 			LPAR1.Next = E2
 			E2.Next = RPAR3
-			S_T0.LastChild = RPAR3
+			T0.LastChild = RPAR3
 
 			{
-				S_T0.Value = E2.Value
+				T0.Value = E2.Value
 			}
 			_ = LPAR1
 			_ = E2
 			_ = RPAR3
-		case 6:
-			ruleType = gopapageno.RuleSimple
-
-			S_T0 := lhs
-			LPAR1 := rhs[0]
-			S_T2 := rhs[1]
-			RPAR3 := rhs[2]
-
-			S_T0.Child = LPAR1
-			LPAR1.Next = S_T2
-			S_T2.Next = RPAR3
-			S_T0.LastChild = RPAR3
-
-			{
-				S_T0.Value = S_T2.Value
-			}
-			_ = LPAR1
-			_ = S_T2
-			_ = RPAR3
 		case 7:
 			ruleType = gopapageno.RuleSimple
 
-			S_T0 := lhs
-			NUMBER1 := rhs[0]
+			T0 := lhs
+			LPAR1 := rhs[0]
+			T2 := rhs[1]
+			RPAR3 := rhs[2]
 
-			S_T0.Child = NUMBER1
-			S_T0.LastChild = NUMBER1
+			T0.Child = LPAR1
+			LPAR1.Next = T2
+			T2.Next = RPAR3
+			T0.LastChild = RPAR3
 
 			{
-				S_T0.Value = NUMBER1.Value
+				T0.Value = T2.Value
 			}
-			_ = NUMBER1
+			_ = LPAR1
+			_ = T2
+			_ = RPAR3
 		case 8:
 			ruleType = gopapageno.RuleSimple
 
-			NEW_AXIOM0 := lhs
-			S1 := rhs[0]
+			T0 := lhs
+			NUMBER1 := rhs[0]
 
-			NEW_AXIOM0.Child = S1
-			NEW_AXIOM0.LastChild = S1
+			T0.Child = NUMBER1
+			T0.LastChild = NUMBER1
 
 			{
-				NEW_AXIOM0.Value = S1.Value
+				T0.Value = NUMBER1.Value
 			}
-			_ = S1
+			_ = NUMBER1
 		}
 		_ = ruleType
 	}

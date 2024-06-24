@@ -14,7 +14,6 @@ func ParserPreallocMem(inputSize int, numThreads int) {
 // Non-terminals
 const (
 	ELEM = gopapageno.TokenEmpty + 1 + iota
-	NEW_AXIOM
 )
 
 // Terminals
@@ -49,8 +48,6 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 		switch t.Type {
 		case ELEM:
 			sb.WriteString("ELEM")
-		case NEW_AXIOM:
-			sb.WriteString("NEW_AXIOM")
 		case gopapageno.TokenEmpty:
 			sb.WriteString("Empty")
 		case AlternativeClose:
@@ -92,27 +89,25 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 
 func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 	numTerminals := uint16(9)
-	numNonTerminals := uint16(3)
+	numNonTerminals := uint16(2)
 
 	maxRHSLen := 4
 	rules := []gopapageno.Rule{
-		{NEW_AXIOM, []gopapageno.TokenType{ELEM}},
-		{ELEM, []gopapageno.TokenType{ELEM, AlternativeClose}},
-		{ELEM, []gopapageno.TokenType{ELEM, OpenBracket, ELEM, CloseBracket}},
-		{ELEM, []gopapageno.TokenType{ELEM, OpenCloseInfo}},
-		{ELEM, []gopapageno.TokenType{ELEM, OpenCloseParams}},
-		{ELEM, []gopapageno.TokenType{ELEM, OpenParams, ELEM, CloseParams}},
-		{ELEM, []gopapageno.TokenType{AlternativeClose}},
-		{ELEM, []gopapageno.TokenType{Infos}},
-		{ELEM, []gopapageno.TokenType{OpenBracket, ELEM, CloseBracket}},
-		{ELEM, []gopapageno.TokenType{OpenCloseInfo}},
-		{ELEM, []gopapageno.TokenType{OpenCloseParams}},
-		{ELEM, []gopapageno.TokenType{OpenParams, ELEM, CloseBracket}},
+		{ELEM, []gopapageno.TokenType{ELEM}, gopapageno.RuleSimple},
+		{ELEM, []gopapageno.TokenType{ELEM, AlternativeClose}, gopapageno.RuleSimple},
+		{ELEM, []gopapageno.TokenType{ELEM, OpenBracket, ELEM, CloseBracket}, gopapageno.RuleSimple},
+		{ELEM, []gopapageno.TokenType{ELEM, OpenCloseInfo}, gopapageno.RuleSimple},
+		{ELEM, []gopapageno.TokenType{ELEM, OpenCloseParams}, gopapageno.RuleSimple},
+		{ELEM, []gopapageno.TokenType{ELEM, OpenParams, ELEM, CloseParams}, gopapageno.RuleSimple},
+		{ELEM, []gopapageno.TokenType{AlternativeClose}, gopapageno.RuleSimple},
+		{ELEM, []gopapageno.TokenType{Infos}, gopapageno.RuleSimple},
+		{ELEM, []gopapageno.TokenType{OpenBracket, ELEM, CloseBracket}, gopapageno.RuleSimple},
+		{ELEM, []gopapageno.TokenType{OpenCloseInfo}, gopapageno.RuleSimple},
+		{ELEM, []gopapageno.TokenType{OpenCloseParams}, gopapageno.RuleSimple},
+		{ELEM, []gopapageno.TokenType{OpenParams, ELEM, CloseBracket}, gopapageno.RuleSimple},
 	}
-	compressedRules := []uint16{0, 0, 7, 1, 17, 32769, 65, 32772, 68, 32773, 71, 32774, 84, 32775, 87, 32776, 90, 2, 0, 5, 32769, 30, 32773, 33, 32774, 46, 32775, 49, 32776, 52, 1, 1, 0, 0, 0, 1, 1, 38, 0, 0, 1, 32770, 43, 1, 2, 0, 1, 3, 0, 1, 4, 0, 0, 0, 1, 1, 57, 0, 0, 1, 32771, 62, 1, 5, 0, 1, 6, 0, 1, 7, 0, 0, 0, 1, 1, 76, 0, 0, 1, 32770, 81, 1, 8, 0, 1, 9, 0, 1, 10, 0, 0, 0, 1, 1, 95, 0, 0, 1, 32770, 100, 1, 11, 0}
+	compressedRules := []uint16{0, 0, 7, 1, 17, 32769, 65, 32772, 68, 32773, 71, 32774, 84, 32775, 87, 32776, 90, 1, 0, 5, 32769, 30, 32773, 33, 32774, 46, 32775, 49, 32776, 52, 1, 1, 0, 0, 0, 1, 1, 38, 0, 0, 1, 32770, 43, 1, 2, 0, 1, 3, 0, 1, 4, 0, 0, 0, 1, 1, 57, 0, 0, 1, 32771, 62, 1, 5, 0, 1, 6, 0, 1, 7, 0, 0, 0, 1, 1, 76, 0, 0, 1, 32770, 81, 1, 8, 0, 1, 9, 0, 1, 10, 0, 0, 0, 1, 1, 95, 0, 0, 1, 32770, 100, 1, 11, 0}
 
-	maxPrefixLen := 0
-	prefixes := [][]gopapageno.TokenType{}
 	precMatrix := [][]gopapageno.Precedence{
 		{gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields},
 		{gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecTakes},
@@ -129,27 +124,39 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 	}
 
 	fn := func(rule uint16, lhs *gopapageno.Token, rhs []*gopapageno.Token, thread int) {
+		var ruleType gopapageno.RuleType
 		switch rule {
 		case 0:
-			NEW_AXIOM0 := lhs
+			ruleType = gopapageno.RuleSimple
+
+			ELEM0 := lhs
 			ELEM1 := rhs[0]
 
-			NEW_AXIOM0.Child = ELEM1
+			ELEM0.Child = ELEM1
+			ELEM0.LastChild = ELEM1
 
 			{
-				NEW_AXIOM0.Value = ELEM1.Value
+				ELEM0.Value = ELEM1.Value
 			}
+			_ = ELEM1
 		case 1:
+			ruleType = gopapageno.RuleSimple
+
 			ELEM0 := lhs
 			ELEM1 := rhs[0]
 			AlternativeClose2 := rhs[1]
 
 			ELEM0.Child = ELEM1
 			ELEM1.Next = AlternativeClose2
+			ELEM0.LastChild = AlternativeClose2
 
 			{
 			}
+			_ = ELEM1
+			_ = AlternativeClose2
 		case 2:
+			ruleType = gopapageno.RuleSimple
+
 			ELEM0 := lhs
 			ELEM1 := rhs[0]
 			OpenBracket2 := rhs[1]
@@ -160,30 +167,47 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			ELEM1.Next = OpenBracket2
 			OpenBracket2.Next = ELEM3
 			ELEM3.Next = CloseBracket4
+			ELEM0.LastChild = CloseBracket4
 
 			{
 			}
+			_ = ELEM1
+			_ = OpenBracket2
+			_ = ELEM3
+			_ = CloseBracket4
 		case 3:
+			ruleType = gopapageno.RuleSimple
+
 			ELEM0 := lhs
 			ELEM1 := rhs[0]
 			OpenCloseInfo2 := rhs[1]
 
 			ELEM0.Child = ELEM1
 			ELEM1.Next = OpenCloseInfo2
+			ELEM0.LastChild = OpenCloseInfo2
 
 			{
 			}
+			_ = ELEM1
+			_ = OpenCloseInfo2
 		case 4:
+			ruleType = gopapageno.RuleSimple
+
 			ELEM0 := lhs
 			ELEM1 := rhs[0]
 			OpenCloseParams2 := rhs[1]
 
 			ELEM0.Child = ELEM1
 			ELEM1.Next = OpenCloseParams2
+			ELEM0.LastChild = OpenCloseParams2
 
 			{
 			}
+			_ = ELEM1
+			_ = OpenCloseParams2
 		case 5:
+			ruleType = gopapageno.RuleSimple
+
 			ELEM0 := lhs
 			ELEM1 := rhs[0]
 			OpenParams2 := rhs[1]
@@ -194,26 +218,41 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			ELEM1.Next = OpenParams2
 			OpenParams2.Next = ELEM3
 			ELEM3.Next = CloseParams4
+			ELEM0.LastChild = CloseParams4
 
 			{
 			}
+			_ = ELEM1
+			_ = OpenParams2
+			_ = ELEM3
+			_ = CloseParams4
 		case 6:
+			ruleType = gopapageno.RuleSimple
+
 			ELEM0 := lhs
 			AlternativeClose1 := rhs[0]
 
 			ELEM0.Child = AlternativeClose1
+			ELEM0.LastChild = AlternativeClose1
 
 			{
 			}
+			_ = AlternativeClose1
 		case 7:
+			ruleType = gopapageno.RuleSimple
+
 			ELEM0 := lhs
 			Infos1 := rhs[0]
 
 			ELEM0.Child = Infos1
+			ELEM0.LastChild = Infos1
 
 			{
 			}
+			_ = Infos1
 		case 8:
+			ruleType = gopapageno.RuleSimple
+
 			ELEM0 := lhs
 			OpenBracket1 := rhs[0]
 			ELEM2 := rhs[1]
@@ -222,26 +261,40 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			ELEM0.Child = OpenBracket1
 			OpenBracket1.Next = ELEM2
 			ELEM2.Next = CloseBracket3
+			ELEM0.LastChild = CloseBracket3
 
 			{
 			}
+			_ = OpenBracket1
+			_ = ELEM2
+			_ = CloseBracket3
 		case 9:
+			ruleType = gopapageno.RuleSimple
+
 			ELEM0 := lhs
 			OpenCloseInfo1 := rhs[0]
 
 			ELEM0.Child = OpenCloseInfo1
+			ELEM0.LastChild = OpenCloseInfo1
 
 			{
 			}
+			_ = OpenCloseInfo1
 		case 10:
+			ruleType = gopapageno.RuleSimple
+
 			ELEM0 := lhs
 			OpenCloseParams1 := rhs[0]
 
 			ELEM0.Child = OpenCloseParams1
+			ELEM0.LastChild = OpenCloseParams1
 
 			{
 			}
+			_ = OpenCloseParams1
 		case 11:
+			ruleType = gopapageno.RuleSimple
+
 			ELEM0 := lhs
 			OpenParams1 := rhs[0]
 			ELEM2 := rhs[1]
@@ -250,10 +303,15 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			ELEM0.Child = OpenParams1
 			OpenParams1.Next = ELEM2
 			ELEM2.Next = CloseBracket3
+			ELEM0.LastChild = CloseBracket3
 
 			{
 			}
+			_ = OpenParams1
+			_ = ELEM2
+			_ = CloseBracket3
 		}
+		_ = ruleType
 	}
 
 	return gopapageno.NewParser(
@@ -263,8 +321,6 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 		maxRHSLen,
 		rules,
 		compressedRules,
-		prefixes,
-		maxPrefixLen,
 		precMatrix,
 		bitPackedMatrix,
 		fn,

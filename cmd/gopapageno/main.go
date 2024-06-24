@@ -23,6 +23,7 @@ func run() error {
 	parserFlag := flag.String("g", "", "parser source file")
 	outputFlag := flag.String("o", ".", "output directory")
 	typesOnlyFlag := flag.Bool("types-only", false, "generate types only")
+	benchmarkFlag := flag.Bool("benchmark", false, "generate benchmarks")
 
 	strategyFlag := flag.String("strategy", "opp", "strategy to use during parser generation: opp/aopp/copp")
 
@@ -53,6 +54,7 @@ func run() error {
 		ParserDescriptionFilename: *parserFlag,
 		OutputDirectory:           *outputFlag,
 		TypesOnly:                 *typesOnlyFlag,
+		GenerateBenchmarks:        *benchmarkFlag,
 		Strategy:                  strategy,
 		Logger:                    log.New(logOut, "", 0),
 	}

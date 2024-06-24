@@ -13,14 +13,9 @@ import (
 
 const baseFolder = "../data/"
 
-const (
-	file1000 = "generated-1000.json"
-	file2000 = "generated-2000.json"
-)
-
 var table = []string{
-	file1000,
-	file2000,
+	"generated-1000.json",
+	"generated-2000.json",
 }
 
 func BenchmarkParse(b *testing.B) {
@@ -49,11 +44,11 @@ func BenchmarkParse(b *testing.B) {
 }
 
 func TestProfile(t *testing.T) {
-	c := 12
+	c := runtime.NumCPU()
 	avgLen := gopapageno.DefaultAverageTokenLength
 	strat := gopapageno.ReductionParallel
 
-	filename := "generated-2000.json"
+	var filename string = "generated-2000.json"
 
 	file := path.Join(baseFolder, filename)
 

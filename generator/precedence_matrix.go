@@ -5,6 +5,7 @@ import (
 	"github.com/giornetta/gopapageno"
 	"math"
 	"slices"
+	"strings"
 )
 
 type precedenceMatrix [][]gopapageno.Precedence
@@ -130,7 +131,7 @@ func (m precedenceMap) computeYieldsPrecedence(s gopapageno.ParsingStrategy, rul
 	return nil
 }
 
-func (m precedenceMap) buildMatrix(opts *Options, terminals []string) (precedenceMatrix, error) {
+func (m precedenceMap) buildMatrix(terminals []string) (precedenceMatrix, error) {
 	for _, terminal := range terminals {
 		if terminal != "_TERM" {
 			m["_TERM"][terminal] = gopapageno.PrecYields
@@ -138,10 +139,6 @@ func (m precedenceMap) buildMatrix(opts *Options, terminals []string) (precedenc
 		}
 	}
 	m["_TERM"]["_TERM"] = gopapageno.PrecEquals
-
-	if err := moveToFront(terminals, "_TERM"); err != nil {
-		return nil, fmt.Errorf("could not move _TERM to front: %w", err)
-	}
 
 	precMatrix := make([][]gopapageno.Precedence, len(terminals))
 	for i, t1 := range terminals {
@@ -155,30 +152,61 @@ func (m precedenceMap) buildMatrix(opts *Options, terminals []string) (precedenc
 	return precMatrix, nil
 }
 
-func (p *parserDescriptor) newPrecedenceMatrix(opts *Options) (precedenceMatrix, error) {
+func (p *parserDescriptor) newPrecedenceMatrix(opts *Options) (matrix precedenceMatrix, err error) {
+	terminals := p.terminals.Slice()
+	if err := moveToFront(terminals, "_TERM"); err != nil {
+		return nil, fmt.Errorf("could not move _TERM to front: %w", err)
+	}
+
 	// TODO: Remove this when refactoring AOPP matrix creation.
 	if opts.Strategy == gopapageno.AOPP {
-		return p.newAssociativePrecedenceMatrix()
+		matrix, err = p.newAssociativePrecedenceMatrix()
+	} else {
+		lts, rts := p.getTerminalSets()
+
+		m := newPrecedenceMap(terminals)
+
+		if err := m.computeEqualsPrecedence(opts.Strategy, p.rules, terminals, p.nonterminals); err != nil {
+			return nil, err
+		}
+
+		if err := m.computeTakesPrecedence(opts.Strategy, p.rules, terminals, p.nonterminals, rts); err != nil {
+			return nil, err
+		}
+
+		if err := m.computeYieldsPrecedence(opts.Strategy, p.rules, terminals, p.nonterminals, lts); err != nil {
+			return nil, err
+		}
+
+		matrix, err = m.buildMatrix(terminals)
 	}
 
-	lts, rts := p.getTerminalSets()
-	terminals := p.terminals.Slice()
-
-	m := newPrecedenceMap(terminals)
-
-	if err := m.computeEqualsPrecedence(opts.Strategy, p.rules, terminals, p.nonterminals); err != nil {
+	if err != nil {
 		return nil, err
 	}
 
-	if err := m.computeTakesPrecedence(opts.Strategy, p.rules, terminals, p.nonterminals, rts); err != nil {
-		return nil, err
+	var sb strings.Builder
+
+	sb.WriteString("\t")
+	for _, t := range terminals {
+		sb.WriteString(fmt.Sprintf("\t%s", t))
+	}
+	sb.WriteString("\n")
+
+	for i, t1 := range terminals {
+		for j, _ := range terminals {
+			if j == 0 {
+				sb.WriteString(fmt.Sprintf("%s\t", t1))
+			}
+
+			sb.WriteString(fmt.Sprintf("%s\t", matrix[i][j]))
+		}
+		sb.WriteString("\n")
 	}
 
-	if err := m.computeYieldsPrecedence(opts.Strategy, p.rules, terminals, p.nonterminals, lts); err != nil {
-		return nil, err
-	}
+	opts.Logger.Print(sb.String())
 
-	return m.buildMatrix(opts, terminals)
+	return matrix, err
 }
 
 type conflict struct {

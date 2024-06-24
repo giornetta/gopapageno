@@ -13,12 +13,12 @@ func ParserPreallocMem(inputSize int, numThreads int) {
 // Non-terminals
 const (
 	Array_Elements_Value = gopapageno.TokenEmpty + 1 + iota
-	Document_Elements_Object_Value
+	Document
 	Elements
+	Elements_Object_Value
 	Elements_Value
 	Members
 	Members_Pair
-	NEW_AXIOM
 )
 
 // Terminals
@@ -26,7 +26,6 @@ const (
 	BOOL = gopapageno.TokenTerm + 1 + iota
 	COLON
 	COMMA
-	Document_Elements_Value
 	LCURLY
 	LSQUARE
 	NUMBER
@@ -55,18 +54,18 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 		switch t.Type {
 		case Array_Elements_Value:
 			sb.WriteString("Array_Elements_Value")
-		case Document_Elements_Object_Value:
-			sb.WriteString("Document_Elements_Object_Value")
+		case Document:
+			sb.WriteString("Document")
 		case Elements:
 			sb.WriteString("Elements")
+		case Elements_Object_Value:
+			sb.WriteString("Elements_Object_Value")
 		case Elements_Value:
 			sb.WriteString("Elements_Value")
 		case Members:
 			sb.WriteString("Members")
 		case Members_Pair:
 			sb.WriteString("Members_Pair")
-		case NEW_AXIOM:
-			sb.WriteString("NEW_AXIOM")
 		case gopapageno.TokenEmpty:
 			sb.WriteString("Empty")
 		case BOOL:
@@ -75,8 +74,6 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 			sb.WriteString("COLON")
 		case COMMA:
 			sb.WriteString("COMMA")
-		case Document_Elements_Value:
-			sb.WriteString("Document_Elements_Value")
 		case LCURLY:
 			sb.WriteString("LCURLY")
 		case LSQUARE:
@@ -111,36 +108,21 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 }
 
 func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
-	numTerminals := uint16(11)
+	numTerminals := uint16(10)
 	numNonTerminals := uint16(8)
 
 	maxRHSLen := 3
 	rules := []gopapageno.Rule{
 		{Elements, []gopapageno.TokenType{Array_Elements_Value, COMMA, Array_Elements_Value}, gopapageno.RuleCyclic},
-		{Elements, []gopapageno.TokenType{Array_Elements_Value, COMMA, Document_Elements_Object_Value}, gopapageno.RuleCyclic},
 		{Elements, []gopapageno.TokenType{Array_Elements_Value, COMMA, Elements}, gopapageno.RuleAppendLeft},
 		{Elements, []gopapageno.TokenType{Array_Elements_Value, COMMA, Elements}, gopapageno.RuleAppendLeft},
 		{Elements, []gopapageno.TokenType{Array_Elements_Value, COMMA, Elements}, gopapageno.RuleAppendLeft},
-		{Elements, []gopapageno.TokenType{Array_Elements_Value, COMMA, Elements}, gopapageno.RuleAppendLeft},
+		{Elements, []gopapageno.TokenType{Array_Elements_Value, COMMA, Elements_Object_Value}, gopapageno.RuleCyclic},
 		{Elements, []gopapageno.TokenType{Array_Elements_Value, COMMA, Elements_Value}, gopapageno.RuleCyclic},
-		{Elements, []gopapageno.TokenType{Array_Elements_Value, COMMA, Document_Elements_Value}, gopapageno.RuleCyclic},
-		{NEW_AXIOM, []gopapageno.TokenType{Document_Elements_Object_Value}, gopapageno.RuleSimple},
-		{Elements, []gopapageno.TokenType{Document_Elements_Object_Value, COMMA, Array_Elements_Value}, gopapageno.RuleCyclic},
-		{Elements, []gopapageno.TokenType{Document_Elements_Object_Value, COMMA, Document_Elements_Object_Value}, gopapageno.RuleCyclic},
-		{Elements, []gopapageno.TokenType{Document_Elements_Object_Value, COMMA, Elements}, gopapageno.RuleAppendLeft},
-		{Elements, []gopapageno.TokenType{Document_Elements_Object_Value, COMMA, Elements}, gopapageno.RuleAppendLeft},
-		{Elements, []gopapageno.TokenType{Document_Elements_Object_Value, COMMA, Elements}, gopapageno.RuleAppendLeft},
-		{Elements, []gopapageno.TokenType{Document_Elements_Object_Value, COMMA, Elements}, gopapageno.RuleAppendLeft},
-		{Elements, []gopapageno.TokenType{Document_Elements_Object_Value, COMMA, Elements_Value}, gopapageno.RuleCyclic},
-		{Elements, []gopapageno.TokenType{Document_Elements_Object_Value, COMMA, Document_Elements_Value}, gopapageno.RuleCyclic},
+		{Document, []gopapageno.TokenType{Document}, gopapageno.RuleSimple},
 		{Elements, []gopapageno.TokenType{Elements, COMMA, Array_Elements_Value}, gopapageno.RuleAppendRight},
 		{Elements, []gopapageno.TokenType{Elements, COMMA, Array_Elements_Value}, gopapageno.RuleAppendRight},
 		{Elements, []gopapageno.TokenType{Elements, COMMA, Array_Elements_Value}, gopapageno.RuleAppendRight},
-		{Elements, []gopapageno.TokenType{Elements, COMMA, Array_Elements_Value}, gopapageno.RuleAppendRight},
-		{Elements, []gopapageno.TokenType{Elements, COMMA, Document_Elements_Object_Value}, gopapageno.RuleAppendRight},
-		{Elements, []gopapageno.TokenType{Elements, COMMA, Document_Elements_Object_Value}, gopapageno.RuleAppendRight},
-		{Elements, []gopapageno.TokenType{Elements, COMMA, Document_Elements_Object_Value}, gopapageno.RuleAppendRight},
-		{Elements, []gopapageno.TokenType{Elements, COMMA, Document_Elements_Object_Value}, gopapageno.RuleAppendRight},
 		{Elements, []gopapageno.TokenType{Elements, COMMA, Elements}, gopapageno.RuleCombine},
 		{Elements, []gopapageno.TokenType{Elements, COMMA, Elements}, gopapageno.RuleCombine},
 		{Elements, []gopapageno.TokenType{Elements, COMMA, Elements}, gopapageno.RuleCombine},
@@ -150,76 +132,59 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 		{Elements, []gopapageno.TokenType{Elements, COMMA, Elements}, gopapageno.RuleCombine},
 		{Elements, []gopapageno.TokenType{Elements, COMMA, Elements}, gopapageno.RuleCombine},
 		{Elements, []gopapageno.TokenType{Elements, COMMA, Elements}, gopapageno.RuleCombine},
-		{Elements, []gopapageno.TokenType{Elements, COMMA, Elements}, gopapageno.RuleCombine},
-		{Elements, []gopapageno.TokenType{Elements, COMMA, Elements}, gopapageno.RuleCombine},
-		{Elements, []gopapageno.TokenType{Elements, COMMA, Elements}, gopapageno.RuleCombine},
-		{Elements, []gopapageno.TokenType{Elements, COMMA, Elements}, gopapageno.RuleCombine},
-		{Elements, []gopapageno.TokenType{Elements, COMMA, Elements}, gopapageno.RuleCombine},
-		{Elements, []gopapageno.TokenType{Elements, COMMA, Elements}, gopapageno.RuleCombine},
-		{Elements, []gopapageno.TokenType{Elements, COMMA, Elements}, gopapageno.RuleCombine},
+		{Elements, []gopapageno.TokenType{Elements, COMMA, Elements_Object_Value}, gopapageno.RuleAppendRight},
+		{Elements, []gopapageno.TokenType{Elements, COMMA, Elements_Object_Value}, gopapageno.RuleAppendRight},
+		{Elements, []gopapageno.TokenType{Elements, COMMA, Elements_Object_Value}, gopapageno.RuleAppendRight},
 		{Elements, []gopapageno.TokenType{Elements, COMMA, Elements_Value}, gopapageno.RuleAppendRight},
 		{Elements, []gopapageno.TokenType{Elements, COMMA, Elements_Value}, gopapageno.RuleAppendRight},
 		{Elements, []gopapageno.TokenType{Elements, COMMA, Elements_Value}, gopapageno.RuleAppendRight},
-		{Elements, []gopapageno.TokenType{Elements, COMMA, Elements_Value}, gopapageno.RuleAppendRight},
-		{Elements, []gopapageno.TokenType{Elements, COMMA, Document_Elements_Value}, gopapageno.RuleAppendRight},
-		{Elements, []gopapageno.TokenType{Elements, COMMA, Document_Elements_Value}, gopapageno.RuleAppendRight},
-		{Elements, []gopapageno.TokenType{Elements, COMMA, Document_Elements_Value}, gopapageno.RuleAppendRight},
-		{Elements, []gopapageno.TokenType{Elements, COMMA, Document_Elements_Value}, gopapageno.RuleAppendRight},
+		{Elements, []gopapageno.TokenType{Elements_Object_Value, COMMA, Array_Elements_Value}, gopapageno.RuleCyclic},
+		{Elements, []gopapageno.TokenType{Elements_Object_Value, COMMA, Elements}, gopapageno.RuleAppendLeft},
+		{Elements, []gopapageno.TokenType{Elements_Object_Value, COMMA, Elements}, gopapageno.RuleAppendLeft},
+		{Elements, []gopapageno.TokenType{Elements_Object_Value, COMMA, Elements}, gopapageno.RuleAppendLeft},
+		{Elements, []gopapageno.TokenType{Elements_Object_Value, COMMA, Elements_Object_Value}, gopapageno.RuleCyclic},
+		{Elements, []gopapageno.TokenType{Elements_Object_Value, COMMA, Elements_Value}, gopapageno.RuleCyclic},
 		{Elements, []gopapageno.TokenType{Elements_Value, COMMA, Array_Elements_Value}, gopapageno.RuleCyclic},
-		{Elements, []gopapageno.TokenType{Elements_Value, COMMA, Document_Elements_Object_Value}, gopapageno.RuleCyclic},
 		{Elements, []gopapageno.TokenType{Elements_Value, COMMA, Elements}, gopapageno.RuleAppendLeft},
 		{Elements, []gopapageno.TokenType{Elements_Value, COMMA, Elements}, gopapageno.RuleAppendLeft},
 		{Elements, []gopapageno.TokenType{Elements_Value, COMMA, Elements}, gopapageno.RuleAppendLeft},
-		{Elements, []gopapageno.TokenType{Elements_Value, COMMA, Elements}, gopapageno.RuleAppendLeft},
+		{Elements, []gopapageno.TokenType{Elements_Value, COMMA, Elements_Object_Value}, gopapageno.RuleCyclic},
 		{Elements, []gopapageno.TokenType{Elements_Value, COMMA, Elements_Value}, gopapageno.RuleCyclic},
-		{Elements, []gopapageno.TokenType{Elements_Value, COMMA, Document_Elements_Value}, gopapageno.RuleCyclic},
 		{Members, []gopapageno.TokenType{Members, COMMA, Members}, gopapageno.RuleCombine},
 		{Members, []gopapageno.TokenType{Members, COMMA, Members_Pair}, gopapageno.RuleAppendRight},
 		{Members, []gopapageno.TokenType{Members_Pair, COMMA, Members}, gopapageno.RuleAppendLeft},
 		{Members, []gopapageno.TokenType{Members_Pair, COMMA, Members_Pair}, gopapageno.RuleCyclic},
 		{Elements_Value, []gopapageno.TokenType{BOOL}, gopapageno.RuleSimple},
-		{NEW_AXIOM, []gopapageno.TokenType{Document_Elements_Value}, gopapageno.RuleSimple},
-		{Elements, []gopapageno.TokenType{Document_Elements_Value, COMMA, Array_Elements_Value}, gopapageno.RuleCyclic},
-		{Elements, []gopapageno.TokenType{Document_Elements_Value, COMMA, Document_Elements_Object_Value}, gopapageno.RuleCyclic},
-		{Elements, []gopapageno.TokenType{Document_Elements_Value, COMMA, Elements}, gopapageno.RuleAppendLeft},
-		{Elements, []gopapageno.TokenType{Document_Elements_Value, COMMA, Elements}, gopapageno.RuleAppendLeft},
-		{Elements, []gopapageno.TokenType{Document_Elements_Value, COMMA, Elements}, gopapageno.RuleAppendLeft},
-		{Elements, []gopapageno.TokenType{Document_Elements_Value, COMMA, Elements}, gopapageno.RuleAppendLeft},
-		{Elements, []gopapageno.TokenType{Document_Elements_Value, COMMA, Elements_Value}, gopapageno.RuleCyclic},
-		{Elements, []gopapageno.TokenType{Document_Elements_Value, COMMA, Document_Elements_Value}, gopapageno.RuleCyclic},
-		{Document_Elements_Object_Value, []gopapageno.TokenType{LCURLY, Members, RCURLY}, gopapageno.RuleSimple},
-		{Document_Elements_Object_Value, []gopapageno.TokenType{LCURLY, Members_Pair, RCURLY}, gopapageno.RuleSimple},
-		{Document_Elements_Object_Value, []gopapageno.TokenType{LCURLY, RCURLY}, gopapageno.RuleSimple},
+		{Elements_Object_Value, []gopapageno.TokenType{LCURLY, Members, RCURLY}, gopapageno.RuleSimple},
+		{Elements_Object_Value, []gopapageno.TokenType{LCURLY, Members_Pair, RCURLY}, gopapageno.RuleSimple},
+		{Elements_Object_Value, []gopapageno.TokenType{LCURLY, RCURLY}, gopapageno.RuleSimple},
 		{Array_Elements_Value, []gopapageno.TokenType{LSQUARE, Array_Elements_Value, RSQUARE}, gopapageno.RuleSimple},
-		{Array_Elements_Value, []gopapageno.TokenType{LSQUARE, Document_Elements_Object_Value, RSQUARE}, gopapageno.RuleSimple},
 		{Array_Elements_Value, []gopapageno.TokenType{LSQUARE, Elements, RSQUARE}, gopapageno.RuleSimple},
+		{Array_Elements_Value, []gopapageno.TokenType{LSQUARE, Elements_Object_Value, RSQUARE}, gopapageno.RuleSimple},
 		{Array_Elements_Value, []gopapageno.TokenType{LSQUARE, Elements_Value, RSQUARE}, gopapageno.RuleSimple},
-		{Array_Elements_Value, []gopapageno.TokenType{LSQUARE, Document_Elements_Value, RSQUARE}, gopapageno.RuleSimple},
 		{Array_Elements_Value, []gopapageno.TokenType{LSQUARE, RSQUARE}, gopapageno.RuleSimple},
 		{Elements_Value, []gopapageno.TokenType{NUMBER}, gopapageno.RuleSimple},
 		{Elements_Value, []gopapageno.TokenType{STRING}, gopapageno.RuleSimple},
 		{Members_Pair, []gopapageno.TokenType{STRING, COLON, Array_Elements_Value}, gopapageno.RuleSimple},
-		{Members_Pair, []gopapageno.TokenType{STRING, COLON, Document_Elements_Object_Value}, gopapageno.RuleSimple},
+		{Members_Pair, []gopapageno.TokenType{STRING, COLON, Elements_Object_Value}, gopapageno.RuleSimple},
 		{Members_Pair, []gopapageno.TokenType{STRING, COLON, Elements_Value}, gopapageno.RuleSimple},
-		{Members_Pair, []gopapageno.TokenType{STRING, COLON, Document_Elements_Value}, gopapageno.RuleSimple},
 	}
-	compressedRules := []uint16{0, 0, 12, 1, 27, 2, 60, 3, 93, 4, 126, 5, 159, 6, 177, 32769, 195, 32772, 198, 32773, 231, 32774, 259, 32775, 317, 32778, 320, 0, 0, 1, 32771, 32, 0, 0, 5, 1, 45, 2, 48, 3, 51, 4, 54, 32772, 57, 3, 0, 0, 3, 1, 0, 3, 5, 0, 3, 6, 0, 3, 7, 0, 7, 8, 1, 32771, 65, 0, 0, 5, 1, 78, 2, 81, 3, 84, 4, 87, 32772, 90, 3, 9, 0, 3, 10, 0, 3, 14, 0, 3, 15, 0, 3, 16, 0, 0, 0, 1, 32771, 98, 0, 0, 5, 1, 111, 2, 114, 3, 117, 4, 120, 32772, 123, 3, 20, 0, 3, 24, 0, 3, 40, 0, 3, 44, 0, 3, 48, 0, 0, 0, 1, 32771, 131, 0, 0, 5, 1, 144, 2, 147, 3, 150, 4, 153, 32772, 156, 3, 49, 0, 3, 50, 0, 3, 54, 0, 3, 55, 0, 3, 56, 0, 0, 0, 1, 32771, 164, 0, 0, 2, 5, 171, 6, 174, 5, 57, 0, 5, 58, 0, 0, 0, 1, 32771, 182, 0, 0, 2, 5, 189, 6, 192, 5, 59, 0, 5, 60, 0, 4, 61, 0, 7, 62, 1, 32771, 203, 0, 0, 5, 1, 216, 2, 219, 3, 222, 4, 225, 32772, 228, 3, 63, 0, 3, 64, 0, 3, 68, 0, 3, 69, 0, 3, 70, 0, 0, 0, 3, 5, 240, 6, 248, 32776, 256, 0, 0, 1, 32776, 245, 2, 71, 0, 0, 0, 1, 32776, 253, 2, 72, 0, 2, 73, 0, 0, 0, 6, 1, 274, 2, 282, 3, 290, 4, 298, 32772, 306, 32777, 314, 0, 0, 1, 32777, 279, 1, 74, 0, 0, 0, 1, 32777, 287, 1, 75, 0, 0, 0, 1, 32777, 295, 1, 76, 0, 0, 0, 1, 32777, 303, 1, 77, 0, 0, 0, 1, 32777, 311, 1, 78, 0, 1, 79, 0, 4, 80, 0, 4, 81, 1, 32770, 325, 0, 0, 4, 1, 336, 2, 339, 4, 342, 32772, 345, 6, 82, 0, 6, 83, 0, 6, 84, 0, 6, 85, 0}
+	compressedRules := []uint16{0, 0, 12, 1, 27, 2, 55, 3, 58, 4, 86, 5, 114, 6, 142, 7, 160, 32769, 178, 32772, 181, 32773, 209, 32774, 257, 32777, 260, 0, 0, 1, 32771, 32, 0, 0, 4, 1, 43, 3, 46, 4, 49, 5, 52, 3, 0, 0, 3, 3, 0, 3, 4, 0, 3, 5, 0, 2, 6, 0, 0, 0, 1, 32771, 63, 0, 0, 4, 1, 74, 3, 77, 4, 80, 5, 83, 3, 9, 0, 3, 18, 0, 3, 21, 0, 3, 24, 0, 0, 0, 1, 32771, 91, 0, 0, 4, 1, 102, 3, 105, 4, 108, 5, 111, 3, 25, 0, 3, 28, 0, 3, 29, 0, 3, 30, 0, 0, 0, 1, 32771, 119, 0, 0, 4, 1, 130, 3, 133, 4, 136, 5, 139, 3, 31, 0, 3, 34, 0, 3, 35, 0, 3, 36, 0, 0, 0, 1, 32771, 147, 0, 0, 2, 6, 154, 7, 157, 6, 37, 0, 6, 38, 0, 0, 0, 1, 32771, 165, 0, 0, 2, 6, 172, 7, 175, 6, 39, 0, 6, 40, 0, 5, 41, 0, 0, 0, 3, 6, 190, 7, 198, 32775, 206, 0, 0, 1, 32775, 195, 4, 42, 0, 0, 0, 1, 32775, 203, 4, 43, 0, 4, 44, 0, 0, 0, 5, 1, 222, 3, 230, 4, 238, 5, 246, 32776, 254, 0, 0, 1, 32776, 227, 1, 45, 0, 0, 0, 1, 32776, 235, 1, 46, 0, 0, 0, 1, 32776, 243, 1, 47, 0, 0, 0, 1, 32776, 251, 1, 48, 0, 1, 49, 0, 5, 50, 0, 5, 51, 1, 32770, 265, 0, 0, 3, 1, 274, 4, 277, 5, 280, 7, 52, 0, 7, 53, 0, 7, 54, 0}
 
 	precMatrix := [][]gopapageno.Precedence{
-		{gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields},
-		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
-		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecYields},
-		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecEmpty, gopapageno.PrecEquals, gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecYields},
-		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEquals, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
-		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecYields, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEquals, gopapageno.PrecEmpty, gopapageno.PrecYields},
-		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecEmpty, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEmpty, gopapageno.PrecEquals, gopapageno.PrecYields},
-		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
-		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
-		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
-		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEquals, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
+		{gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields},
+		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
+		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecYields},
+		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecEmpty, gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecYields},
+		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecYields, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEquals, gopapageno.PrecEmpty, gopapageno.PrecYields},
+		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecEmpty, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEmpty, gopapageno.PrecEquals, gopapageno.PrecYields},
+		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
+		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
+		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
+		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty},
 	}
 	bitPackedMatrix := []uint64{
-		2686505480168494420, 4655334419943449, 36635736178775140, 1301856705847434,
+		7247846681816159572, 9385875886894639440, 586172198017311360, 296,
 	}
 
 	fn := func(rule uint16, lhs *gopapageno.Token, rhs []*gopapageno.Token, thread int) {
@@ -244,23 +209,24 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			_ = COMMA2
 			_ = Array_Elements_Value3
 		case 1:
-			ruleType = gopapageno.RuleCyclic
+			ruleType = gopapageno.RuleAppendLeft
 
 			Elements0 := lhs
 			Array_Elements_Value1 := rhs[0]
 			COMMA2 := rhs[1]
-			Document_Elements_Object_Value3 := rhs[2]
+			Elements3 := rhs[2]
 
+			oldChild := Elements0
 			Elements0.Child = Array_Elements_Value1
 			Array_Elements_Value1.Next = COMMA2
-			COMMA2.Next = Document_Elements_Object_Value3
-			Elements0.LastChild = Document_Elements_Object_Value3
+			COMMA2.Next = Elements3
+			Elements3.Next = oldChild
 
 			{
 			}
 			_ = Array_Elements_Value1
 			_ = COMMA2
-			_ = Document_Elements_Object_Value3
+			_ = Elements3
 		case 2:
 			ruleType = gopapageno.RuleAppendLeft
 
@@ -300,44 +266,24 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			_ = COMMA2
 			_ = Elements3
 		case 4:
-			ruleType = gopapageno.RuleAppendLeft
+			ruleType = gopapageno.RuleCyclic
 
 			Elements0 := lhs
 			Array_Elements_Value1 := rhs[0]
 			COMMA2 := rhs[1]
-			Elements3 := rhs[2]
+			Elements_Object_Value3 := rhs[2]
 
-			oldChild := Elements0
 			Elements0.Child = Array_Elements_Value1
 			Array_Elements_Value1.Next = COMMA2
-			COMMA2.Next = Elements3
-			Elements3.Next = oldChild
+			COMMA2.Next = Elements_Object_Value3
+			Elements0.LastChild = Elements_Object_Value3
 
 			{
 			}
 			_ = Array_Elements_Value1
 			_ = COMMA2
-			_ = Elements3
+			_ = Elements_Object_Value3
 		case 5:
-			ruleType = gopapageno.RuleAppendLeft
-
-			Elements0 := lhs
-			Array_Elements_Value1 := rhs[0]
-			COMMA2 := rhs[1]
-			Elements3 := rhs[2]
-
-			oldChild := Elements0
-			Elements0.Child = Array_Elements_Value1
-			Array_Elements_Value1.Next = COMMA2
-			COMMA2.Next = Elements3
-			Elements3.Next = oldChild
-
-			{
-			}
-			_ = Array_Elements_Value1
-			_ = COMMA2
-			_ = Elements3
-		case 6:
 			ruleType = gopapageno.RuleCyclic
 
 			Elements0 := lhs
@@ -355,730 +301,437 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			_ = Array_Elements_Value1
 			_ = COMMA2
 			_ = Elements_Value3
-		case 7:
-			ruleType = gopapageno.RuleCyclic
-
-			Elements0 := lhs
-			Array_Elements_Value1 := rhs[0]
-			COMMA2 := rhs[1]
-			Document_Elements_Value3 := rhs[2]
-
-			Elements0.Child = Array_Elements_Value1
-			Array_Elements_Value1.Next = COMMA2
-			COMMA2.Next = Document_Elements_Value3
-			Elements0.LastChild = Document_Elements_Value3
-
-			{
-			}
-			_ = Array_Elements_Value1
-			_ = COMMA2
-			_ = Document_Elements_Value3
-		case 8:
+		case 6:
 			ruleType = gopapageno.RuleSimple
 
-			NEW_AXIOM0 := lhs
-			Document_Elements_Object_Value1 := rhs[0]
+			Document0 := lhs
+			Document1 := rhs[0]
 
-			NEW_AXIOM0.Child = Document_Elements_Object_Value1
-			NEW_AXIOM0.LastChild = Document_Elements_Object_Value1
+			Document0.Child = Document1
+			Document0.LastChild = Document1
 
 			{
-				NEW_AXIOM0.Value = Document_Elements_Object_Value1.Value
+				Document0.Value = Document1.Value
 			}
-			_ = Document_Elements_Object_Value1
-		case 9:
-			ruleType = gopapageno.RuleCyclic
+			_ = Document1
+		case 7:
+			ruleType = gopapageno.RuleAppendRight
 
 			Elements0 := lhs
-			Document_Elements_Object_Value1 := rhs[0]
+			Elements1 := rhs[0]
 			COMMA2 := rhs[1]
 			Array_Elements_Value3 := rhs[2]
 
-			Elements0.Child = Document_Elements_Object_Value1
-			Document_Elements_Object_Value1.Next = COMMA2
+			Elements0.LastChild.Next = COMMA2
 			COMMA2.Next = Array_Elements_Value3
 			Elements0.LastChild = Array_Elements_Value3
 
 			{
 			}
-			_ = Document_Elements_Object_Value1
+			_ = Elements1
+			_ = COMMA2
+			_ = Array_Elements_Value3
+		case 8:
+			ruleType = gopapageno.RuleAppendRight
+
+			Elements0 := lhs
+			Elements1 := rhs[0]
+			COMMA2 := rhs[1]
+			Array_Elements_Value3 := rhs[2]
+
+			Elements0.LastChild.Next = COMMA2
+			COMMA2.Next = Array_Elements_Value3
+			Elements0.LastChild = Array_Elements_Value3
+
+			{
+			}
+			_ = Elements1
+			_ = COMMA2
+			_ = Array_Elements_Value3
+		case 9:
+			ruleType = gopapageno.RuleAppendRight
+
+			Elements0 := lhs
+			Elements1 := rhs[0]
+			COMMA2 := rhs[1]
+			Array_Elements_Value3 := rhs[2]
+
+			Elements0.LastChild.Next = COMMA2
+			COMMA2.Next = Array_Elements_Value3
+			Elements0.LastChild = Array_Elements_Value3
+
+			{
+			}
+			_ = Elements1
 			_ = COMMA2
 			_ = Array_Elements_Value3
 		case 10:
-			ruleType = gopapageno.RuleCyclic
+			ruleType = gopapageno.RuleCombine
 
 			Elements0 := lhs
-			Document_Elements_Object_Value1 := rhs[0]
-			COMMA2 := rhs[1]
-			Document_Elements_Object_Value3 := rhs[2]
-
-			Elements0.Child = Document_Elements_Object_Value1
-			Document_Elements_Object_Value1.Next = COMMA2
-			COMMA2.Next = Document_Elements_Object_Value3
-			Elements0.LastChild = Document_Elements_Object_Value3
-
-			{
-			}
-			_ = Document_Elements_Object_Value1
-			_ = COMMA2
-			_ = Document_Elements_Object_Value3
-		case 11:
-			ruleType = gopapageno.RuleAppendLeft
-
-			Elements0 := lhs
-			Document_Elements_Object_Value1 := rhs[0]
+			Elements1 := rhs[0]
 			COMMA2 := rhs[1]
 			Elements3 := rhs[2]
 
-			oldChild := Elements0
-			Elements0.Child = Document_Elements_Object_Value1
-			Document_Elements_Object_Value1.Next = COMMA2
-			COMMA2.Next = Elements3
-			Elements3.Next = oldChild
+			Elements0.LastChild.Next = COMMA2
+			COMMA2.Next = Elements3.Child
+			Elements0.LastChild = Elements3.LastChild
 
 			{
 			}
-			_ = Document_Elements_Object_Value1
+			_ = Elements1
+			_ = COMMA2
+			_ = Elements3
+		case 11:
+			ruleType = gopapageno.RuleCombine
+
+			Elements0 := lhs
+			Elements1 := rhs[0]
+			COMMA2 := rhs[1]
+			Elements3 := rhs[2]
+
+			Elements0.LastChild.Next = COMMA2
+			COMMA2.Next = Elements3.Child
+			Elements0.LastChild = Elements3.LastChild
+
+			{
+			}
+			_ = Elements1
 			_ = COMMA2
 			_ = Elements3
 		case 12:
-			ruleType = gopapageno.RuleAppendLeft
+			ruleType = gopapageno.RuleCombine
 
 			Elements0 := lhs
-			Document_Elements_Object_Value1 := rhs[0]
+			Elements1 := rhs[0]
 			COMMA2 := rhs[1]
 			Elements3 := rhs[2]
 
-			oldChild := Elements0
-			Elements0.Child = Document_Elements_Object_Value1
-			Document_Elements_Object_Value1.Next = COMMA2
-			COMMA2.Next = Elements3
-			Elements3.Next = oldChild
+			Elements0.LastChild.Next = COMMA2
+			COMMA2.Next = Elements3.Child
+			Elements0.LastChild = Elements3.LastChild
 
 			{
 			}
-			_ = Document_Elements_Object_Value1
+			_ = Elements1
 			_ = COMMA2
 			_ = Elements3
 		case 13:
-			ruleType = gopapageno.RuleAppendLeft
+			ruleType = gopapageno.RuleCombine
 
 			Elements0 := lhs
-			Document_Elements_Object_Value1 := rhs[0]
+			Elements1 := rhs[0]
 			COMMA2 := rhs[1]
 			Elements3 := rhs[2]
 
-			oldChild := Elements0
-			Elements0.Child = Document_Elements_Object_Value1
-			Document_Elements_Object_Value1.Next = COMMA2
-			COMMA2.Next = Elements3
-			Elements3.Next = oldChild
+			Elements0.LastChild.Next = COMMA2
+			COMMA2.Next = Elements3.Child
+			Elements0.LastChild = Elements3.LastChild
 
 			{
 			}
-			_ = Document_Elements_Object_Value1
+			_ = Elements1
 			_ = COMMA2
 			_ = Elements3
 		case 14:
-			ruleType = gopapageno.RuleAppendLeft
+			ruleType = gopapageno.RuleCombine
 
 			Elements0 := lhs
-			Document_Elements_Object_Value1 := rhs[0]
+			Elements1 := rhs[0]
 			COMMA2 := rhs[1]
 			Elements3 := rhs[2]
 
-			oldChild := Elements0
-			Elements0.Child = Document_Elements_Object_Value1
-			Document_Elements_Object_Value1.Next = COMMA2
-			COMMA2.Next = Elements3
-			Elements3.Next = oldChild
+			Elements0.LastChild.Next = COMMA2
+			COMMA2.Next = Elements3.Child
+			Elements0.LastChild = Elements3.LastChild
 
 			{
 			}
-			_ = Document_Elements_Object_Value1
+			_ = Elements1
 			_ = COMMA2
 			_ = Elements3
 		case 15:
-			ruleType = gopapageno.RuleCyclic
+			ruleType = gopapageno.RuleCombine
 
 			Elements0 := lhs
-			Document_Elements_Object_Value1 := rhs[0]
+			Elements1 := rhs[0]
 			COMMA2 := rhs[1]
-			Elements_Value3 := rhs[2]
+			Elements3 := rhs[2]
 
-			Elements0.Child = Document_Elements_Object_Value1
-			Document_Elements_Object_Value1.Next = COMMA2
-			COMMA2.Next = Elements_Value3
-			Elements0.LastChild = Elements_Value3
+			Elements0.LastChild.Next = COMMA2
+			COMMA2.Next = Elements3.Child
+			Elements0.LastChild = Elements3.LastChild
 
 			{
 			}
-			_ = Document_Elements_Object_Value1
+			_ = Elements1
 			_ = COMMA2
-			_ = Elements_Value3
+			_ = Elements3
 		case 16:
-			ruleType = gopapageno.RuleCyclic
+			ruleType = gopapageno.RuleCombine
 
 			Elements0 := lhs
-			Document_Elements_Object_Value1 := rhs[0]
+			Elements1 := rhs[0]
 			COMMA2 := rhs[1]
-			Document_Elements_Value3 := rhs[2]
+			Elements3 := rhs[2]
 
-			Elements0.Child = Document_Elements_Object_Value1
-			Document_Elements_Object_Value1.Next = COMMA2
-			COMMA2.Next = Document_Elements_Value3
-			Elements0.LastChild = Document_Elements_Value3
+			Elements0.LastChild.Next = COMMA2
+			COMMA2.Next = Elements3.Child
+			Elements0.LastChild = Elements3.LastChild
 
 			{
 			}
-			_ = Document_Elements_Object_Value1
+			_ = Elements1
 			_ = COMMA2
-			_ = Document_Elements_Value3
+			_ = Elements3
 		case 17:
-			ruleType = gopapageno.RuleAppendRight
+			ruleType = gopapageno.RuleCombine
 
 			Elements0 := lhs
 			Elements1 := rhs[0]
 			COMMA2 := rhs[1]
-			Array_Elements_Value3 := rhs[2]
+			Elements3 := rhs[2]
 
 			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Array_Elements_Value3
-			Elements0.LastChild = Array_Elements_Value3
+			COMMA2.Next = Elements3.Child
+			Elements0.LastChild = Elements3.LastChild
 
 			{
 			}
 			_ = Elements1
 			_ = COMMA2
-			_ = Array_Elements_Value3
+			_ = Elements3
 		case 18:
-			ruleType = gopapageno.RuleAppendRight
+			ruleType = gopapageno.RuleCombine
 
 			Elements0 := lhs
 			Elements1 := rhs[0]
 			COMMA2 := rhs[1]
-			Array_Elements_Value3 := rhs[2]
+			Elements3 := rhs[2]
 
 			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Array_Elements_Value3
-			Elements0.LastChild = Array_Elements_Value3
+			COMMA2.Next = Elements3.Child
+			Elements0.LastChild = Elements3.LastChild
 
 			{
 			}
 			_ = Elements1
 			_ = COMMA2
-			_ = Array_Elements_Value3
+			_ = Elements3
 		case 19:
 			ruleType = gopapageno.RuleAppendRight
 
 			Elements0 := lhs
 			Elements1 := rhs[0]
 			COMMA2 := rhs[1]
-			Array_Elements_Value3 := rhs[2]
+			Elements_Object_Value3 := rhs[2]
 
 			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Array_Elements_Value3
-			Elements0.LastChild = Array_Elements_Value3
+			COMMA2.Next = Elements_Object_Value3
+			Elements0.LastChild = Elements_Object_Value3
 
 			{
 			}
 			_ = Elements1
 			_ = COMMA2
-			_ = Array_Elements_Value3
+			_ = Elements_Object_Value3
 		case 20:
 			ruleType = gopapageno.RuleAppendRight
 
 			Elements0 := lhs
 			Elements1 := rhs[0]
 			COMMA2 := rhs[1]
-			Array_Elements_Value3 := rhs[2]
+			Elements_Object_Value3 := rhs[2]
 
 			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Array_Elements_Value3
-			Elements0.LastChild = Array_Elements_Value3
+			COMMA2.Next = Elements_Object_Value3
+			Elements0.LastChild = Elements_Object_Value3
 
 			{
 			}
 			_ = Elements1
 			_ = COMMA2
-			_ = Array_Elements_Value3
+			_ = Elements_Object_Value3
 		case 21:
 			ruleType = gopapageno.RuleAppendRight
 
 			Elements0 := lhs
 			Elements1 := rhs[0]
 			COMMA2 := rhs[1]
-			Document_Elements_Object_Value3 := rhs[2]
+			Elements_Object_Value3 := rhs[2]
 
 			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Document_Elements_Object_Value3
-			Elements0.LastChild = Document_Elements_Object_Value3
+			COMMA2.Next = Elements_Object_Value3
+			Elements0.LastChild = Elements_Object_Value3
 
 			{
 			}
 			_ = Elements1
 			_ = COMMA2
-			_ = Document_Elements_Object_Value3
+			_ = Elements_Object_Value3
 		case 22:
 			ruleType = gopapageno.RuleAppendRight
 
 			Elements0 := lhs
 			Elements1 := rhs[0]
 			COMMA2 := rhs[1]
-			Document_Elements_Object_Value3 := rhs[2]
+			Elements_Value3 := rhs[2]
 
 			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Document_Elements_Object_Value3
-			Elements0.LastChild = Document_Elements_Object_Value3
+			COMMA2.Next = Elements_Value3
+			Elements0.LastChild = Elements_Value3
 
 			{
 			}
 			_ = Elements1
 			_ = COMMA2
-			_ = Document_Elements_Object_Value3
+			_ = Elements_Value3
 		case 23:
 			ruleType = gopapageno.RuleAppendRight
 
 			Elements0 := lhs
 			Elements1 := rhs[0]
 			COMMA2 := rhs[1]
-			Document_Elements_Object_Value3 := rhs[2]
+			Elements_Value3 := rhs[2]
 
 			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Document_Elements_Object_Value3
-			Elements0.LastChild = Document_Elements_Object_Value3
+			COMMA2.Next = Elements_Value3
+			Elements0.LastChild = Elements_Value3
 
 			{
 			}
 			_ = Elements1
 			_ = COMMA2
-			_ = Document_Elements_Object_Value3
+			_ = Elements_Value3
 		case 24:
 			ruleType = gopapageno.RuleAppendRight
 
 			Elements0 := lhs
 			Elements1 := rhs[0]
 			COMMA2 := rhs[1]
-			Document_Elements_Object_Value3 := rhs[2]
+			Elements_Value3 := rhs[2]
 
 			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Document_Elements_Object_Value3
-			Elements0.LastChild = Document_Elements_Object_Value3
+			COMMA2.Next = Elements_Value3
+			Elements0.LastChild = Elements_Value3
 
 			{
 			}
 			_ = Elements1
 			_ = COMMA2
-			_ = Document_Elements_Object_Value3
+			_ = Elements_Value3
 		case 25:
-			ruleType = gopapageno.RuleCombine
+			ruleType = gopapageno.RuleCyclic
 
 			Elements0 := lhs
-			Elements1 := rhs[0]
+			Elements_Object_Value1 := rhs[0]
 			COMMA2 := rhs[1]
-			Elements3 := rhs[2]
+			Array_Elements_Value3 := rhs[2]
 
-			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Elements3.Child
-			Elements0.LastChild = Elements3.LastChild
+			Elements0.Child = Elements_Object_Value1
+			Elements_Object_Value1.Next = COMMA2
+			COMMA2.Next = Array_Elements_Value3
+			Elements0.LastChild = Array_Elements_Value3
 
 			{
 			}
-			_ = Elements1
+			_ = Elements_Object_Value1
 			_ = COMMA2
-			_ = Elements3
+			_ = Array_Elements_Value3
 		case 26:
-			ruleType = gopapageno.RuleCombine
+			ruleType = gopapageno.RuleAppendLeft
 
 			Elements0 := lhs
-			Elements1 := rhs[0]
+			Elements_Object_Value1 := rhs[0]
 			COMMA2 := rhs[1]
 			Elements3 := rhs[2]
 
-			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Elements3.Child
-			Elements0.LastChild = Elements3.LastChild
+			oldChild := Elements0
+			Elements0.Child = Elements_Object_Value1
+			Elements_Object_Value1.Next = COMMA2
+			COMMA2.Next = Elements3
+			Elements3.Next = oldChild
 
 			{
 			}
-			_ = Elements1
+			_ = Elements_Object_Value1
 			_ = COMMA2
 			_ = Elements3
 		case 27:
-			ruleType = gopapageno.RuleCombine
+			ruleType = gopapageno.RuleAppendLeft
 
 			Elements0 := lhs
-			Elements1 := rhs[0]
+			Elements_Object_Value1 := rhs[0]
 			COMMA2 := rhs[1]
 			Elements3 := rhs[2]
 
-			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Elements3.Child
-			Elements0.LastChild = Elements3.LastChild
+			oldChild := Elements0
+			Elements0.Child = Elements_Object_Value1
+			Elements_Object_Value1.Next = COMMA2
+			COMMA2.Next = Elements3
+			Elements3.Next = oldChild
 
 			{
 			}
-			_ = Elements1
+			_ = Elements_Object_Value1
 			_ = COMMA2
 			_ = Elements3
 		case 28:
-			ruleType = gopapageno.RuleCombine
+			ruleType = gopapageno.RuleAppendLeft
 
 			Elements0 := lhs
-			Elements1 := rhs[0]
+			Elements_Object_Value1 := rhs[0]
 			COMMA2 := rhs[1]
 			Elements3 := rhs[2]
 
-			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Elements3.Child
-			Elements0.LastChild = Elements3.LastChild
+			oldChild := Elements0
+			Elements0.Child = Elements_Object_Value1
+			Elements_Object_Value1.Next = COMMA2
+			COMMA2.Next = Elements3
+			Elements3.Next = oldChild
 
 			{
 			}
-			_ = Elements1
+			_ = Elements_Object_Value1
 			_ = COMMA2
 			_ = Elements3
 		case 29:
-			ruleType = gopapageno.RuleCombine
+			ruleType = gopapageno.RuleCyclic
 
 			Elements0 := lhs
-			Elements1 := rhs[0]
+			Elements_Object_Value1 := rhs[0]
 			COMMA2 := rhs[1]
-			Elements3 := rhs[2]
+			Elements_Object_Value3 := rhs[2]
 
-			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Elements3.Child
-			Elements0.LastChild = Elements3.LastChild
+			Elements0.Child = Elements_Object_Value1
+			Elements_Object_Value1.Next = COMMA2
+			COMMA2.Next = Elements_Object_Value3
+			Elements0.LastChild = Elements_Object_Value3
 
 			{
 			}
-			_ = Elements1
+			_ = Elements_Object_Value1
 			_ = COMMA2
-			_ = Elements3
+			_ = Elements_Object_Value3
 		case 30:
-			ruleType = gopapageno.RuleCombine
+			ruleType = gopapageno.RuleCyclic
 
 			Elements0 := lhs
-			Elements1 := rhs[0]
+			Elements_Object_Value1 := rhs[0]
 			COMMA2 := rhs[1]
-			Elements3 := rhs[2]
+			Elements_Value3 := rhs[2]
 
-			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Elements3.Child
-			Elements0.LastChild = Elements3.LastChild
+			Elements0.Child = Elements_Object_Value1
+			Elements_Object_Value1.Next = COMMA2
+			COMMA2.Next = Elements_Value3
+			Elements0.LastChild = Elements_Value3
 
 			{
 			}
-			_ = Elements1
+			_ = Elements_Object_Value1
 			_ = COMMA2
-			_ = Elements3
+			_ = Elements_Value3
 		case 31:
-			ruleType = gopapageno.RuleCombine
-
-			Elements0 := lhs
-			Elements1 := rhs[0]
-			COMMA2 := rhs[1]
-			Elements3 := rhs[2]
-
-			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Elements3.Child
-			Elements0.LastChild = Elements3.LastChild
-
-			{
-			}
-			_ = Elements1
-			_ = COMMA2
-			_ = Elements3
-		case 32:
-			ruleType = gopapageno.RuleCombine
-
-			Elements0 := lhs
-			Elements1 := rhs[0]
-			COMMA2 := rhs[1]
-			Elements3 := rhs[2]
-
-			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Elements3.Child
-			Elements0.LastChild = Elements3.LastChild
-
-			{
-			}
-			_ = Elements1
-			_ = COMMA2
-			_ = Elements3
-		case 33:
-			ruleType = gopapageno.RuleCombine
-
-			Elements0 := lhs
-			Elements1 := rhs[0]
-			COMMA2 := rhs[1]
-			Elements3 := rhs[2]
-
-			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Elements3.Child
-			Elements0.LastChild = Elements3.LastChild
-
-			{
-			}
-			_ = Elements1
-			_ = COMMA2
-			_ = Elements3
-		case 34:
-			ruleType = gopapageno.RuleCombine
-
-			Elements0 := lhs
-			Elements1 := rhs[0]
-			COMMA2 := rhs[1]
-			Elements3 := rhs[2]
-
-			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Elements3.Child
-			Elements0.LastChild = Elements3.LastChild
-
-			{
-			}
-			_ = Elements1
-			_ = COMMA2
-			_ = Elements3
-		case 35:
-			ruleType = gopapageno.RuleCombine
-
-			Elements0 := lhs
-			Elements1 := rhs[0]
-			COMMA2 := rhs[1]
-			Elements3 := rhs[2]
-
-			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Elements3.Child
-			Elements0.LastChild = Elements3.LastChild
-
-			{
-			}
-			_ = Elements1
-			_ = COMMA2
-			_ = Elements3
-		case 36:
-			ruleType = gopapageno.RuleCombine
-
-			Elements0 := lhs
-			Elements1 := rhs[0]
-			COMMA2 := rhs[1]
-			Elements3 := rhs[2]
-
-			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Elements3.Child
-			Elements0.LastChild = Elements3.LastChild
-
-			{
-			}
-			_ = Elements1
-			_ = COMMA2
-			_ = Elements3
-		case 37:
-			ruleType = gopapageno.RuleCombine
-
-			Elements0 := lhs
-			Elements1 := rhs[0]
-			COMMA2 := rhs[1]
-			Elements3 := rhs[2]
-
-			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Elements3.Child
-			Elements0.LastChild = Elements3.LastChild
-
-			{
-			}
-			_ = Elements1
-			_ = COMMA2
-			_ = Elements3
-		case 38:
-			ruleType = gopapageno.RuleCombine
-
-			Elements0 := lhs
-			Elements1 := rhs[0]
-			COMMA2 := rhs[1]
-			Elements3 := rhs[2]
-
-			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Elements3.Child
-			Elements0.LastChild = Elements3.LastChild
-
-			{
-			}
-			_ = Elements1
-			_ = COMMA2
-			_ = Elements3
-		case 39:
-			ruleType = gopapageno.RuleCombine
-
-			Elements0 := lhs
-			Elements1 := rhs[0]
-			COMMA2 := rhs[1]
-			Elements3 := rhs[2]
-
-			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Elements3.Child
-			Elements0.LastChild = Elements3.LastChild
-
-			{
-			}
-			_ = Elements1
-			_ = COMMA2
-			_ = Elements3
-		case 40:
-			ruleType = gopapageno.RuleCombine
-
-			Elements0 := lhs
-			Elements1 := rhs[0]
-			COMMA2 := rhs[1]
-			Elements3 := rhs[2]
-
-			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Elements3.Child
-			Elements0.LastChild = Elements3.LastChild
-
-			{
-			}
-			_ = Elements1
-			_ = COMMA2
-			_ = Elements3
-		case 41:
-			ruleType = gopapageno.RuleAppendRight
-
-			Elements0 := lhs
-			Elements1 := rhs[0]
-			COMMA2 := rhs[1]
-			Elements_Value3 := rhs[2]
-
-			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Elements_Value3
-			Elements0.LastChild = Elements_Value3
-
-			{
-			}
-			_ = Elements1
-			_ = COMMA2
-			_ = Elements_Value3
-		case 42:
-			ruleType = gopapageno.RuleAppendRight
-
-			Elements0 := lhs
-			Elements1 := rhs[0]
-			COMMA2 := rhs[1]
-			Elements_Value3 := rhs[2]
-
-			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Elements_Value3
-			Elements0.LastChild = Elements_Value3
-
-			{
-			}
-			_ = Elements1
-			_ = COMMA2
-			_ = Elements_Value3
-		case 43:
-			ruleType = gopapageno.RuleAppendRight
-
-			Elements0 := lhs
-			Elements1 := rhs[0]
-			COMMA2 := rhs[1]
-			Elements_Value3 := rhs[2]
-
-			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Elements_Value3
-			Elements0.LastChild = Elements_Value3
-
-			{
-			}
-			_ = Elements1
-			_ = COMMA2
-			_ = Elements_Value3
-		case 44:
-			ruleType = gopapageno.RuleAppendRight
-
-			Elements0 := lhs
-			Elements1 := rhs[0]
-			COMMA2 := rhs[1]
-			Elements_Value3 := rhs[2]
-
-			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Elements_Value3
-			Elements0.LastChild = Elements_Value3
-
-			{
-			}
-			_ = Elements1
-			_ = COMMA2
-			_ = Elements_Value3
-		case 45:
-			ruleType = gopapageno.RuleAppendRight
-
-			Elements0 := lhs
-			Elements1 := rhs[0]
-			COMMA2 := rhs[1]
-			Document_Elements_Value3 := rhs[2]
-
-			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Document_Elements_Value3
-			Elements0.LastChild = Document_Elements_Value3
-
-			{
-			}
-			_ = Elements1
-			_ = COMMA2
-			_ = Document_Elements_Value3
-		case 46:
-			ruleType = gopapageno.RuleAppendRight
-
-			Elements0 := lhs
-			Elements1 := rhs[0]
-			COMMA2 := rhs[1]
-			Document_Elements_Value3 := rhs[2]
-
-			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Document_Elements_Value3
-			Elements0.LastChild = Document_Elements_Value3
-
-			{
-			}
-			_ = Elements1
-			_ = COMMA2
-			_ = Document_Elements_Value3
-		case 47:
-			ruleType = gopapageno.RuleAppendRight
-
-			Elements0 := lhs
-			Elements1 := rhs[0]
-			COMMA2 := rhs[1]
-			Document_Elements_Value3 := rhs[2]
-
-			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Document_Elements_Value3
-			Elements0.LastChild = Document_Elements_Value3
-
-			{
-			}
-			_ = Elements1
-			_ = COMMA2
-			_ = Document_Elements_Value3
-		case 48:
-			ruleType = gopapageno.RuleAppendRight
-
-			Elements0 := lhs
-			Elements1 := rhs[0]
-			COMMA2 := rhs[1]
-			Document_Elements_Value3 := rhs[2]
-
-			Elements0.LastChild.Next = COMMA2
-			COMMA2.Next = Document_Elements_Value3
-			Elements0.LastChild = Document_Elements_Value3
-
-			{
-			}
-			_ = Elements1
-			_ = COMMA2
-			_ = Document_Elements_Value3
-		case 49:
 			ruleType = gopapageno.RuleCyclic
 
 			Elements0 := lhs
@@ -1096,101 +749,82 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			_ = Elements_Value1
 			_ = COMMA2
 			_ = Array_Elements_Value3
-		case 50:
+		case 32:
+			ruleType = gopapageno.RuleAppendLeft
+
+			Elements0 := lhs
+			Elements_Value1 := rhs[0]
+			COMMA2 := rhs[1]
+			Elements3 := rhs[2]
+
+			oldChild := Elements0
+			Elements0.Child = Elements_Value1
+			Elements_Value1.Next = COMMA2
+			COMMA2.Next = Elements3
+			Elements3.Next = oldChild
+
+			{
+			}
+			_ = Elements_Value1
+			_ = COMMA2
+			_ = Elements3
+		case 33:
+			ruleType = gopapageno.RuleAppendLeft
+
+			Elements0 := lhs
+			Elements_Value1 := rhs[0]
+			COMMA2 := rhs[1]
+			Elements3 := rhs[2]
+
+			oldChild := Elements0
+			Elements0.Child = Elements_Value1
+			Elements_Value1.Next = COMMA2
+			COMMA2.Next = Elements3
+			Elements3.Next = oldChild
+
+			{
+			}
+			_ = Elements_Value1
+			_ = COMMA2
+			_ = Elements3
+		case 34:
+			ruleType = gopapageno.RuleAppendLeft
+
+			Elements0 := lhs
+			Elements_Value1 := rhs[0]
+			COMMA2 := rhs[1]
+			Elements3 := rhs[2]
+
+			oldChild := Elements0
+			Elements0.Child = Elements_Value1
+			Elements_Value1.Next = COMMA2
+			COMMA2.Next = Elements3
+			Elements3.Next = oldChild
+
+			{
+			}
+			_ = Elements_Value1
+			_ = COMMA2
+			_ = Elements3
+		case 35:
 			ruleType = gopapageno.RuleCyclic
 
 			Elements0 := lhs
 			Elements_Value1 := rhs[0]
 			COMMA2 := rhs[1]
-			Document_Elements_Object_Value3 := rhs[2]
+			Elements_Object_Value3 := rhs[2]
 
 			Elements0.Child = Elements_Value1
 			Elements_Value1.Next = COMMA2
-			COMMA2.Next = Document_Elements_Object_Value3
-			Elements0.LastChild = Document_Elements_Object_Value3
+			COMMA2.Next = Elements_Object_Value3
+			Elements0.LastChild = Elements_Object_Value3
 
 			{
 			}
 			_ = Elements_Value1
 			_ = COMMA2
-			_ = Document_Elements_Object_Value3
-		case 51:
-			ruleType = gopapageno.RuleAppendLeft
-
-			Elements0 := lhs
-			Elements_Value1 := rhs[0]
-			COMMA2 := rhs[1]
-			Elements3 := rhs[2]
-
-			oldChild := Elements0
-			Elements0.Child = Elements_Value1
-			Elements_Value1.Next = COMMA2
-			COMMA2.Next = Elements3
-			Elements3.Next = oldChild
-
-			{
-			}
-			_ = Elements_Value1
-			_ = COMMA2
-			_ = Elements3
-		case 52:
-			ruleType = gopapageno.RuleAppendLeft
-
-			Elements0 := lhs
-			Elements_Value1 := rhs[0]
-			COMMA2 := rhs[1]
-			Elements3 := rhs[2]
-
-			oldChild := Elements0
-			Elements0.Child = Elements_Value1
-			Elements_Value1.Next = COMMA2
-			COMMA2.Next = Elements3
-			Elements3.Next = oldChild
-
-			{
-			}
-			_ = Elements_Value1
-			_ = COMMA2
-			_ = Elements3
-		case 53:
-			ruleType = gopapageno.RuleAppendLeft
-
-			Elements0 := lhs
-			Elements_Value1 := rhs[0]
-			COMMA2 := rhs[1]
-			Elements3 := rhs[2]
-
-			oldChild := Elements0
-			Elements0.Child = Elements_Value1
-			Elements_Value1.Next = COMMA2
-			COMMA2.Next = Elements3
-			Elements3.Next = oldChild
-
-			{
-			}
-			_ = Elements_Value1
-			_ = COMMA2
-			_ = Elements3
-		case 54:
-			ruleType = gopapageno.RuleAppendLeft
-
-			Elements0 := lhs
-			Elements_Value1 := rhs[0]
-			COMMA2 := rhs[1]
-			Elements3 := rhs[2]
-
-			oldChild := Elements0
-			Elements0.Child = Elements_Value1
-			Elements_Value1.Next = COMMA2
-			COMMA2.Next = Elements3
-			Elements3.Next = oldChild
-
-			{
-			}
-			_ = Elements_Value1
-			_ = COMMA2
-			_ = Elements3
-		case 55:
+			_ = Elements_Object_Value3
+		case 36:
 			ruleType = gopapageno.RuleCyclic
 
 			Elements0 := lhs
@@ -1208,25 +842,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			_ = Elements_Value1
 			_ = COMMA2
 			_ = Elements_Value3
-		case 56:
-			ruleType = gopapageno.RuleCyclic
-
-			Elements0 := lhs
-			Elements_Value1 := rhs[0]
-			COMMA2 := rhs[1]
-			Document_Elements_Value3 := rhs[2]
-
-			Elements0.Child = Elements_Value1
-			Elements_Value1.Next = COMMA2
-			COMMA2.Next = Document_Elements_Value3
-			Elements0.LastChild = Document_Elements_Value3
-
-			{
-			}
-			_ = Elements_Value1
-			_ = COMMA2
-			_ = Document_Elements_Value3
-		case 57:
+		case 37:
 			ruleType = gopapageno.RuleCombine
 
 			Members0 := lhs
@@ -1243,7 +859,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			_ = Members1
 			_ = COMMA2
 			_ = Members3
-		case 58:
+		case 38:
 			ruleType = gopapageno.RuleAppendRight
 
 			Members0 := lhs
@@ -1260,7 +876,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			_ = Members1
 			_ = COMMA2
 			_ = Members_Pair3
-		case 59:
+		case 39:
 			ruleType = gopapageno.RuleAppendLeft
 
 			Members0 := lhs
@@ -1279,7 +895,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			_ = Members_Pair1
 			_ = COMMA2
 			_ = Members3
-		case 60:
+		case 40:
 			ruleType = gopapageno.RuleCyclic
 
 			Members0 := lhs
@@ -1297,7 +913,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			_ = Members_Pair1
 			_ = COMMA2
 			_ = Members_Pair3
-		case 61:
+		case 41:
 			ruleType = gopapageno.RuleSimple
 
 			Elements_Value0 := lhs
@@ -1309,219 +925,58 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			{
 			}
 			_ = BOOL1
-		case 62:
+		case 42:
 			ruleType = gopapageno.RuleSimple
 
-			NEW_AXIOM0 := lhs
-			Document_Elements_Value1 := rhs[0]
-
-			NEW_AXIOM0.Child = Document_Elements_Value1
-			NEW_AXIOM0.LastChild = Document_Elements_Value1
-
-			{
-				NEW_AXIOM0.Value = Document_Elements_Value1.Value
-			}
-			_ = Document_Elements_Value1
-		case 63:
-			ruleType = gopapageno.RuleCyclic
-
-			Elements0 := lhs
-			Document_Elements_Value1 := rhs[0]
-			COMMA2 := rhs[1]
-			Array_Elements_Value3 := rhs[2]
-
-			Elements0.Child = Document_Elements_Value1
-			Document_Elements_Value1.Next = COMMA2
-			COMMA2.Next = Array_Elements_Value3
-			Elements0.LastChild = Array_Elements_Value3
-
-			{
-			}
-			_ = Document_Elements_Value1
-			_ = COMMA2
-			_ = Array_Elements_Value3
-		case 64:
-			ruleType = gopapageno.RuleCyclic
-
-			Elements0 := lhs
-			Document_Elements_Value1 := rhs[0]
-			COMMA2 := rhs[1]
-			Document_Elements_Object_Value3 := rhs[2]
-
-			Elements0.Child = Document_Elements_Value1
-			Document_Elements_Value1.Next = COMMA2
-			COMMA2.Next = Document_Elements_Object_Value3
-			Elements0.LastChild = Document_Elements_Object_Value3
-
-			{
-			}
-			_ = Document_Elements_Value1
-			_ = COMMA2
-			_ = Document_Elements_Object_Value3
-		case 65:
-			ruleType = gopapageno.RuleAppendLeft
-
-			Elements0 := lhs
-			Document_Elements_Value1 := rhs[0]
-			COMMA2 := rhs[1]
-			Elements3 := rhs[2]
-
-			oldChild := Elements0
-			Elements0.Child = Document_Elements_Value1
-			Document_Elements_Value1.Next = COMMA2
-			COMMA2.Next = Elements3
-			Elements3.Next = oldChild
-
-			{
-			}
-			_ = Document_Elements_Value1
-			_ = COMMA2
-			_ = Elements3
-		case 66:
-			ruleType = gopapageno.RuleAppendLeft
-
-			Elements0 := lhs
-			Document_Elements_Value1 := rhs[0]
-			COMMA2 := rhs[1]
-			Elements3 := rhs[2]
-
-			oldChild := Elements0
-			Elements0.Child = Document_Elements_Value1
-			Document_Elements_Value1.Next = COMMA2
-			COMMA2.Next = Elements3
-			Elements3.Next = oldChild
-
-			{
-			}
-			_ = Document_Elements_Value1
-			_ = COMMA2
-			_ = Elements3
-		case 67:
-			ruleType = gopapageno.RuleAppendLeft
-
-			Elements0 := lhs
-			Document_Elements_Value1 := rhs[0]
-			COMMA2 := rhs[1]
-			Elements3 := rhs[2]
-
-			oldChild := Elements0
-			Elements0.Child = Document_Elements_Value1
-			Document_Elements_Value1.Next = COMMA2
-			COMMA2.Next = Elements3
-			Elements3.Next = oldChild
-
-			{
-			}
-			_ = Document_Elements_Value1
-			_ = COMMA2
-			_ = Elements3
-		case 68:
-			ruleType = gopapageno.RuleAppendLeft
-
-			Elements0 := lhs
-			Document_Elements_Value1 := rhs[0]
-			COMMA2 := rhs[1]
-			Elements3 := rhs[2]
-
-			oldChild := Elements0
-			Elements0.Child = Document_Elements_Value1
-			Document_Elements_Value1.Next = COMMA2
-			COMMA2.Next = Elements3
-			Elements3.Next = oldChild
-
-			{
-			}
-			_ = Document_Elements_Value1
-			_ = COMMA2
-			_ = Elements3
-		case 69:
-			ruleType = gopapageno.RuleCyclic
-
-			Elements0 := lhs
-			Document_Elements_Value1 := rhs[0]
-			COMMA2 := rhs[1]
-			Elements_Value3 := rhs[2]
-
-			Elements0.Child = Document_Elements_Value1
-			Document_Elements_Value1.Next = COMMA2
-			COMMA2.Next = Elements_Value3
-			Elements0.LastChild = Elements_Value3
-
-			{
-			}
-			_ = Document_Elements_Value1
-			_ = COMMA2
-			_ = Elements_Value3
-		case 70:
-			ruleType = gopapageno.RuleCyclic
-
-			Elements0 := lhs
-			Document_Elements_Value1 := rhs[0]
-			COMMA2 := rhs[1]
-			Document_Elements_Value3 := rhs[2]
-
-			Elements0.Child = Document_Elements_Value1
-			Document_Elements_Value1.Next = COMMA2
-			COMMA2.Next = Document_Elements_Value3
-			Elements0.LastChild = Document_Elements_Value3
-
-			{
-			}
-			_ = Document_Elements_Value1
-			_ = COMMA2
-			_ = Document_Elements_Value3
-		case 71:
-			ruleType = gopapageno.RuleSimple
-
-			Document_Elements_Object_Value0 := lhs
+			Elements_Object_Value0 := lhs
 			LCURLY1 := rhs[0]
 			Members2 := rhs[1]
 			RCURLY3 := rhs[2]
 
-			Document_Elements_Object_Value0.Child = LCURLY1
+			Elements_Object_Value0.Child = LCURLY1
 			LCURLY1.Next = Members2
 			Members2.Next = RCURLY3
-			Document_Elements_Object_Value0.LastChild = RCURLY3
+			Elements_Object_Value0.LastChild = RCURLY3
 
 			{
 			}
 			_ = LCURLY1
 			_ = Members2
 			_ = RCURLY3
-		case 72:
+		case 43:
 			ruleType = gopapageno.RuleSimple
 
-			Document_Elements_Object_Value0 := lhs
+			Elements_Object_Value0 := lhs
 			LCURLY1 := rhs[0]
 			Members_Pair2 := rhs[1]
 			RCURLY3 := rhs[2]
 
-			Document_Elements_Object_Value0.Child = LCURLY1
+			Elements_Object_Value0.Child = LCURLY1
 			LCURLY1.Next = Members_Pair2
 			Members_Pair2.Next = RCURLY3
-			Document_Elements_Object_Value0.LastChild = RCURLY3
+			Elements_Object_Value0.LastChild = RCURLY3
 
 			{
 			}
 			_ = LCURLY1
 			_ = Members_Pair2
 			_ = RCURLY3
-		case 73:
+		case 44:
 			ruleType = gopapageno.RuleSimple
 
-			Document_Elements_Object_Value0 := lhs
+			Elements_Object_Value0 := lhs
 			LCURLY1 := rhs[0]
 			RCURLY2 := rhs[1]
 
-			Document_Elements_Object_Value0.Child = LCURLY1
+			Elements_Object_Value0.Child = LCURLY1
 			LCURLY1.Next = RCURLY2
-			Document_Elements_Object_Value0.LastChild = RCURLY2
+			Elements_Object_Value0.LastChild = RCURLY2
 
 			{
 			}
 			_ = LCURLY1
 			_ = RCURLY2
-		case 74:
+		case 45:
 			ruleType = gopapageno.RuleSimple
 
 			Array_Elements_Value0 := lhs
@@ -1539,25 +994,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			_ = LSQUARE1
 			_ = Array_Elements_Value2
 			_ = RSQUARE3
-		case 75:
-			ruleType = gopapageno.RuleSimple
-
-			Array_Elements_Value0 := lhs
-			LSQUARE1 := rhs[0]
-			Document_Elements_Object_Value2 := rhs[1]
-			RSQUARE3 := rhs[2]
-
-			Array_Elements_Value0.Child = LSQUARE1
-			LSQUARE1.Next = Document_Elements_Object_Value2
-			Document_Elements_Object_Value2.Next = RSQUARE3
-			Array_Elements_Value0.LastChild = RSQUARE3
-
-			{
-			}
-			_ = LSQUARE1
-			_ = Document_Elements_Object_Value2
-			_ = RSQUARE3
-		case 76:
+		case 46:
 			ruleType = gopapageno.RuleSimple
 
 			Array_Elements_Value0 := lhs
@@ -1575,7 +1012,25 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			_ = LSQUARE1
 			_ = Elements2
 			_ = RSQUARE3
-		case 77:
+		case 47:
+			ruleType = gopapageno.RuleSimple
+
+			Array_Elements_Value0 := lhs
+			LSQUARE1 := rhs[0]
+			Elements_Object_Value2 := rhs[1]
+			RSQUARE3 := rhs[2]
+
+			Array_Elements_Value0.Child = LSQUARE1
+			LSQUARE1.Next = Elements_Object_Value2
+			Elements_Object_Value2.Next = RSQUARE3
+			Array_Elements_Value0.LastChild = RSQUARE3
+
+			{
+			}
+			_ = LSQUARE1
+			_ = Elements_Object_Value2
+			_ = RSQUARE3
+		case 48:
 			ruleType = gopapageno.RuleSimple
 
 			Array_Elements_Value0 := lhs
@@ -1593,25 +1048,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			_ = LSQUARE1
 			_ = Elements_Value2
 			_ = RSQUARE3
-		case 78:
-			ruleType = gopapageno.RuleSimple
-
-			Array_Elements_Value0 := lhs
-			LSQUARE1 := rhs[0]
-			Document_Elements_Value2 := rhs[1]
-			RSQUARE3 := rhs[2]
-
-			Array_Elements_Value0.Child = LSQUARE1
-			LSQUARE1.Next = Document_Elements_Value2
-			Document_Elements_Value2.Next = RSQUARE3
-			Array_Elements_Value0.LastChild = RSQUARE3
-
-			{
-			}
-			_ = LSQUARE1
-			_ = Document_Elements_Value2
-			_ = RSQUARE3
-		case 79:
+		case 49:
 			ruleType = gopapageno.RuleSimple
 
 			Array_Elements_Value0 := lhs
@@ -1626,7 +1063,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			}
 			_ = LSQUARE1
 			_ = RSQUARE2
-		case 80:
+		case 50:
 			ruleType = gopapageno.RuleSimple
 
 			Elements_Value0 := lhs
@@ -1638,7 +1075,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			{
 			}
 			_ = NUMBER1
-		case 81:
+		case 51:
 			ruleType = gopapageno.RuleSimple
 
 			Elements_Value0 := lhs
@@ -1650,7 +1087,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			{
 			}
 			_ = STRING1
-		case 82:
+		case 52:
 			ruleType = gopapageno.RuleSimple
 
 			Members_Pair0 := lhs
@@ -1668,25 +1105,25 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			_ = STRING1
 			_ = COLON2
 			_ = Array_Elements_Value3
-		case 83:
+		case 53:
 			ruleType = gopapageno.RuleSimple
 
 			Members_Pair0 := lhs
 			STRING1 := rhs[0]
 			COLON2 := rhs[1]
-			Document_Elements_Object_Value3 := rhs[2]
+			Elements_Object_Value3 := rhs[2]
 
 			Members_Pair0.Child = STRING1
 			STRING1.Next = COLON2
-			COLON2.Next = Document_Elements_Object_Value3
-			Members_Pair0.LastChild = Document_Elements_Object_Value3
+			COLON2.Next = Elements_Object_Value3
+			Members_Pair0.LastChild = Elements_Object_Value3
 
 			{
 			}
 			_ = STRING1
 			_ = COLON2
-			_ = Document_Elements_Object_Value3
-		case 84:
+			_ = Elements_Object_Value3
+		case 54:
 			ruleType = gopapageno.RuleSimple
 
 			Members_Pair0 := lhs
@@ -1704,24 +1141,6 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			_ = STRING1
 			_ = COLON2
 			_ = Elements_Value3
-		case 85:
-			ruleType = gopapageno.RuleSimple
-
-			Members_Pair0 := lhs
-			STRING1 := rhs[0]
-			COLON2 := rhs[1]
-			Document_Elements_Value3 := rhs[2]
-
-			Members_Pair0.Child = STRING1
-			STRING1.Next = COLON2
-			COLON2.Next = Document_Elements_Value3
-			Members_Pair0.LastChild = Document_Elements_Value3
-
-			{
-			}
-			_ = STRING1
-			_ = COLON2
-			_ = Document_Elements_Value3
 		}
 		_ = ruleType
 	}

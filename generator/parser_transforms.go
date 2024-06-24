@@ -14,6 +14,9 @@ func (p *parserDescriptor) deleteCopyRules(rulesDict *rulesDictionary) {
 	rhsDict := make(map[string][][]string)
 
 	for _, rule := range p.rules {
+		if rule.LHS == p.axiom {
+			continue
+		}
 		// If the rule produces a single nonterminal token,
 		// add it to the copy rules set and remove it from the rules' dictionary.
 		// Otherwise, add the rule to rhsRule.
@@ -148,20 +151,19 @@ func (p *parserDescriptor) deleteRepeatedRHS() {
 		}
 	}
 
-	newAxiom := "NEW_AXIOM"
-	newAxiomSet := newSet[string]()
-	newAxiomSet.Add(newAxiom)
+	axiomSet := newSet[string]()
+	axiomSet.Add(p.axiom)
 
-	newAxiomSemAction := "{\n\t$$.Value = $1.Value\n}"
+	axiomSemAction := "{\n\t$$.Value = $1.Value\n}"
 
-	V = append(V, newAxiomSet)
+	V = append(V, axiomSet)
 
 	for _, nontermSet := range V {
 		if nontermSet.Contains(p.axiom) {
 			newRulesDict.Add(&rule{
-				LHS:    newAxiom,
+				LHS:    p.axiom,
 				RHS:    []string{strings.Join(nontermSet.Slice(), "_")},
-				Action: newAxiomSemAction,
+				Action: axiomSemAction,
 			})
 		}
 	}
@@ -179,8 +181,6 @@ func (p *parserDescriptor) deleteRepeatedRHS() {
 	p.rules = newRules
 
 	p.inferTokens()
-
-	p.axiom = newAxiom
 }
 
 func (p *parserDescriptor) extractTerminalRules(dictRules *rulesDictionary, newRulesDict *rulesDictionary) {

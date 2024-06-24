@@ -50,6 +50,7 @@ func BenchmarkParse(b *testing.B) {
 
 func TestProfile(t *testing.T) {
 	c := 12
+	avgLen := gopapageno.DefaultAverageTokenLength
 	strat := gopapageno.ReductionParallel
 
 	filename := "generated-2000.json"
@@ -63,6 +64,7 @@ func TestProfile(t *testing.T) {
 
 	p := NewParser(
 		gopapageno.WithConcurrency(c),
+		gopapageno.WithAverageTokenLength(avgLen),
 		gopapageno.WithPreallocFunc(ParserPreallocMem),
 		gopapageno.WithReductionStrategy(strat),
 	)
