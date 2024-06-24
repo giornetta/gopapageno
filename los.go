@@ -56,11 +56,8 @@ func stackSize[T any]() int {
 	return 1024 * 1024 / int(typeSize)
 }
 
-func stacksCount[T any](src []byte, concurrency int) int {
-	// TODO: Make this number customizable
-	avgTokenLen := 4.0
-
-	return int(math.Ceil(float64(len(src)) / avgTokenLen / float64(concurrency) / float64(stackSize[T]())))
+func stacksCount[T any](src []byte, concurrency int, avgTokenLen int) int {
+	return int(math.Ceil(float64(len(src)) / float64(avgTokenLen) / float64(concurrency) / float64(stackSize[T]())))
 }
 
 func newStackBuilder[T any](c ValueConstructor[T]) func() *stack[T] {

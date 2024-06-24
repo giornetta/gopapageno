@@ -84,9 +84,9 @@ func run() error {
 	// fmt.Printf("Result: %v\n", *root.Value.(*int64))
 	h := root.Height()
 	fmt.Printf("Height: %d\n", h)
-	if h < 100 {
-		fmt.Println(SprintToken[int64](root))
-	}
+	//if h < 100 {
+	//	fmt.Println(SprintToken[int64](root))
+	//}
 
 	return nil
 }

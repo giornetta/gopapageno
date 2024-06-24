@@ -26,6 +26,7 @@ func run() error {
 	concurrencyFlag := flag.Int("c", 1, "number of concurrent goroutines to spawn")
 	strategyFlag := flag.String("s", "sweep", "parsing strategy to execute")
 	logFlag := flag.Bool("log", false, "enable logging")
+	avgTokensFlag := flag.Int("avg", 4, "average length of tokens")
 
 	cpuProfileFlag := flag.String("cpuprof", "", "output file for CPU profiling")
 	memProfileFlag := flag.String("memprof", "", "output file for Memory profiling")
@@ -70,6 +71,7 @@ func run() error {
 		gopapageno.WithMemoryProfiling(memProfileWriter),
 		gopapageno.WithPreallocFunc(ParserPreallocMem),
 		gopapageno.WithReductionStrategy(strat),
+		gopapageno.WithAverageTokenLength(*avgTokensFlag),
 	)
 
 	ctx := context.Background()

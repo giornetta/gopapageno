@@ -8,7 +8,22 @@ vars:
 tasks:
   generate:
     cmds:
-      - go run ./cmd/gopapageno/main.go -l ./examples/{{ .STRAT }}/{{ .EXAMPLE }}.l -g {{ .STRAT }}/{{ .EXAMPLE }}.g -o {{ .STRAT }}/ -strategy={{ .STRAT }} -log
+      - go run ./cmd/gopapageno/main.go -l ./examples/{{ .EXAMPLE }}/{{ .STRAT }}/{{ .EXAMPLE }}.l -g ./examples/{{ .EXAMPLE }}/{{ .STRAT }}/{{ .EXAMPLE }}.g -o ./examples/{{ .EXAMPLE }}/{{ .STRAT }}/ -strategy={{ .STRAT }} -log
+
+  generate-all-example:
+    cmds:
+      - for: [opp, aopp, copp]
+        task: generate
+        vars:
+            STRAT: '{{ .ITEM }}'
+            EXAMPLE: '{{ .EXAMPLE }}'
+
+  generate-all:
+      cmds:
+        - for: [adder, expr, json, xml]
+          task: generate-all-example
+          vars:
+            EXAMPLE: '{{ .ITEM }}'
 
   benchmark:
     vars:

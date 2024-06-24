@@ -92,6 +92,8 @@ type Parser struct {
 	initialConcurrency int
 	reductionStrategy  ReductionStrategy
 
+	avgTokenLength int
+
 	logger *log.Logger
 
 	cpuProfileWriter io.Writer
@@ -164,6 +166,14 @@ func WithReductionStrategy(strat ReductionStrategy) ParserOpt {
 	}
 }
 
+const DefaultAverageTokenLength int = 4
+
+func WithAverageTokenLength(length int) ParserOpt {
+	return func(p *Parser) {
+		p.avgTokenLength = length
+	}
+}
+
 func NewParser(
 	lexer *Lexer,
 	numTerminals uint16, numNonterminals uint16, maxRHSLength int,
@@ -187,6 +197,7 @@ func NewParser(
 		concurrency:               1,
 		initialConcurrency:        1,
 		reductionStrategy:         ReductionSweep,
+		avgTokenLength:            DefaultAverageTokenLength,
 		logger:                    discardLogger,
 		cpuProfileWriter:          nil,
 		memProfileWriter:          nil,
@@ -216,7 +227,7 @@ func (p *Parser) Parse(ctx context.Context, src []byte) (*Token, error) {
 	}
 
 	// Initialize Scanner
-	scanner := p.Lexer.Scanner(src, ScannerWithConcurrency(p.concurrency))
+	scanner := p.Lexer.Scanner(src, p.concurrency, p.avgTokenLength)
 
 	// Allocate
 	p.init(src)
@@ -336,7 +347,7 @@ func (p *Parser) init(src []byte) {
 	// TODO: Where does these numbers come from?
 	avgCharsPerToken := 4
 
-	stackPoolBaseSize := stacksCount[*Token](src, p.concurrency)
+	stackPoolBaseSize := stacksCount[*Token](src, p.concurrency, p.avgTokenLength)
 	ntPoolBaseSize := srcLen / avgCharsPerToken / p.concurrency
 
 	// Initialize memory pools for stacks.
@@ -351,6 +362,7 @@ func (p *Parser) init(src []byte) {
 	p.pools.nonterminals = make([]*Pool[Token], p.concurrency)
 
 	for thread := 0; thread < p.concurrency; thread++ {
+		// TODO: Does this need more work?
 		stackPoolMultiplier := 1
 		if p.reductionStrategy == ReductionParallel {
 			//stackPoolMultiplier = p.concurrency - thread
@@ -367,7 +379,7 @@ func (p *Parser) init(src []byte) {
 
 	// TODO: Remove or change this part to reflect the correct sweep reductionStrategy.
 	if p.reductionStrategy == ReductionSweep {
-		inputPoolBaseSize := stacksCount[Token](src, p.concurrency)
+		inputPoolBaseSize := stacksCount[Token](src, p.concurrency, p.avgTokenLength)
 
 		p.pools.sweepInput = NewPool[stack[Token]](inputPoolBaseSize, WithConstructor[stack[Token]](newStack[Token]))
 		p.pools.sweepStack = NewPool[stack[*Token]](stackPoolBaseSize, WithConstructor[stack[*Token]](newStack[*Token]))
