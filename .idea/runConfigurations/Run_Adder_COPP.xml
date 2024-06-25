@@ -2,7 +2,7 @@
   <configuration default="false" name="Run Adder COPP" type="GoApplicationRunConfiguration" factoryName="Go Application" folderName="Run Parsers">
     <module name="gopapageno" />
     <working_directory value="$PROJECT_DIR$/examples/adder" />
-    <parameters value="-f data/1MB.txt -c 12 -s sweep" />
+    <parameters value="-f data/small.txt -c 4 -s mixed" />
     <kind value="PACKAGE" />
     <package value="github.com/giornetta/gopapageno/examples/adder/copp" />
     <directory value="$PROJECT_DIR$" />

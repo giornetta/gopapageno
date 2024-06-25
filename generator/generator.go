@@ -290,6 +290,8 @@ func run() error {
 	strat := gopapageno.ReductionSweep
 	if *strategyFlag == "parallel" {
 		strat = gopapageno.ReductionParallel
+	} else if *strategyFlag == "mixed" {
+		strat = gopapageno.ReductionMixed	
 	}
 
 	p := NewParser(
@@ -312,9 +314,16 @@ func run() error {
 	fmt.Printf("Parsing took: %%v\n", time.Since(start))
 
 	// fmt.Printf("Result: %%v\n", *root.Value.(*int64))
-	h := root.Height()
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+
+	h, err := root.Height(ctx)
+	if err != nil {
+		return nil
+	}
+
 	fmt.Printf("Height: %%d\n", h)
-	if h < 100 {
+	if h < 10 {
 		fmt.Println(SprintToken[int64](root))
 	}
 

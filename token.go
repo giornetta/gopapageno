@@ -1,6 +1,7 @@
 package gopapageno
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -38,7 +39,7 @@ func (t TokenType) Value() uint16 {
 
 // Height computes the height of the AST rooted in `t`.
 // It can be used as an evaluation metric for tree-balance, as left/right-skewed trees will have a bigger height compared to balanced trees.
-func (root *Token) Height() int {
+func (root *Token) Height(ctx context.Context) (int, error) {
 	// Helper struct to hold a token and its depth
 	type TokenWithDepth struct {
 		token *Token
@@ -46,7 +47,7 @@ func (root *Token) Height() int {
 	}
 
 	if root == nil {
-		return -1
+		return 0, nil
 	}
 
 	var maxHeight int
@@ -65,12 +66,16 @@ func (root *Token) Height() int {
 
 	// Find the maximum height from the results
 	for height := range resultChan {
+		if ctx.Err() != nil {
+			return 0, ctx.Err()
+		}
+
 		if height > maxHeight {
 			maxHeight = height
 		}
 	}
 
-	return maxHeight
+	return maxHeight, nil
 }
 func bfs(node *Token, depth int, wg *sync.WaitGroup, resultChan chan int) {
 	defer wg.Done()

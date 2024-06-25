@@ -295,13 +295,20 @@ func (p *Parser) Parse(ctx context.Context, src []byte) (*Token, error) {
 	}
 
 	//If the number of threads is greater than one, results must be combined and work should continue.
+	reductionPasses := 0
 
-	if p.concurrency > 1 {
-		if p.reductionStrategy == ReductionSweep {
+	// Loop until we have a single reduced stack
+	for p.concurrency--; p.concurrency >= 1; p.concurrency-- {
+		if p.reductionStrategy == ReductionSweep || (p.reductionStrategy == ReductionMixed && reductionPasses >= 2) {
+
+			// Nullifies the previous p.concurrency--
+			p.concurrency++
+
 			// Create the final input by joining together the stacks from the previous step.
 			stack := parseResults[0].Combine()
 			input := p.CombineSweepLOS(p.pools.sweepInput, parseResults[1:])
 
+			// Sets correct concurrency level for final sweep.
 			p.concurrency = 1
 
 			go workers[0].parse(ctx, stack, input, nil, true, resultCh, errCh)
@@ -310,31 +317,31 @@ func (p *Parser) Parse(ctx context.Context, src []byte) (*Token, error) {
 				cancel()
 				return nil, err
 			}
-		} else if p.reductionStrategy == ReductionParallel {
-			// Loop until we have a single reduced stack
-			for p.concurrency--; p.concurrency >= 1; p.concurrency-- {
-				for i := 0; i < p.concurrency; i++ {
-					stackLeft := parseResults[i]
-					stackRight := parseResults[i+1]
+		} else {
+			for i := 0; i < p.concurrency; i++ {
+				stackLeft := parseResults[i]
+				stackRight := parseResults[i+1]
 
-					// TODO: Fix CombineNoAlloc
-					stack := stackLeft.Combine()
+				// TODO: Fix CombineNoAlloc
+				stack := stackLeft.Combine()
 
-					// TODO: I should find a way to make this work without creating a new LOS for the inputs.
-					// Unfortunately the new stack depends on the content of tokensLists[i] since its elements are stored there.
-					// We can't erase the old input easily to reuse its storage.
-					// TODO: Maybe allocate 2 * c LOS so that we can alternate?
-					input := stackRight.CombineLOS(tokensLists[i].pool)
+				// TODO: I should find a way to make this work without creating a new LOS for the inputs.
+				// Unfortunately the new stack depends on the content of tokensLists[i] since its elements are stored there.
+				// We can't erase the old input easily to reuse its storage.
+				// TODO: Maybe allocate 2 * c LOS so that we can alternate?
+				input := stackRight.CombineLOS(tokensLists[i].pool)
 
-					go workers[i].parse(ctx, stack, input, nil, true, resultCh, errCh)
-				}
-
-				if err := collectResults(parseResults, resultCh, errCh, p.concurrency); err != nil {
-					cancel()
-					return nil, err
-				}
+				go workers[i].parse(ctx, stack, input, nil, true, resultCh, errCh)
 			}
+
+			if err := collectResults(parseResults, resultCh, errCh, p.concurrency); err != nil {
+				cancel()
+				return nil, err
+			}
+
+			reductionPasses++
 		}
+
 	}
 
 	// Pop tokens until a non-terminal is found.
@@ -378,7 +385,7 @@ func (p *Parser) init(src []byte) {
 	}
 
 	// TODO: Remove or change this part to reflect the correct sweep reductionStrategy.
-	if p.reductionStrategy == ReductionSweep {
+	if p.reductionStrategy == ReductionSweep || p.reductionStrategy == ReductionMixed {
 		inputPoolBaseSize := stacksCount[Token](src, p.concurrency, p.avgTokenLength)
 
 		p.pools.sweepInput = NewPool[stack[Token]](inputPoolBaseSize, WithConstructor[stack[Token]](newStack[Token]))
