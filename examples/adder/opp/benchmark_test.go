@@ -37,11 +37,11 @@ func BenchmarkParse(b *testing.B) {
 				p := NewParser(
 					gopapageno.WithConcurrency(c),
 					gopapageno.WithPreallocFunc(ParserPreallocMem),
-					gopapageno.WithReductionStrategy(gopapageno.ReductionParallel))
+					gopapageno.WithReductionStrategy(gopapageno.ReductionMixed))
 
 				b.ResetTimer()
 
-				benchmark.Run[int64](b, p, path.Join(baseFolder, filename), expected)
+				benchmark.RunExpect[int64](b, p, path.Join(baseFolder, filename), expected)
 			})
 
 			runtime.GC()

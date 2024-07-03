@@ -1,0 +1,17 @@
+goos: windows
+goarch: amd64
+pkg: github.com/giornetta/gopapageno/examples/adder/
+cpu: AMD Ryzen 5 5600 6-Core Processor              
+                      │ .\examples\adder\benchmark_results\opp-sweep.txt │ .\examples\adder\benchmark_results\aopp-sweep.txt │ .\examples\adder\benchmark_results\copp-sweep.txt │
+                      │                      sec/op                      │          sec/op            vs base                │          sec/op            vs base                │
+Parse/10MB.txt/1T-12                                        455.3m ± 11%                458.4m ±  8%        ~ (p=0.280 n=10)                466.8m ±  2%   +2.52% (p=0.043 n=10)
+Parse/10MB.txt/2T-12                                        652.8m ± 11%                527.2m ± 23%  -19.25% (p=0.029 n=10)                575.8m ± 17%  -11.80% (p=0.019 n=10)
+Parse/10MB.txt/4T-12                                        530.3m ±  4%                537.8m ± 13%        ~ (p=0.912 n=10)                382.0m ±  6%  -27.97% (p=0.000 n=10)
+Parse/10MB.txt/8T-12                                        415.8m ±  5%                374.5m ±  4%   -9.94% (p=0.000 n=10)                258.8m ±  3%  -37.78% (p=0.000 n=10)
+Parse/10MB.txt/12T-12                                       379.3m ±  3%                279.6m ±  2%  -26.30% (p=0.000 n=10)                206.9m ±  5%  -45.46% (p=0.000 n=10)
+Parse/1MB.txt/1T-12                                         42.08m ±  3%                41.60m ±  2%        ~ (p=0.315 n=10)                47.89m ±  2%  +13.80% (p=0.000 n=10)
+Parse/1MB.txt/2T-12                                         59.28m ±  5%                62.29m ±  6%   +5.08% (p=0.019 n=10)                53.98m ±  8%   -8.94% (p=0.001 n=10)
+Parse/1MB.txt/4T-12                                         52.84m ±  5%                52.46m ±  3%        ~ (p=0.353 n=10)                40.31m ±  5%  -23.72% (p=0.000 n=10)
+Parse/1MB.txt/8T-12                                         43.43m ±  2%                37.29m ±  2%  -14.14% (p=0.000 n=10)                26.56m ±  6%  -38.86% (p=0.000 n=10)
+Parse/1MB.txt/12T-12                                        42.61m ±  2%                30.88m ±  2%  -27.52% (p=0.000 n=10)                25.53m ±  6%  -40.07% (p=0.000 n=10)
+geomean                                                     150.8m                      135.8m         -9.93%                               114.5m        -24.03%

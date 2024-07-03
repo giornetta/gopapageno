@@ -85,7 +85,7 @@ func run() error {
 
 	fmt.Printf("Parsing took: %v\n", time.Since(start))
 
-	// fmt.Printf("Result: %v\n", *root.Value.(*int64))
+	fmt.Printf("Result: %v\n", *root.Value.(*int64))
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 

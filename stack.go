@@ -274,7 +274,7 @@ type ParserStackIterator struct {
 
 // HeadIterator returns an iterator initialized to point before the first element of the list.
 func (s *ParserStack) HeadIterator() *ParserStackIterator {
-	return &ParserStackIterator{s, s.head, -1}
+	return &ParserStackIterator{s, s.head, s.headFirst - 1}
 }
 
 // TailIterator returns an iterator initialized to point after the last element of the list.

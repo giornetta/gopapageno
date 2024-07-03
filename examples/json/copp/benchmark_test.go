@@ -13,14 +13,10 @@ import (
 
 const baseFolder = "../data/"
 
-const (
-	file1000 = "generated-1000.json"
-	file2000 = "generated-2000.json"
-)
-
 var table = []string{
-	file1000,
-	file2000,
+	"generated-1000.json",
+	"generated-2000.json",
+	"emojis-100.json",
 }
 
 func BenchmarkParse(b *testing.B) {
@@ -31,8 +27,9 @@ func BenchmarkParse(b *testing.B) {
 			b.Run(fmt.Sprintf("%s/%dT", filename, c), func(b *testing.B) {
 				p := NewParser(
 					gopapageno.WithConcurrency(c),
+					gopapageno.WithAverageTokenLength(gopapageno.DefaultAverageTokenLength),
 					gopapageno.WithPreallocFunc(ParserPreallocMem),
-					gopapageno.WithReductionStrategy(gopapageno.ReductionSweep))
+					gopapageno.WithReductionStrategy(gopapageno.ReductionParallel))
 
 				b.ResetTimer()
 
@@ -53,7 +50,7 @@ func TestProfile(t *testing.T) {
 	avgLen := gopapageno.DefaultAverageTokenLength
 	strat := gopapageno.ReductionParallel
 
-	filename := "generated-2000.json"
+	filename := "emojis-100.json"
 
 	file := path.Join(baseFolder, filename)
 

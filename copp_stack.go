@@ -120,41 +120,51 @@ func (s *CyclicParserStack) Split(n int) ([]*CyclicParserStack, error) {
 }
 
 func (s *CyclicParserStack) Combine() Stacker {
-	var topLeft Token
-	var topLeftState CyclicAutomataState
+	var tlStack *stack[*Token]
+	var tlStStack *stack[CyclicAutomataState]
+
+	var tlPosition int
+	removedTokens := -1
 
 	// TODO: This could be moved in Push/Pop to allow constant time access.
 	it := s.Iterator()
 	first := true
-	for t, s := it.Next(); t != nil && ((t.Precedence != PrecYields && t.Precedence != PrecEquals) || (first && t.Type != TokenTerm)); t, s = it.Next() {
-		topLeft = *t
-		topLeftState = *s
-
+	for t, _ := it.Next(); t != nil && ((t.Precedence != PrecYields && t.Precedence != PrecEquals) || (first && t.Type != TokenTerm)); t, _ = it.Next() {
 		first = false
+
+		tlStack = it.TokensIt.cur
+		tlStStack = it.StatesIt.cur
+
+		tlPosition = it.TokensIt.pos
+
+		removedTokens++
 	}
 
-	stack := &CyclicParserStack{
-		ParserStack:     NewParserStack(s.ParserStack.pool),
-		StatesLOS:       NewListOfStacks[CyclicAutomataState](s.StatesLOS.pool),
-		StateTokenStack: s.StateTokenStack,
-
-		State: new(CyclicAutomataState),
+	if s.cur.Data[tlPosition].Type != TokenEmpty {
+		s.cur.Data[tlPosition].Precedence = PrecEmpty
 	}
 
-	if topLeft.Type != TokenEmpty {
-		topLeft.Precedence = PrecEmpty
-		stack.PushWithState(&topLeft, topLeftState)
+	s.ParserStack.head = tlStack
+	s.StatesLOS.head = tlStStack
+
+	s.ParserStack.headFirst = tlPosition
+	s.StatesLOS.headFirst = tlPosition
+
+	s.ParserStack.len -= removedTokens
+	s.StatesLOS.len -= removedTokens
+
+	for t, _ := it.Cur(); t != nil && t.Precedence != PrecTakes; t, _ = it.Next() {
+		tlPosition = it.TokensIt.pos
 	}
 
-	for t, s := it.Cur(); t != nil && t.Precedence != PrecTakes; t, s = it.Next() {
-		stack.PushWithState(t, *s)
-	}
+	s.ParserStack.cur.Tos = tlPosition + 1
+	s.StatesLOS.cur.Tos = tlPosition + 1
 
-	stack.UpdateFirstTerminal()
+	s.UpdateFirstTerminal()
 
-	stack.State = s.State
+	// stack.State = s.State
 
-	return stack
+	return s
 }
 
 func (s *CyclicParserStack) CombineLOS(pool *Pool[stack[Token]]) *ListOfStacks[Token] {

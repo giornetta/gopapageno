@@ -85,8 +85,9 @@ type ListOfStacks[T any] struct {
 	head *stack[T]
 	cur  *stack[T]
 
-	len  int
-	pool *Pool[stack[T]]
+	headFirst int
+	len       int
+	pool      *Pool[stack[T]]
 }
 
 // LosIterator allows to iterate over a ListOfStacks, either forward or backwards.
@@ -277,7 +278,7 @@ func (l *ListOfStacks[T]) Length() int {
 
 // HeadIterator returns an iterator initialized to point before the first element of the list.
 func (l *ListOfStacks[T]) HeadIterator() *LosIterator[T] {
-	return &LosIterator[T]{l, l.head, -1}
+	return &LosIterator[T]{l, l.head, l.headFirst - 1}
 }
 
 // TailIterator returns an iterator initialized to point after the last element of the list.

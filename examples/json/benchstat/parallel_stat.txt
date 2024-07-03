@@ -1,0 +1,22 @@
+goos: windows
+goarch: amd64
+pkg: github.com/giornetta/gopapageno/examples/json/
+cpu: AMD Ryzen 5 5600 6-Core Processor              
+                                 │ .\examples\json\benchmark_results\opp-parallel.txt │ .\examples\json\benchmark_results\aopp-parallel.txt │ .\examples\json\benchmark_results\copp-parallel.txt │
+                                 │                       sec/op                       │           sec/op             vs base                │           sec/op             vs base                │
+Parse/generated-1000.json/1T-12                                          88.56m ±  1%                   95.14m ± 2%   +7.42% (p=0.000 n=10)                 116.87m ±  2%  +31.97% (p=0.000 n=10)
+Parse/generated-1000.json/2T-12                                          118.9m ±  5%                   117.4m ± 6%        ~ (p=0.631 n=10)                  125.8m ±  2%   +5.75% (p=0.004 n=10)
+Parse/generated-1000.json/4T-12                                          92.66m ±  4%                   88.08m ± 4%   -4.95% (p=0.004 n=10)                  94.04m ±  2%        ~ (p=0.165 n=10)
+Parse/generated-1000.json/8T-12                                          72.13m ±  4%                   69.09m ± 4%   -4.22% (p=0.015 n=10)                  68.07m ±  2%   -5.63% (p=0.000 n=10)
+Parse/generated-1000.json/12T-12                                         68.17m ±  2%                   68.57m ± 2%        ~ (p=0.436 n=10)                  59.03m ±  3%  -13.40% (p=0.000 n=10)
+Parse/generated-2000.json/1T-12                                          636.3m ±  2%                   661.3m ± 1%   +3.94% (p=0.000 n=10)                  821.1m ±  1%  +29.04% (p=0.000 n=10)
+Parse/generated-2000.json/2T-12                                          679.0m ± 12%                   795.1m ± 4%  +17.10% (p=0.003 n=10)                  704.8m ± 16%        ~ (p=0.165 n=10)
+Parse/generated-2000.json/4T-12                                          631.5m ± 14%                   561.9m ± 4%  -11.03% (p=0.035 n=10)                  576.1m ±  4%        ~ (p=0.143 n=10)
+Parse/generated-2000.json/8T-12                                          423.7m ±  7%                   395.7m ± 4%   -6.60% (p=0.000 n=10)                  404.7m ±  7%   -4.48% (p=0.005 n=10)
+Parse/generated-2000.json/12T-12                                         352.0m ±  4%                   361.4m ± 4%   +2.68% (p=0.035 n=10)                  340.5m ±  7%        ~ (p=0.105 n=10)
+Parse/emojis-100.json/1T-12                                              25.79m ±  1%                   26.47m ± 2%   +2.67% (p=0.000 n=10)                  29.56m ±  1%  +14.65% (p=0.000 n=10)
+Parse/emojis-100.json/2T-12                                              28.44m ±  2%                   30.21m ± 3%   +6.24% (p=0.000 n=10)                  29.88m ± 10%        ~ (p=0.481 n=10)
+Parse/emojis-100.json/4T-12                                              24.78m ±  2%                   23.04m ± 2%   -7.01% (p=0.000 n=10)                  22.72m ±  2%   -8.30% (p=0.000 n=10)
+Parse/emojis-100.json/8T-12                                              25.60m ±  3%                   21.43m ± 2%  -16.30% (p=0.000 n=10)                  19.78m ±  3%  -22.71% (p=0.000 n=10)
+Parse/emojis-100.json/12T-12                                             34.83m ±  2%                   28.09m ± 3%  -19.36% (p=0.000 n=10)                  21.54m ±  2%  -38.17% (p=0.000 n=10)
+geomean                                                                  108.0m                         105.3m        -2.44%                                 105.3m         -2.44%

@@ -351,11 +351,8 @@ func (p *Parser) Parse(ctx context.Context, src []byte) (*Token, error) {
 func (p *Parser) init(src []byte) {
 	srcLen := len(src)
 
-	// TODO: Where does these numbers come from?
-	avgCharsPerToken := 4
-
 	stackPoolBaseSize := stacksCount[*Token](src, p.concurrency, p.avgTokenLength)
-	ntPoolBaseSize := srcLen / avgCharsPerToken / p.concurrency
+	ntPoolBaseSize := srcLen / p.avgTokenLength / p.concurrency
 
 	// Initialize memory pools for stacks.
 	p.pools.stacks = make([]*Pool[stack[*Token]], p.concurrency)
@@ -370,15 +367,15 @@ func (p *Parser) init(src []byte) {
 
 	for thread := 0; thread < p.concurrency; thread++ {
 		// TODO: Does this need more work?
-		stackPoolMultiplier := 1
+		stackPoolMultiplier := .25
 		if p.reductionStrategy == ReductionParallel {
 			//stackPoolMultiplier = p.concurrency - thread
 		}
 
-		p.pools.stacks[thread] = NewPool[stack[*Token]](stackPoolBaseSize*stackPoolMultiplier, WithConstructor[stack[*Token]](newStack[*Token]))
+		p.pools.stacks[thread] = NewPool[stack[*Token]](int(float64(stackPoolBaseSize)*stackPoolMultiplier), WithConstructor[stack[*Token]](newStack[*Token]))
 
 		if p.ParsingStrategy == COPP {
-			p.pools.stateStacks[thread] = NewPool[stack[CyclicAutomataState]](stackPoolBaseSize*stackPoolMultiplier, WithConstructor[stack[CyclicAutomataState]](newStack[CyclicAutomataState]))
+			p.pools.stateStacks[thread] = NewPool[stack[CyclicAutomataState]](int(float64(stackPoolBaseSize)*stackPoolMultiplier), WithConstructor[stack[CyclicAutomataState]](newStack[CyclicAutomataState]))
 		}
 
 		p.pools.nonterminals[thread] = NewPool[Token](ntPoolBaseSize)
