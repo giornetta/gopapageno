@@ -2,7 +2,7 @@
   <configuration default="false" name="Generate XPath" type="GoApplicationRunConfiguration" factoryName="Go Application" folderName="Generate Parsers">
     <module name="gopapageno" />
     <working_directory value="$PROJECT_DIR$" />
-    <parameters value="-l examples/xpath/xml.l -g examples/xpath/xml.g -o examples/xpath/ -types-only" />
+    <parameters value="-l examples/xpath/xpath.l -g examples/xpath/xpath.g -o examples/xpath/ -types-only" />
     <envs>
       <env name="GOEXPERIMENT" value="rangefunc" />
     </envs>

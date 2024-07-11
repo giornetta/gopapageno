@@ -7,7 +7,6 @@ import (
 	"strings"
 )
 
-// ParserPreallocMem initializes all the memory pools required by the semantic function of the parser.
 func ParserPreallocMem(inputSize int, numThreads int) {
 }
 

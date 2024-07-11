@@ -16,9 +16,9 @@ var (
 
 type parserDescriptor struct {
 	axiom    string
-	preamble string
 	rules    []rule
 	prefixes [][]string
+	code     string
 
 	// nonterminals is nil until inferTokens() is executed successfully.
 	nonterminals *set[string]
@@ -34,17 +34,7 @@ func parseParserDescription(r io.Reader, opts *Options) (*parserDescriptor, erro
 
 	scanner := bufio.NewScanner(r)
 
-	var preambleBuilder strings.Builder
-	for scanner.Scan() {
-		l := scanner.Bytes()
-		if separatorRegexp.Match(l) {
-			break
-		}
-
-		preambleBuilder.Write(l)
-		preambleBuilder.WriteString("\n")
-	}
-
+	// Parse axiom definition
 	var axiom string
 	moreThanOneAxiomWarning := false
 
@@ -70,9 +60,14 @@ func parseParserDescription(r io.Reader, opts *Options) (*parserDescriptor, erro
 
 	opts.Logger.Printf("Axiom: %s\n", axiom)
 
+	// Parse rules
 	var sb strings.Builder
 	for scanner.Scan() {
 		l := scanner.Bytes()
+		if separatorRegexp.Match(l) {
+			break
+		}
+
 		sb.Write(l)
 		sb.WriteString("\n")
 	}
@@ -87,9 +82,18 @@ func parseParserDescription(r io.Reader, opts *Options) (*parserDescriptor, erro
 		opts.Logger.Printf("%s\n", rule)
 	}
 
+	// Parse code
+	var preambleBuilder strings.Builder
+	for scanner.Scan() {
+		l := scanner.Bytes()
+
+		preambleBuilder.Write(l)
+		preambleBuilder.WriteString("\n")
+	}
+
 	return &parserDescriptor{
 		axiom:    axiom,
-		preamble: preambleBuilder.String(),
+		code:     preambleBuilder.String(),
 		rules:    rules,
 		prefixes: prefixes,
 	}, nil
@@ -373,7 +377,7 @@ func (p *parserDescriptor) emit(f io.Writer, opts *Options) {
 	/************
 	 * Preamble *
 	 ************/
-	fmt.Fprintf(f, p.preamble)
+	fmt.Fprintf(f, p.code)
 	fmt.Fprintf(f, "\n\n")
 
 	p.emitTokens(f)

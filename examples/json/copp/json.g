@@ -1,8 +1,3 @@
-func ParserPreallocMem(inputSize int, numThreads int) {
-}
-
-%%
-
 %axiom Document
 
 %%
@@ -50,3 +45,8 @@ Elements : (Value COMMA)+ Value
 } | Value
 {
 };
+
+%%
+
+func ParserPreallocMem(inputSize int, numThreads int) {
+}

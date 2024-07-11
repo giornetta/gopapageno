@@ -95,8 +95,8 @@ func run() error {
 	}
 
 	fmt.Printf("Height: %d\n", h)
-	if h < 20 {
-		//fmt.Println(SprintToken[int64](root))
+	if h < 10 {
+		fmt.Println(SprintToken[int64](root))
 	}
 
 	return nil
