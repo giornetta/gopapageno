@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/giornetta/gopapageno"
 	"io"
 	"log"
 	"os"
@@ -22,7 +23,9 @@ func run() error {
 	parserFlag := flag.String("g", "", "parser source file")
 	outputFlag := flag.String("o", ".", "output directory")
 	typesOnlyFlag := flag.Bool("types-only", false, "generate types only")
-	associativeFlag := flag.Bool("associative", false, "generate using associative OG")
+	benchmarkFlag := flag.Bool("benchmark", false, "generate benchmarks")
+
+	strategyFlag := flag.String("strategy", "opp", "strategy to use during parser generation: opp/aopp/copp")
 
 	logFlag := flag.Bool("log", false, "enable logging during generation")
 
@@ -30,6 +33,13 @@ func run() error {
 
 	if *lexerFlag == "" || *parserFlag == "" {
 		return fmt.Errorf("lexer and parser files must be provided")
+	}
+
+	strategy := gopapageno.OPP
+	if *strategyFlag == "aopp" {
+		strategy = gopapageno.AOPP
+	} else if *strategyFlag == "copp" {
+		strategy = gopapageno.COPP
 	}
 
 	var logOut io.Writer
@@ -44,7 +54,8 @@ func run() error {
 		ParserDescriptionFilename: *parserFlag,
 		OutputDirectory:           *outputFlag,
 		TypesOnly:                 *typesOnlyFlag,
-		Associative:               *associativeFlag,
+		GenerateBenchmarks:        *benchmarkFlag,
+		Strategy:                  strategy,
 		Logger:                    log.New(logOut, "", 0),
 	}
 

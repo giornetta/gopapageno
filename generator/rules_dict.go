@@ -1,5 +1,10 @@
 package generator
 
+import (
+	"github.com/giornetta/gopapageno"
+	"slices"
+)
+
 // rulesDictionary is a data structure used to store unique RHS -> LHS mappings.
 // It is useful to remove repeated RHS productions.
 type rulesDictionary struct {
@@ -7,43 +12,43 @@ type rulesDictionary struct {
 
 	ValuesLHS  []*set[string]
 	SemActions []*string
+	Types      []gopapageno.RuleType
 }
 
 func newRulesDictionary(capacity int) *rulesDictionary {
 	return &rulesDictionary{
 		KeysRHS:    make([][]string, 0, capacity),
 		ValuesLHS:  make([]*set[string], 0, capacity),
-		SemActions: make([]*string, 0, capacity)}
+		SemActions: make([]*string, 0, capacity),
+		Types:      make([]gopapageno.RuleType, 0, capacity),
+	}
 }
 
 func (d *rulesDictionary) Add(r *rule) {
-	found := false
-
 	for i, keyRhs := range d.KeysRHS {
-		if rhsEquals(keyRhs, r.RHS) {
+		if slices.Equal(keyRhs, r.RHS) {
 			d.ValuesLHS[i].Add(r.LHS)
-			found = true
 
-			break
+			return
 		}
 	}
 
-	if !found {
-		d.KeysRHS = append(d.KeysRHS, r.RHS)
+	d.KeysRHS = append(d.KeysRHS, r.RHS)
 
-		d.ValuesLHS = append(d.ValuesLHS, newSet[string]())
-		d.ValuesLHS[len(d.ValuesLHS)-1].Add(r.LHS)
+	d.ValuesLHS = append(d.ValuesLHS, newSet[string]())
+	d.ValuesLHS[len(d.ValuesLHS)-1].Add(r.LHS)
 
-		d.SemActions = append(d.SemActions, &r.Action)
-	}
+	d.SemActions = append(d.SemActions, &r.Action)
+	d.Types = append(d.Types, r.Type)
 }
 
 func (d *rulesDictionary) Remove(rhs []string) {
 	for i, curKeyRHS := range d.KeysRHS {
-		if rhsEquals(curKeyRHS, rhs) {
+		if slices.Equal(curKeyRHS, rhs) {
 			d.KeysRHS = append(d.KeysRHS[:i], d.KeysRHS[i+1:]...)
 			d.ValuesLHS = append(d.ValuesLHS[:i], d.ValuesLHS[i+1:]...)
 			d.SemActions = append(d.SemActions[:i], d.SemActions[i+1:]...)
+			d.Types = append(d.Types[:i], d.Types[i+1:]...)
 		}
 	}
 }
@@ -60,8 +65,8 @@ func (d *rulesDictionary) Copy() *rulesDictionary {
 		copy(newDict.KeysRHS[i], d.KeysRHS[i])
 
 		newDict.ValuesLHS = append(newDict.ValuesLHS, d.ValuesLHS[i].Copy())
-
 		newDict.SemActions = append(newDict.SemActions, d.SemActions[i])
+		newDict.Types = append(newDict.Types, d.Types[i])
 	}
 
 	return newDict

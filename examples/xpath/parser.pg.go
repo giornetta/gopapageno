@@ -44,7 +44,7 @@ const (
 	TEXT
 )
 
-func SprintToken[T any](root *gopapageno.Token) string {
+func SprintToken[TokenValue any](root *gopapageno.Token) string {
 	var sprintRec func(t *gopapageno.Token, sb *strings.Builder, indent string)
 
 	sprintRec = func(t *gopapageno.Token, sb *strings.Builder, indent string) {
@@ -82,7 +82,7 @@ func SprintToken[T any](root *gopapageno.Token) string {
 			sb.WriteString("Unknown")
 		}
 		if t.Value != nil {
-			sb.WriteString(fmt.Sprintf(": %v", *t.Value.(*T)))
+			sb.WriteString(fmt.Sprintf(": %v", *t.Value.(*TokenValue)))
 		}
 		sb.WriteString("\n")
 
@@ -115,6 +115,8 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 	}
 	compressedRules := []uint16{0, 0, 4, 1, 11, 32770, 44, 32771, 47, 32772, 65, 2, 0, 3, 32770, 20, 32771, 23, 32772, 41, 1, 1, 0, 0, 0, 2, 1, 30, 32769, 38, 0, 0, 1, 32769, 35, 1, 2, 0, 1, 3, 0, 1, 4, 0, 1, 5, 0, 0, 0, 2, 1, 54, 32769, 62, 0, 0, 1, 32769, 59, 1, 6, 0, 1, 7, 0, 1, 8, 0}
 
+	maxPrefixLen := 0
+	prefixes := [][]gopapageno.TokenType{}
 	precMatrix := [][]gopapageno.Precedence{
 		{gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields},
 		{gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecTakes},
@@ -346,8 +348,11 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 		maxRHSLen,
 		rules,
 		compressedRules,
+		prefixes,
+		maxPrefixLen,
 		precMatrix,
 		bitPackedMatrix,
 		fn,
+		gopapageno.OPP,
 		opts...)
 }

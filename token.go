@@ -1,8 +1,10 @@
 package gopapageno
 
 import (
+	"context"
 	"fmt"
 	"strings"
+	"sync"
 )
 
 type Token struct {
@@ -10,10 +12,14 @@ type Token struct {
 	Precedence Precedence
 
 	Value any
-	// Lexeme string
 
-	Next  *Token
-	Child *Token
+	Next      *Token
+	Child     *Token
+	LastChild *Token
+}
+
+func (t *Token) IsTerminal() bool {
+	return t.Type.IsTerminal()
 }
 
 type TokenType uint16
@@ -33,22 +39,61 @@ func (t TokenType) Value() uint16 {
 
 // Height computes the height of the AST rooted in `t`.
 // It can be used as an evaluation metric for tree-balance, as left/right-skewed trees will have a bigger height compared to balanced trees.
-func (t *Token) Height() int {
-	var rec func(t *Token, root bool) int
+func (root *Token) Height(ctx context.Context) (int, error) {
+	// Helper struct to hold a token and its depth
+	type TokenWithDepth struct {
+		token *Token
+		depth int
+	}
 
-	rec = func(t *Token, root bool) int {
-		if t == nil {
-			return 0
+	if root == nil {
+		return 0, nil
+	}
+
+	var maxHeight int
+	var wg sync.WaitGroup
+	resultChan := make(chan int)
+
+	// Launch the initial goroutine
+	wg.Add(1)
+	go bfs(root, 0, &wg, resultChan)
+
+	// Wait for all goroutines to finish
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
+
+	// Find the maximum height from the results
+	for height := range resultChan {
+		if ctx.Err() != nil {
+			return 0, ctx.Err()
 		}
 
-		if root {
-			return 1 + rec(t.Child, false)
-		} else {
-			return max(1+rec(t.Child, false), rec(t.Next, false))
+		if height > maxHeight {
+			maxHeight = height
 		}
 	}
 
-	return rec(t, true)
+	return maxHeight, nil
+}
+func bfs(node *Token, depth int, wg *sync.WaitGroup, resultChan chan int) {
+	defer wg.Done()
+
+	// Send the current depth to the result channel
+	resultChan <- depth
+
+	// Process the child node
+	if node.Child != nil {
+		wg.Add(1)
+		go bfs(node.Child, depth+1, wg, resultChan)
+	}
+
+	// Process the next sibling node
+	if node.Next != nil {
+		wg.Add(1)
+		go bfs(node.Next, depth, wg, resultChan)
+	}
 }
 
 // Size returns the number of tokens in the AST rooted in `t`.

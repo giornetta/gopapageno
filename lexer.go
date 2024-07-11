@@ -3,15 +3,12 @@ package gopapageno
 import (
 	"context"
 	"errors"
-	"math"
+	"fmt"
 	"unsafe"
 )
 
 var (
-	ErrEOF         = errors.New("reached end of file")
-	ErrNotAccepted = errors.New("no final state reached")
-	ErrSkip        = errors.New("skip current character")
-	ErrInvalid     = errors.New("invalid character")
+	ErrInvalid = errors.New("invalid character")
 )
 
 type PreallocFunc func(sourceLen, concurrency int)
@@ -38,18 +35,18 @@ type LexerDFA []LexerDFAState
 type Scanner struct {
 	Lexer *Lexer
 
-	source []byte
-
-	cutPoints []int
-
+	source      []byte
+	cutPoints   []int
 	concurrency int
 
 	pools []*Pool[stack[Token]]
 }
 
-type ScannerOpt func(*Scanner)
+func (l *Lexer) Scanner(src []byte, concurrency int, avgTokenLen int) *Scanner {
+	if concurrency < 1 {
+		concurrency = 1
+	}
 
-func (l *Lexer) Scanner(src []byte, opts ...ScannerOpt) *Scanner {
 	s := &Scanner{
 		Lexer: l,
 
@@ -58,37 +55,23 @@ func (l *Lexer) Scanner(src []byte, opts ...ScannerOpt) *Scanner {
 		concurrency: 1,
 	}
 
-	for _, opt := range opts {
-		opt(s)
-	}
+	s.cutPoints, s.concurrency = s.findCutPoints(concurrency)
 
 	s.pools = make([]*Pool[stack[Token]], s.concurrency)
 
-	sourceLen := len(s.source)
+	if avgTokenLen < 1 {
+		avgTokenLen = 1
+	}
 
-	// TODO: Where does this number come from?
-	avgCharsPerToken := 4.0
+	stacksNum := stacksCount[Token](s.source, s.concurrency, avgTokenLen)
 
-	stackPoolBaseSize := math.Ceil(float64(sourceLen) / avgCharsPerToken / float64(stackSize) / float64(s.concurrency))
-
+	// TODO: Does this need more work?
+	multiplier := 1 // (s.concurrency-thread)
 	for thread := 0; thread < s.concurrency; thread++ {
-		s.pools[thread] = NewPool[stack[Token]](int(stackPoolBaseSize * 1.2))
+		s.pools[thread] = NewPool[stack[Token]](stacksNum*multiplier, WithConstructor[stack[Token]](newStack[Token]))
 	}
 
 	return s
-}
-
-// ScannerWithConcurrency accepts a desired number of goroutines to spawn during lexical analysis.
-// It will look for suitable cut points in the source string and set the actual concurrency level accordingly.
-func ScannerWithConcurrency(n int) ScannerOpt {
-	return func(s *Scanner) {
-		if n <= 0 {
-			n = 1
-		}
-
-		// TODO: Log if result < n?
-		s.cutPoints, s.concurrency = s.findCutPoints(n)
-	}
 }
 
 // findCutPoints cuts the source string at specific points determined by the lexer description file.
@@ -239,6 +222,7 @@ func (w *scannerWorker) next(token *Token) LexResult {
 			if stateIdx == -1 {
 				// If we haven't reached any final state so far, return an error.
 				if lastFinalStateReached == nil {
+					fmt.Printf("could not parse token %s\n", string(w.data[startPos:w.pos+1]))
 					return LexErr
 				}
 

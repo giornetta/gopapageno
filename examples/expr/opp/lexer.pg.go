@@ -4,8 +4,8 @@ package main
 import "github.com/giornetta/gopapageno"
 
 import (
-	"strconv"
 	"math"
+	"strconv"
 )
 
 var lexerInt64Pools []*gopapageno.Pool[int64]
@@ -23,7 +23,6 @@ func LexerPreallocMem(inputSize int, numThreads int) {
 		lexerInt64Pools[i] = gopapageno.NewPool[int64](poolSizePerThread)
 	}
 }
-
 
 func NewLexer() *gopapageno.Lexer {
 	automaton := []gopapageno.LexerDFAState{
@@ -47,7 +46,7 @@ func NewLexer() *gopapageno.Lexer {
 		switch rule {
 		case 0:
 			{
-			    token.Type = LPAR
+				token.Type = LPAR
 			}
 		case 1:
 			{
@@ -59,18 +58,18 @@ func NewLexer() *gopapageno.Lexer {
 			}
 		case 3:
 			{
-			    token.Type = PLUS
+				token.Type = PLUS
 			}
 		case 4:
 			{
-			    num := lexerInt64Pools[thread].Get()
-			    var err error
-			
+				num := lexerInt64Pools[thread].Get()
+				var err error
+
 				*num, err = strconv.ParseInt(text, 10, 64)
 				if err != nil {
 					return gopapageno.LexErr
 				}
-			
+
 				token.Type = NUMBER
 				token.Value = num
 			}
@@ -90,9 +89,9 @@ func NewLexer() *gopapageno.Lexer {
 	}
 
 	return &gopapageno.Lexer{
-		Automaton: automaton,
+		Automaton:          automaton,
 		CutPointsAutomaton: cutPointsAutomaton,
-		Func: fn,
-		PreallocFunc: LexerPreallocMem,
+		Func:               fn,
+		PreallocFunc:       LexerPreallocMem,
 	}
 }
