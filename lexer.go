@@ -11,7 +11,7 @@ var (
 	ErrInvalid = errors.New("invalid character")
 )
 
-type PreallocFunc func(sourceLen, concurrency int)
+type PreambleFunc func(sourceLen, concurrency int)
 
 type LexerFunc func(rule int, text string, start int, end int, thread int, token *Token) LexResult
 
@@ -20,7 +20,7 @@ type Lexer struct {
 	CutPointsAutomaton LexerDFA
 	Func               LexerFunc
 
-	PreallocFunc PreallocFunc
+	PreambleFunc PreambleFunc
 }
 
 type LexerDFAState struct {

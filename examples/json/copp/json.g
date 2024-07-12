@@ -47,6 +47,3 @@ Elements : (Value COMMA)+ Value
 };
 
 %%
-
-func ParserPreallocMem(inputSize int, numThreads int) {
-}

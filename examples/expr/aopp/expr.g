@@ -1,5 +1,7 @@
 %axiom S
 
+%preamble ParserPreallocMem
+
 %%
 
 S : E

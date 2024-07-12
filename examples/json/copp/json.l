@@ -91,6 +91,3 @@ NEWLINE [\r\n]
 }
 
 %%
-
-func LexerPreallocMem(inputSize int, numThreads int) {
-}

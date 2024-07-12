@@ -1,5 +1,7 @@
 %axiom ELEM
 
+%preamble LexerPreallocMem
+
 %%
 
 ELEM : ELEM OPENTAG ELEM CLOSETAG

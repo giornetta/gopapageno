@@ -1,5 +1,7 @@
 %cut \+
 
+%preamble LexerPreallocMem
+
 LPAR \(
 RPAR \)
 PLUS \+

@@ -56,6 +56,3 @@ NEWLINE  [\r\n]
 }
 
 %%
-// LexerPreallocMem initializes all the memory pools required by the lexer.
-func LexerPreallocMem(inputSize int, numThreads int) {
-}

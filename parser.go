@@ -84,7 +84,7 @@ type Parser struct {
 
 	Func ParserFunc
 
-	PreallocFunc PreallocFunc
+	PreallocFunc PreambleFunc
 
 	ParsingStrategy ParsingStrategy
 
@@ -154,12 +154,6 @@ func WithMemoryProfiling(w io.Writer) ParserOpt {
 	}
 }
 
-func WithPreallocFunc(fn PreallocFunc) ParserOpt {
-	return func(p *Parser) {
-		p.PreallocFunc = fn
-	}
-}
-
 func WithReductionStrategy(strat ReductionStrategy) ParserOpt {
 	return func(p *Parser) {
 		p.reductionStrategy = strat
@@ -181,6 +175,7 @@ func NewParser(
 	precedenceMatrix [][]Precedence, bitPackedPrecedenceMatrix []uint64,
 	fn ParserFunc,
 	strategy ParsingStrategy,
+	preambleFunc PreambleFunc,
 	opts ...ParserOpt,
 ) *Parser {
 	parser := &Parser{
@@ -193,6 +188,7 @@ func NewParser(
 		PrecedenceMatrix:          precedenceMatrix,
 		BitPackedPrecedenceMatrix: bitPackedPrecedenceMatrix,
 		Func:                      fn,
+		PreallocFunc:              preambleFunc,
 		ParsingStrategy:           strategy,
 		concurrency:               1,
 		initialConcurrency:        1,
@@ -218,8 +214,8 @@ func (p *Parser) Parse(ctx context.Context, src []byte) (*Token, error) {
 	defer cleanupFunc()
 
 	// Run Prealloc Functions
-	if p.Lexer.PreallocFunc != nil {
-		p.Lexer.PreallocFunc(len(src), p.concurrency)
+	if p.Lexer.PreambleFunc != nil {
+		p.Lexer.PreambleFunc(len(src), p.concurrency)
 	}
 
 	if p.PreallocFunc != nil {

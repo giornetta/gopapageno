@@ -3,10 +3,6 @@ package main
 
 import "github.com/giornetta/gopapageno"
 
-// LexerPreallocMem initializes all the memory pools required by the lexer.
-func LexerPreallocMem(inputSize int, numThreads int) {
-}
-
 func NewLexer() *gopapageno.Lexer {
 	automaton := []gopapageno.LexerDFAState{
 		{[256]int{-1, -1, -1, -1, -1, -1, -1, -1, -1, 1, 2, -1, -1, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 1, 3, 3, 3, 3, -1, 3, 3, 3, 3, -1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 3, -1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, -1, 3, -1, 3, -1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, false, []int{}},
@@ -153,6 +149,5 @@ func NewLexer() *gopapageno.Lexer {
 		Automaton:          automaton,
 		CutPointsAutomaton: cutPointsAutomaton,
 		Func:               fn,
-		PreallocFunc:       LexerPreallocMem,
 	}
 }

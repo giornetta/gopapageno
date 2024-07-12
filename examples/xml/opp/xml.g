@@ -27,6 +27,3 @@ ELEM : ELEM OpenBracket ELEM CloseBracket
 };
 
 %%
-
-func ParserPreallocMem(inputSize int, numThreads int) {
-}
