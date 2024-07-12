@@ -2,7 +2,7 @@
   <configuration default="false" name="Generate Expr AOPP" type="GoApplicationRunConfiguration" factoryName="Go Application" folderName="Generate Parsers">
     <module name="gopapageno" />
     <working_directory value="$PROJECT_DIR$/examples/expr" />
-    <parameters value="-l aopp/expr.l -g aopp/expr.g -o aopp/ -strategy=aopp" />
+    <parameters value="-l aopp/expr.l -p aopp/expr.g -out aopp/ -strat=aopp -v" />
     <envs>
       <env name="GOEXPERIMENT" value="rangefunc" />
     </envs>
