@@ -1,29 +1,6 @@
-import (
-    "sync"
-    "github.com/giornetta/gopapageno/ext/xpath"
-)
-
-var reductionPool = &sync.Pool{
-	New: func() interface{} {
-		return new(xpath.Reduction)
-	},
-}
-
-var parserElementsPools []*gopapageno.Pool[xpath.Element]
-
-// ParserPreallocMem initializes all the memory pools required by the semantic function of the parser.
-func ParserPreallocMem(inputSize int, numThreads int) {
-    poolSizePerThread := 10000
-
-    parserElementsPools = make([]*gopapageno.Pool[xpath.Element], numThreads)
-    for i := 0; i < numThreads; i++ {
-        parserElementsPools[i] = gopapageno.NewPool[xpath.Element](poolSizePerThread)
-    }
-}
-
-%%
-
 %axiom ELEM
+
+%preamble LexerPreallocMem
 
 %%
 
@@ -160,3 +137,28 @@ ELEM : ELEM OPENTAG ELEM CLOSETAG
 
     $$.Value = reducedNonTerminal
 };
+
+%%
+
+import (
+    "sync"
+    "github.com/giornetta/gopapageno/ext/xpath"
+)
+
+var reductionPool = &sync.Pool{
+	New: func() interface{} {
+		return new(xpath.Reduction)
+	},
+}
+
+var parserElementsPools []*gopapageno.Pool[xpath.Element]
+
+// ParserPreallocMem initializes all the memory pools required by the semantic function of the parser.
+func ParserPreallocMem(inputSize int, numThreads int) {
+    poolSizePerThread := 10000
+
+    parserElementsPools = make([]*gopapageno.Pool[xpath.Element], numThreads)
+    for i := 0; i < numThreads; i++ {
+        parserElementsPools[i] = gopapageno.NewPool[xpath.Element](poolSizePerThread)
+    }
+}

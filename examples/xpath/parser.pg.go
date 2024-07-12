@@ -33,7 +33,6 @@ func ParserPreallocMem(inputSize int, numThreads int) {
 // Non-terminals
 const (
 	ELEM = gopapageno.TokenEmpty + 1 + iota
-	NEW_AXIOM
 )
 
 // Terminals
@@ -64,8 +63,6 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 		switch t.Type {
 		case ELEM:
 			sb.WriteString("ELEM")
-		case NEW_AXIOM:
-			sb.WriteString("NEW_AXIOM")
 		case gopapageno.TokenEmpty:
 			sb.WriteString("Empty")
 		case CLOSETAG:
@@ -99,24 +96,22 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 
 func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 	numTerminals := uint16(5)
-	numNonTerminals := uint16(3)
+	numNonTerminals := uint16(2)
 
 	maxRHSLen := 4
 	rules := []gopapageno.Rule{
-		{NEW_AXIOM, []gopapageno.TokenType{ELEM}},
-		{ELEM, []gopapageno.TokenType{ELEM, OPENCLOSETAG}},
-		{ELEM, []gopapageno.TokenType{ELEM, OPENTAG, ELEM, CLOSETAG}},
-		{ELEM, []gopapageno.TokenType{ELEM, OPENTAG, CLOSETAG}},
-		{ELEM, []gopapageno.TokenType{ELEM, TEXT}},
-		{ELEM, []gopapageno.TokenType{OPENCLOSETAG}},
-		{ELEM, []gopapageno.TokenType{OPENTAG, ELEM, CLOSETAG}},
-		{ELEM, []gopapageno.TokenType{OPENTAG, CLOSETAG}},
-		{ELEM, []gopapageno.TokenType{TEXT}},
+		{ELEM, []gopapageno.TokenType{ELEM}, gopapageno.RuleSimple},
+		{ELEM, []gopapageno.TokenType{ELEM, OPENCLOSETAG}, gopapageno.RuleSimple},
+		{ELEM, []gopapageno.TokenType{ELEM, OPENTAG, ELEM, CLOSETAG}, gopapageno.RuleSimple},
+		{ELEM, []gopapageno.TokenType{ELEM, OPENTAG, CLOSETAG}, gopapageno.RuleSimple},
+		{ELEM, []gopapageno.TokenType{ELEM, TEXT}, gopapageno.RuleSimple},
+		{ELEM, []gopapageno.TokenType{OPENCLOSETAG}, gopapageno.RuleSimple},
+		{ELEM, []gopapageno.TokenType{OPENTAG, ELEM, CLOSETAG}, gopapageno.RuleSimple},
+		{ELEM, []gopapageno.TokenType{OPENTAG, CLOSETAG}, gopapageno.RuleSimple},
+		{ELEM, []gopapageno.TokenType{TEXT}, gopapageno.RuleSimple},
 	}
-	compressedRules := []uint16{0, 0, 4, 1, 11, 32770, 44, 32771, 47, 32772, 65, 2, 0, 3, 32770, 20, 32771, 23, 32772, 41, 1, 1, 0, 0, 0, 2, 1, 30, 32769, 38, 0, 0, 1, 32769, 35, 1, 2, 0, 1, 3, 0, 1, 4, 0, 1, 5, 0, 0, 0, 2, 1, 54, 32769, 62, 0, 0, 1, 32769, 59, 1, 6, 0, 1, 7, 0, 1, 8, 0}
+	compressedRules := []uint16{0, 0, 4, 1, 11, 32770, 44, 32771, 47, 32772, 65, 1, 0, 3, 32770, 20, 32771, 23, 32772, 41, 1, 1, 0, 0, 0, 2, 1, 30, 32769, 38, 0, 0, 1, 32769, 35, 1, 2, 0, 1, 3, 0, 1, 4, 0, 1, 5, 0, 0, 0, 2, 1, 54, 32769, 62, 0, 0, 1, 32769, 59, 1, 6, 0, 1, 7, 0, 1, 8, 0}
 
-	maxPrefixLen := 0
-	prefixes := [][]gopapageno.TokenType{}
 	precMatrix := [][]gopapageno.Precedence{
 		{gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields},
 		{gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecTakes},
@@ -129,23 +124,31 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 	}
 
 	fn := func(rule uint16, lhs *gopapageno.Token, rhs []*gopapageno.Token, thread int) {
+		var ruleType gopapageno.RuleType
 		switch rule {
 		case 0:
-			NEW_AXIOM0 := lhs
+			ruleType = gopapageno.RuleSimple
+
+			ELEM0 := lhs
 			ELEM1 := rhs[0]
 
-			NEW_AXIOM0.Child = ELEM1
+			ELEM0.Child = ELEM1
+			ELEM0.LastChild = ELEM1
 
 			{
-				NEW_AXIOM0.Value = ELEM1.Value
+				ELEM0.Value = ELEM1.Value
 			}
+			_ = ELEM1
 		case 1:
+			ruleType = gopapageno.RuleSimple
+
 			ELEM0 := lhs
 			ELEM1 := rhs[0]
 			OPENCLOSETAG2 := rhs[1]
 
 			ELEM0.Child = ELEM1
 			ELEM1.Next = OPENCLOSETAG2
+			ELEM0.LastChild = OPENCLOSETAG2
 
 			{
 				openCloseTag := OPENCLOSETAG2.Value.(xpath.OpenCloseTagSemanticValue)
@@ -163,7 +166,11 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 
 				ELEM0.Value = reducedNonTerminal
 			}
+			_ = ELEM1
+			_ = OPENCLOSETAG2
 		case 2:
+			ruleType = gopapageno.RuleSimple
+
 			ELEM0 := lhs
 			ELEM1 := rhs[0]
 			OPENTAG2 := rhs[1]
@@ -174,6 +181,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			ELEM1.Next = OPENTAG2
 			OPENTAG2.Next = ELEM3
 			ELEM3.Next = CLOSETAG4
+			ELEM0.LastChild = CLOSETAG4
 
 			{
 				openTag := OPENTAG2.Value.(xpath.OpenTagSemanticValue)
@@ -193,7 +201,13 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 
 				ELEM0.Value = reducedNonTerminal
 			}
+			_ = ELEM1
+			_ = OPENTAG2
+			_ = ELEM3
+			_ = CLOSETAG4
 		case 3:
+			ruleType = gopapageno.RuleSimple
+
 			ELEM0 := lhs
 			ELEM1 := rhs[0]
 			OPENTAG2 := rhs[1]
@@ -202,6 +216,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			ELEM0.Child = ELEM1
 			ELEM1.Next = OPENTAG2
 			OPENTAG2.Next = CLOSETAG3
+			ELEM0.LastChild = CLOSETAG3
 
 			{
 				openTag := OPENTAG2.Value.(xpath.OpenTagSemanticValue)
@@ -220,13 +235,19 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 
 				ELEM0.Value = reducedNonTerminal
 			}
+			_ = ELEM1
+			_ = OPENTAG2
+			_ = CLOSETAG3
 		case 4:
+			ruleType = gopapageno.RuleSimple
+
 			ELEM0 := lhs
 			ELEM1 := rhs[0]
 			TEXT2 := rhs[1]
 
 			ELEM0.Child = ELEM1
 			ELEM1.Next = TEXT2
+			ELEM0.LastChild = TEXT2
 
 			{
 				tsv := TEXT2.Value.(xpath.TextSemanticValue)
@@ -245,11 +266,16 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 
 				ELEM0.Value = reducedNonTerminal
 			}
+			_ = ELEM1
+			_ = TEXT2
 		case 5:
+			ruleType = gopapageno.RuleSimple
+
 			ELEM0 := lhs
 			OPENCLOSETAG1 := rhs[0]
 
 			ELEM0.Child = OPENCLOSETAG1
+			ELEM0.LastChild = OPENCLOSETAG1
 
 			{
 				openCloseTag := OPENCLOSETAG1.Value.(xpath.OpenCloseTagSemanticValue)
@@ -266,7 +292,10 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 
 				ELEM0.Value = reducedNonTerminal
 			}
+			_ = OPENCLOSETAG1
 		case 6:
+			ruleType = gopapageno.RuleSimple
+
 			ELEM0 := lhs
 			OPENTAG1 := rhs[0]
 			ELEM2 := rhs[1]
@@ -275,6 +304,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 			ELEM0.Child = OPENTAG1
 			OPENTAG1.Next = ELEM2
 			ELEM2.Next = CLOSETAG3
+			ELEM0.LastChild = CLOSETAG3
 
 			{
 				openTag := OPENTAG1.Value.(xpath.OpenTagSemanticValue)
@@ -293,13 +323,19 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 
 				ELEM0.Value = reducedNonTerminal
 			}
+			_ = OPENTAG1
+			_ = ELEM2
+			_ = CLOSETAG3
 		case 7:
+			ruleType = gopapageno.RuleSimple
+
 			ELEM0 := lhs
 			OPENTAG1 := rhs[0]
 			CLOSETAG2 := rhs[1]
 
 			ELEM0.Child = OPENTAG1
 			OPENTAG1.Next = CLOSETAG2
+			ELEM0.LastChild = CLOSETAG2
 
 			{
 				openTag := OPENTAG1.Value.(xpath.OpenTagSemanticValue)
@@ -317,11 +353,16 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 
 				ELEM0.Value = reducedNonTerminal
 			}
+			_ = OPENTAG1
+			_ = CLOSETAG2
 		case 8:
+			ruleType = gopapageno.RuleSimple
+
 			ELEM0 := lhs
 			TEXT1 := rhs[0]
 
 			ELEM0.Child = TEXT1
+			ELEM0.LastChild = TEXT1
 
 			{
 				tsv := TEXT1.Value.(xpath.TextSemanticValue)
@@ -338,7 +379,9 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 
 				ELEM0.Value = reducedNonTerminal
 			}
+			_ = TEXT1
 		}
+		_ = ruleType
 	}
 
 	return gopapageno.NewParser(
@@ -348,11 +391,10 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 		maxRHSLen,
 		rules,
 		compressedRules,
-		prefixes,
-		maxPrefixLen,
 		precMatrix,
 		bitPackedMatrix,
 		fn,
 		gopapageno.OPP,
+		LexerPreallocMem,
 		opts...)
 }

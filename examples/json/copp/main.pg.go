@@ -71,7 +71,6 @@ func run() error {
 		gopapageno.WithLogging(log.New(logOut, "", 0)),
 		gopapageno.WithCPUProfiling(cpuProfileWriter),
 		gopapageno.WithMemoryProfiling(memProfileWriter),
-		gopapageno.WithPreallocFunc(ParserPreallocMem),
 		gopapageno.WithReductionStrategy(strat),
 		gopapageno.WithAverageTokenLength(*avgTokensFlag),
 	)
@@ -95,8 +94,8 @@ func run() error {
 	}
 
 	fmt.Printf("Height: %d\n", h)
-	if h < 20 {
-		//fmt.Println(SprintToken[int64](root))
+	if h < 10 {
+		fmt.Println(SprintToken[int64](root))
 	}
 
 	return nil

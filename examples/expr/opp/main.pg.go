@@ -71,7 +71,6 @@ func run() error {
 		gopapageno.WithLogging(log.New(logOut, "", 0)),
 		gopapageno.WithCPUProfiling(cpuProfileWriter),
 		gopapageno.WithMemoryProfiling(memProfileWriter),
-		gopapageno.WithPreallocFunc(ParserPreallocMem),
 		gopapageno.WithReductionStrategy(strat),
 		gopapageno.WithAverageTokenLength(*avgTokensFlag),
 	)

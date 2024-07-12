@@ -126,5 +126,6 @@ func NewLexer() *gopapageno.Lexer {
 		Automaton:          automaton,
 		CutPointsAutomaton: cutPointsAutomaton,
 		Func:               fn,
+		PreambleFunc:       LexerPreallocMem,
 	}
 }

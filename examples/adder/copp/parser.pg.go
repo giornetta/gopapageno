@@ -301,5 +301,6 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 		bitPackedMatrix,
 		fn,
 		gopapageno.COPP,
+		ParserPreallocMem,
 		opts...)
 }

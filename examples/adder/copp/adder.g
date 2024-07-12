@@ -1,22 +1,6 @@
-import (
-	"math"
-)
-
-var parserPools []*gopapageno.Pool[int64]
-
-func ParserPreallocMem(inputSize int, numThreads int) {
-	parserPools = make([]*gopapageno.Pool[int64], numThreads)
-
-	avgCharsPerNumber := float64(2)
-	poolSizePerThread := int(math.Ceil((float64(inputSize) / avgCharsPerNumber) / float64(numThreads)))
-
-	for i := 0; i < numThreads; i++ {
-		parserPools[i] = gopapageno.NewPool[int64](poolSizePerThread)
-	}
-}
-%%
-
 %axiom S
+
+%preamble ParserPreallocMem
 
 %%
 
@@ -42,3 +26,22 @@ T : LPAR T RPAR
 {
     $$.Value = $1.Value
 };
+
+%%
+
+import (
+	"math"
+)
+
+var parserPools []*gopapageno.Pool[int64]
+
+func ParserPreallocMem(inputSize int, numThreads int) {
+	parserPools = make([]*gopapageno.Pool[int64], numThreads)
+
+	avgCharsPerNumber := float64(2)
+	poolSizePerThread := int(math.Ceil((float64(inputSize) / avgCharsPerNumber) / float64(numThreads)))
+
+	for i := 0; i < numThreads; i++ {
+		parserPools[i] = gopapageno.NewPool[int64](poolSizePerThread)
+	}
+}

@@ -71,7 +71,6 @@ func run() error {
 		gopapageno.WithLogging(log.New(logOut, "", 0)),
 		gopapageno.WithCPUProfiling(cpuProfileWriter),
 		gopapageno.WithMemoryProfiling(memProfileWriter),
-		gopapageno.WithPreallocFunc(ParserPreallocMem),
 		gopapageno.WithReductionStrategy(strat),
 		gopapageno.WithAverageTokenLength(*avgTokensFlag),
 	)
@@ -85,7 +84,7 @@ func run() error {
 
 	fmt.Printf("Parsing took: %v\n", time.Since(start))
 
-	fmt.Printf("Result: %v\n", *root.Value.(*int64))
+	// fmt.Printf("Result: %v\n", *root.Value.(*int64))
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 

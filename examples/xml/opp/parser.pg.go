@@ -7,10 +7,6 @@ import (
 	"strings"
 )
 
-// ParserPreallocMem initializes all the memory pools required by the semantic function of the parser.
-func ParserPreallocMem(inputSize int, numThreads int) {
-}
-
 // Non-terminals
 const (
 	ELEM = gopapageno.TokenEmpty + 1 + iota
@@ -325,5 +321,6 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 		bitPackedMatrix,
 		fn,
 		gopapageno.OPP,
+		nil,
 		opts...)
 }
