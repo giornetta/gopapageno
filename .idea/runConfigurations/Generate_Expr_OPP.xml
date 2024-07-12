@@ -2,7 +2,7 @@
   <configuration default="false" name="Generate Expr OPP" type="GoApplicationRunConfiguration" factoryName="Go Application" folderName="Generate Parsers">
     <module name="gopapageno" />
     <working_directory value="$PROJECT_DIR$/examples/expr" />
-    <parameters value="-l opp/expr.l -g opp/expr.g -o opp/" />
+    <parameters value="-l opp/expr.l -p opp/expr.g -out opp/ -v" />
     <envs>
       <env name="GOEXPERIMENT" value="rangefunc" />
     </envs>

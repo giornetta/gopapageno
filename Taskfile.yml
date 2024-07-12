@@ -8,7 +8,7 @@ vars:
 tasks:
   generate:
     cmds:
-      - go run ./cmd/gopapageno/main.go -l ./examples/{{ .EXAMPLE }}/{{ .STRAT }}/{{ .EXAMPLE }}.l -g ./examples/{{ .EXAMPLE }}/{{ .STRAT }}/{{ .EXAMPLE }}.g -o ./examples/{{ .EXAMPLE }}/{{ .STRAT }}/ -strategy={{ .STRAT }} -log
+      - go run ./cmd/gopapageno/main.go -l ./examples/{{ .EXAMPLE }}/{{ .STRAT }}/{{ .EXAMPLE }}.l -p ./examples/{{ .EXAMPLE }}/{{ .STRAT }}/{{ .EXAMPLE }}.g -out ./examples/{{ .EXAMPLE }}/{{ .STRAT }}/ -strat={{ .STRAT }} -v
     ignore_error: true
 
   generate-all-example:
@@ -42,8 +42,3 @@ tasks:
         vars: { STRAT: 'aopp' }
       - task: benchmark
         vars: { STRAT: 'copp' }
-
-  compare-benchmarks-win:
-    platforms: [windows]
-    cmds:
-      - (Get-Content -Path "./examples/{{ .EXAMPLE }}/benchmark_results/{{ .STRAT }}.txt") -replace "{{ .STRAT }}", "" | Set-Content -Path "./examples/{{ .EXAMPLE }}/benchmark_results/{{ .STRAT }}.txt"
