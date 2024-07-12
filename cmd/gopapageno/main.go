@@ -4,30 +4,38 @@ import (
 	"flag"
 	"fmt"
 	"github.com/giornetta/gopapageno"
+	"github.com/giornetta/gopapageno/generator"
 	"io"
 	"log"
 	"os"
-
-	"github.com/giornetta/gopapageno/generator"
 )
 
 func main() {
 	if err := run(); err != nil {
-		fmt.Println(err)
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		flag.Usage()
+
 		os.Exit(1)
 	}
 }
 
 func run() error {
-	lexerFlag := flag.String("l", "", "lexer source file")
-	parserFlag := flag.String("g", "", "parser source file")
-	outputFlag := flag.String("o", ".", "output directory")
-	typesOnlyFlag := flag.Bool("types-only", false, "generate types only")
-	benchmarkFlag := flag.Bool("benchmark", false, "generate benchmarks")
+	lexerFlag := flag.String("l", "", "Lexer specification source file")
+	parserFlag := flag.String("p", "", "Parser specification source file")
 
-	strategyFlag := flag.String("strategy", "opp", "strategy to use during parser generation: opp/aopp/copp")
+	outputFlag := flag.String("out", ".", "Output directory for generated files")
+	typesOnlyFlag := flag.Bool("no-main", false, "Do not generate a main program for the parser")
+	benchmarkFlag := flag.Bool("benchmark", false, "Generate a benchmark and profiling file")
 
-	logFlag := flag.Bool("log", false, "enable logging during generation")
+	strategyFlag := flag.String("strat", "opp", "Strategy to use during parser generation: opp/aopp/copp")
+
+	logFlag := flag.Bool("v", false, "Enables verbose logging during parser generation")
+
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "GoPAPAGENO: generate parallel parsers based on Floyd's Operator Precedence Grammars.\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: gopapageno [flags]\n")
+		flag.PrintDefaults()
+	}
 
 	flag.Parse()
 
