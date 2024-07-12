@@ -1,16 +1,24 @@
-Go PAPAGENO
+GoPAPAGENO
 ========
 
-Go PAPAGENO (PArallel PArser GENeratOr) is a parallel parser generator based on Floyd's Operator Precedence Grammars.
+GoPAPAGENO *(Go PArallel PArser GENeratOr)* is a parallel parser generator based on **Floyd's Operator Precedence Grammars**.
 
-It generates parallel Go parsers starting from a lexer and a grammar specification.
-These specification files resemble Flex and Bison ones, although with some differences.
+The program can generate parallel Go parsers starting from two specification files, which resemble those used by Flex and Bison, although with some differences.
 
 GoPAPAGENO is able to either generate type stubs to be integrated in a Go project, or completely self-contained programs that can be used without further effort.
 
-This work is based on [Papageno](https://github.com/PAPAGENO-devels/papageno), a C parallel parser generator.
+## Installation
 
-### Authors and Contributors
+## Usage
+
+### Operator Precedence Parsing
+
+### Associative Operator Precedence Parsing
+
+### Cyclic Operator Precedence Parsing
+
+
+## Authors and Contributors
 
  * Michele Giornetta <michelegiornetta@gmail.com>
  * Filippo Gorlero <filgor84@gmail.com> (XPath Extension)
