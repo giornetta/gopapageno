@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func RunExpect[T comparable](b *testing.B, p *gopapageno.Parser, filename string, expected T) {
+func RunExpect[T comparable](b *testing.B, r *gopapageno.Runner, filename string, expected T) {
 	b.StopTimer()
 
 	bytes, err := os.ReadFile(filename)
@@ -20,7 +20,7 @@ func RunExpect[T comparable](b *testing.B, p *gopapageno.Parser, filename string
 	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
-		result, err := p.Parse(ctx, bytes)
+		result, err := r.Run(ctx, bytes)
 		if err != nil {
 			b.Fatalf("could not parse source file: %v", err)
 		}
@@ -31,7 +31,7 @@ func RunExpect[T comparable](b *testing.B, p *gopapageno.Parser, filename string
 	}
 }
 
-func Run(b *testing.B, p *gopapageno.Parser, filename string) {
+func Run(b *testing.B, r *gopapageno.Runner, filename string) {
 	b.StopTimer()
 
 	bytes, err := os.ReadFile(filename)
@@ -44,7 +44,7 @@ func Run(b *testing.B, p *gopapageno.Parser, filename string) {
 	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, err := p.Parse(ctx, bytes)
+		_, err := r.Run(ctx, bytes)
 		if err != nil {
 			b.Fatalf("could not parse source file: %v", err)
 		}

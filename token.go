@@ -56,7 +56,7 @@ func (root *Token) Height(ctx context.Context) (int, error) {
 
 	// Launch the initial goroutine
 	wg.Add(1)
-	go bfs(root, 0, &wg, resultChan)
+	go bfs(root, 1, &wg, resultChan)
 
 	// Wait for all goroutines to finish
 	go func() {
