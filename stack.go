@@ -188,7 +188,7 @@ func (s *ParserStack) Split(n int) ([]*ParserStack, error) {
 	return lists, nil
 }
 
-func (s *ParserStack) Combine() Stacker {
+func (s *ParserStack) Combine() *ParserStack {
 	var topLeft Token
 
 	// TODO: This could be moved in Push/Pop to allow constant time access.
@@ -209,30 +209,6 @@ func (s *ParserStack) Combine() Stacker {
 	list.UpdateFirstTerminal()
 
 	return list
-}
-
-func (s *ParserStack) CombineNoAlloc() {
-	var topLeft *Token
-
-	var topLeftStack *stack[*Token]
-	var topLeftPos int
-
-	// TODO: This could be moved in Push/Pop to allow constant time access.
-	it := s.HeadIterator()
-	removedTokens := 0
-	for t := it.Next(); t != nil && t.Precedence != PrecYields; t = it.Next() {
-		topLeft = t
-		topLeftStack = it.cur
-		topLeftPos = it.pos
-
-		removedTokens++
-	}
-
-	topLeft.Precedence = PrecEmpty
-
-	s.cur = topLeftStack
-	s.len -= removedTokens
-	s.cur.Tos = topLeftPos
 }
 
 func (s *ParserStack) CombineLOS(pool *Pool[stack[Token]]) *ListOfStacks[Token] {

@@ -83,7 +83,7 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 	return sb.String()
 }
 
-func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
+func NewGrammar() *gopapageno.Grammar {
 	numTerminals := uint16(9)
 	numNonTerminals := uint16(2)
 
@@ -310,17 +310,15 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 		_ = ruleType
 	}
 
-	return gopapageno.NewParser(
-		NewLexer(),
-		numTerminals,
-		numNonTerminals,
-		maxRHSLen,
-		rules,
-		compressedRules,
-		precMatrix,
-		bitPackedMatrix,
-		fn,
-		gopapageno.OPP,
-		nil,
-		opts...)
+	return &gopapageno.Grammar{
+		NumTerminals:              numTerminals,
+		NumNonterminals:           numNonTerminals,
+		MaxRHSLength:              maxRHSLen,
+		Rules:                     rules,
+		CompressedRules:           compressedRules,
+		PrecedenceMatrix:          precMatrix,
+		BitPackedPrecedenceMatrix: bitPackedMatrix,
+		Func:                      fn,
+		ParsingStrategy:           gopapageno.OPP,
+	}
 }

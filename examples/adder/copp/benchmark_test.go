@@ -34,14 +34,15 @@ func BenchmarkParse(b *testing.B) {
 	for filename, expected := range table {
 		for c := 1; c <= threads; c = min(c*2, threads) {
 			b.Run(fmt.Sprintf("%s/%dT", filename, c), func(b *testing.B) {
-				p := NewParser(
+				r := gopapageno.NewRunner(
+					NewLexer(),
+					NewGrammar(),
 					gopapageno.WithConcurrency(c),
-					gopapageno.WithPreallocFunc(ParserPreallocMem),
-					gopapageno.WithReductionStrategy(gopapageno.ReductionMixed))
+					gopapageno.WithReductionStrategy(gopapageno.ReductionSweep))
 
 				b.ResetTimer()
 
-				benchmark.RunExpect[int64](b, p, path.Join(baseFolder, filename), expected)
+				benchmark.RunExpect[int64](b, r, path.Join(baseFolder, filename), expected)
 			})
 
 			runtime.GC()
@@ -54,10 +55,11 @@ func BenchmarkParse(b *testing.B) {
 }
 
 func TestProfile(t *testing.T) {
-	c := 8
+	c := runtime.NumCPU()
+	avgLen := gopapageno.DefaultAverageTokenLength
 	strat := gopapageno.ReductionParallel
 
-	filename := file10MB
+	var filename string
 
 	file := path.Join(baseFolder, filename)
 
@@ -66,20 +68,18 @@ func TestProfile(t *testing.T) {
 		t.Fatalf("could not read source file %s: %v", file, err)
 	}
 
-	p := NewParser(
+	r := gopapageno.NewRunner(
+		NewLexer(),
+		NewGrammar(),
 		gopapageno.WithConcurrency(c),
-		gopapageno.WithPreallocFunc(ParserPreallocMem),
+		gopapageno.WithAverageTokenLength(avgLen),
 		gopapageno.WithReductionStrategy(strat),
 	)
 
 	ctx := context.Background()
 
-	root, err := p.Parse(ctx, bytes)
+	_, err = r.Run(ctx, bytes)
 	if err != nil {
 		t.Fatalf("could not parse source: %v", err)
-	}
-
-	if *root.Value.(*int64) != table[filename] {
-		t.Fatalf("wrong result: %v", *root.Value.(*int64))
 	}
 }

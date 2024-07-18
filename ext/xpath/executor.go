@@ -45,7 +45,7 @@ type executorImpl struct {
 	resultingExecutionTable executionTable
 
 	source []byte
-	parser *gopapageno.Parser
+	runner *gopapageno.Runner
 }
 
 // ExecutorCommand represents a command that can be made by a
@@ -54,7 +54,7 @@ type ExecutorCommand interface {
 	Execute(xpathQuery string) ExecutorCommand
 	Against(source []byte) ExecutorCommand
 	WithNumberOfThreads(numberOfThreads int) ExecutorCommand
-	Run(parser *gopapageno.Parser) (results []Position, err error)
+	Run(runner *gopapageno.Runner) (results []Position, err error)
 	InVerboseMode() ExecutorCommand
 }
 
@@ -102,10 +102,10 @@ func (executorCommand *executorCommandImpl) InVerboseMode() ExecutorCommand {
 }
 
 // Run takes care of executing the command and to return
-func (executorCommand *executorCommandImpl) Run(parser *gopapageno.Parser) (results []Position, err error) {
+func (executorCommand *executorCommandImpl) Run(runner *gopapageno.Runner) (results []Position, err error) {
 	executor := &executorImpl{
 		numberOfThreads: defaultExecutorNumberOfThreads,
-		parser:          parser,
+		runner:          runner,
 	}
 
 	executor.initSingletonDataStructures()
@@ -183,7 +183,7 @@ func (executor *executorImpl) parseXPathQueryAndPopulateSingletonsDataStructures
 }
 
 func (executor *executorImpl) executeUDPEsWhileParsing() error {
-	axiomToken, err := executor.parser.Parse(context.Background(), executor.source)
+	axiomToken, err := executor.runner.Run(context.Background(), executor.source)
 	if err != nil {
 		return fmt.Errorf("could not parse: %v", err)
 	}

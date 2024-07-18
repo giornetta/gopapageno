@@ -119,7 +119,7 @@ func (s *CyclicParserStack) Split(n int) ([]*CyclicParserStack, error) {
 	return newStacks, nil
 }
 
-func (s *CyclicParserStack) Combine() Stacker {
+func (s *CyclicParserStack) Combine() *CyclicParserStack {
 	var tlStack *stack[*Token]
 	var tlStStack *stack[CyclicAutomataState]
 
