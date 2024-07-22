@@ -8,9 +8,9 @@ import (
 	"runtime/pprof"
 )
 
-type Runner struct {
-	Lexer   *Lexer
-	Grammar *Grammar
+type Runner[T Tokener] struct {
+	Lexer   *Lexer[T]
+	Grammar *Grammar[T]
 
 	concurrency       int
 	reductionStrategy ReductionStrategy
@@ -23,11 +23,12 @@ type Runner struct {
 	memProfileWriter io.Writer
 }
 
-func NewRunner(l *Lexer, g *Grammar, opts ...RunnerOpt) *Runner {
-	r := &Runner{
+func NewRunner[T Tokener](l *Lexer[T], g *Grammar[T], opts ...RunnerOpt[T]) *Runner[T] {
+	r := &Runner[T]{
 		Lexer:          l,
 		Grammar:        g,
 		avgTokenLength: DefaultAverageTokenLength,
+		logger:         discardLogger,
 	}
 
 	for _, opt := range opts {
@@ -37,10 +38,10 @@ func NewRunner(l *Lexer, g *Grammar, opts ...RunnerOpt) *Runner {
 	return r
 }
 
-type RunnerOpt func(r *Runner)
+type RunnerOpt[T Tokener] func(r *Runner[T])
 
-func WithConcurrency(n int) RunnerOpt {
-	return func(r *Runner) {
+func WithConcurrency[T Tokener](n int) RunnerOpt[T] {
+	return func(r *Runner[T]) {
 		if n <= 0 {
 			n = 1
 		}
@@ -49,8 +50,8 @@ func WithConcurrency(n int) RunnerOpt {
 	}
 }
 
-func WithLogging(logger *log.Logger) RunnerOpt {
-	return func(r *Runner) {
+func WithLogging[T Tokener](logger *log.Logger) RunnerOpt[T] {
+	return func(r *Runner[T]) {
 		if logger == nil {
 			logger = discardLogger
 		}
@@ -59,33 +60,33 @@ func WithLogging(logger *log.Logger) RunnerOpt {
 	}
 }
 
-func WithCPUProfiling(w io.Writer) RunnerOpt {
-	return func(r *Runner) {
+func WithCPUProfiling[T Tokener](w io.Writer) RunnerOpt[T] {
+	return func(r *Runner[T]) {
 		r.cpuProfileWriter = w
 	}
 }
 
-func WithMemoryProfiling(w io.Writer) RunnerOpt {
-	return func(r *Runner) {
+func WithMemoryProfiling[T Tokener](w io.Writer) RunnerOpt[T] {
+	return func(r *Runner[T]) {
 		r.memProfileWriter = w
 	}
 }
 
-func WithReductionStrategy(strat ReductionStrategy) RunnerOpt {
-	return func(r *Runner) {
+func WithReductionStrategy[T Tokener](strat ReductionStrategy) RunnerOpt[T] {
+	return func(r *Runner[T]) {
 		r.reductionStrategy = strat
 	}
 }
 
 const DefaultAverageTokenLength int = 4
 
-func WithAverageTokenLength(length int) RunnerOpt {
-	return func(r *Runner) {
+func WithAverageTokenLength[T Tokener](length int) RunnerOpt[T] {
+	return func(r *Runner[T]) {
 		r.avgTokenLength = length
 	}
 }
 
-func (r *Runner) Run(ctx context.Context, src []byte) (*Token, error) {
+func (r *Runner[T]) Run(ctx context.Context, src []byte) (*T, error) {
 	// Profiling
 	cleanupFunc := r.startProfiling()
 	defer cleanupFunc()
@@ -103,8 +104,6 @@ func (r *Runner) Run(ctx context.Context, src []byte) (*Token, error) {
 
 	scanner := r.Lexer.Scanner(src, r.concurrency, r.avgTokenLength)
 	parser := r.Grammar.Parser(src, r.concurrency, r.avgTokenLength, r.reductionStrategy)
-
-	// TODO: Should all code before this be moved into NewRunner?
 
 	// Run the actual stuff.
 	ctx, cancel := context.WithCancel(ctx)
@@ -128,7 +127,7 @@ func (r *Runner) Run(ctx context.Context, src []byte) (*Token, error) {
 	return token, nil
 }
 
-func (r *Runner) startProfiling() func() {
+func (r *Runner[T]) startProfiling() func() {
 	if r.cpuProfileWriter == nil || r.cpuProfileWriter != io.Discard {
 		return func() {}
 	}
@@ -146,4 +145,8 @@ func (r *Runner) startProfiling() func() {
 
 		pprof.StopCPUProfile()
 	}
+}
+
+type Parser[T Tokener] interface {
+	Parse(ctx context.Context, tokenLists []*LOS[T]) (*T, error)
 }

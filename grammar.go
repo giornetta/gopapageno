@@ -1,7 +1,6 @@
 package gopapageno
 
 import (
-	"context"
 	"io"
 	"log"
 )
@@ -10,19 +9,12 @@ var (
 	discardLogger = log.New(io.Discard, "", 0)
 )
 
-type Stacker interface {
-	HeadIterator() *ParserStackIterator
-	Combine() Stacker
-	CombineLOS(pool *Pool[stack[Token]]) *ListOfStacks[Token]
-	LastNonterminal() (*Token, error)
-}
-
 type parseResult[S any] struct {
 	threadNum int
 	stack     S
 }
 
-type ParserFunc func(rule uint16, lhs *Token, rhs []*Token, thread int)
+type ParserFunc[T Tokener] func(rule uint16, lhs *T, rhs []*T, thread int)
 
 // A ReductionStrategy defines which kind of algorithm should be executed
 // when collecting and running multiple parsing passes.
@@ -61,7 +53,7 @@ func (s ParsingStrategy) String() string {
 	}
 }
 
-type Grammar struct {
+type Grammar[T Tokener] struct {
 	NumTerminals    uint16
 	NumNonterminals uint16
 
@@ -75,30 +67,26 @@ type Grammar struct {
 	PrecedenceMatrix          [][]Precedence
 	BitPackedPrecedenceMatrix []uint64
 
-	Func         ParserFunc
+	Func         ParserFunc[T]
 	PreambleFunc PreambleFunc
 
 	ParsingStrategy ParsingStrategy
 }
 
-func (g *Grammar) Parser(src []byte, concurrency int, avgTokenLength int, strategy ReductionStrategy) Parser {
+func (g *Grammar[T]) Parser(src []byte, concurrency int, avgTokenLength int, strategy ReductionStrategy) Parser[T] {
 	switch g.ParsingStrategy {
 	case OPP:
-		return NewOPParser(g, src, concurrency, avgTokenLength, strategy)
+		return NewOPParser[T](any(g).(*Grammar[Token]), src, concurrency, avgTokenLength, strategy)
 	case AOPP:
-		return NewOPParser(g, src, concurrency, avgTokenLength, strategy)
+		return NewOPParser[T](any(g).(*Grammar[Token]), src, concurrency, avgTokenLength, strategy)
 	case COPP:
-		return NewCOPParser(g, src, concurrency, avgTokenLength, strategy)
-	default:
-		panic("Unknown grammar strategy")
+		return NewCOPParser[T](any(g).(*Grammar[CToken]), src, concurrency, avgTokenLength, strategy)
 	}
+
+	panic("unreachable")
 }
 
-type Parser interface {
-	Parse(ctx context.Context, tokensLists []*ListOfStacks[Token]) (*Token, error)
-}
-
-func (g *Grammar) precedence(t1 TokenType, t2 TokenType) Precedence {
+func (g *Grammar[T]) precedence(t1 TokenType, t2 TokenType) Precedence {
 	v1 := t1.Value()
 	v2 := t2.Value()
 
@@ -109,7 +97,7 @@ func (g *Grammar) precedence(t1 TokenType, t2 TokenType) Precedence {
 	return Precedence((elem >> pos) & 0x3)
 }
 
-func (g *Grammar) findMatch(rhs []TokenType) (TokenType, uint16) {
+func (g *Grammar[T]) findMatch(rhs []TokenType) (TokenType, uint16) {
 	var pos uint16
 
 	for _, key := range rhs {
@@ -149,7 +137,7 @@ func (g *Grammar) findMatch(rhs []TokenType) (TokenType, uint16) {
 	return TokenType(g.CompressedRules[pos]), g.CompressedRules[pos+1]
 }
 
-func collectResults[S any](results []S, resultCh <-chan parseResult[S], errCh <-chan error, n int) error {
+func collectResults[S any](results []S, resultCh <-chan workerResult[S], errCh <-chan error, n int) error {
 	completed := 0
 	for completed < n {
 		select {

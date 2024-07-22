@@ -95,7 +95,7 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 	return sb.String()
 }
 
-func NewGrammar() *gopapageno.Grammar {
+func NewGrammar() *gopapageno.Grammar[gopapageno.Token] {
 	numTerminals := uint16(5)
 	numNonTerminals := uint16(4)
 
@@ -133,7 +133,6 @@ func NewGrammar() *gopapageno.Grammar {
 			E1 := rhs[0]
 
 			S0.Child = E1
-			S0.LastChild = E1
 
 			{
 				S0.Value = E1.Value
@@ -150,7 +149,6 @@ func NewGrammar() *gopapageno.Grammar {
 			E0.Child = E1
 			E1.Next = PLUS2
 			PLUS2.Next = E_T3
-			E0.LastChild = E_T3
 
 			{
 				newValue := parserPools[thread].Get()
@@ -167,7 +165,6 @@ func NewGrammar() *gopapageno.Grammar {
 			E_T1 := rhs[0]
 
 			S0.Child = E_T1
-			S0.LastChild = E_T1
 
 			{
 				S0.Value = E_T1.Value
@@ -184,7 +181,6 @@ func NewGrammar() *gopapageno.Grammar {
 			E0.Child = E_T1
 			E_T1.Next = PLUS2
 			PLUS2.Next = E_T3
-			E0.LastChild = E_T3
 
 			{
 				newValue := parserPools[thread].Get()
@@ -201,7 +197,6 @@ func NewGrammar() *gopapageno.Grammar {
 			S1 := rhs[0]
 
 			S0.Child = S1
-			S0.LastChild = S1
 
 			{
 				S0.Value = S1.Value
@@ -218,7 +213,6 @@ func NewGrammar() *gopapageno.Grammar {
 			E_T0.Child = LPAR1
 			LPAR1.Next = E2
 			E2.Next = RPAR3
-			E_T0.LastChild = RPAR3
 
 			{
 				E_T0.Value = E2.Value
@@ -237,7 +231,6 @@ func NewGrammar() *gopapageno.Grammar {
 			E_T0.Child = LPAR1
 			LPAR1.Next = E_T2
 			E_T2.Next = RPAR3
-			E_T0.LastChild = RPAR3
 
 			{
 				E_T0.Value = E_T2.Value
@@ -252,7 +245,6 @@ func NewGrammar() *gopapageno.Grammar {
 			NUMBER1 := rhs[0]
 
 			E_T0.Child = NUMBER1
-			E_T0.LastChild = NUMBER1
 
 			{
 				E_T0.Value = NUMBER1.Value
@@ -262,7 +254,7 @@ func NewGrammar() *gopapageno.Grammar {
 		_ = ruleType
 	}
 
-	return &gopapageno.Grammar{
+	return &gopapageno.Grammar[gopapageno.Token]{
 		NumTerminals:              numTerminals,
 		NumNonterminals:           numNonTerminals,
 		MaxRHSLength:              maxRHSLen,

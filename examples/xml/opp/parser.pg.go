@@ -83,7 +83,7 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 	return sb.String()
 }
 
-func NewGrammar() *gopapageno.Grammar {
+func NewGrammar() *gopapageno.Grammar[gopapageno.Token] {
 	numTerminals := uint16(9)
 	numNonTerminals := uint16(2)
 
@@ -129,7 +129,6 @@ func NewGrammar() *gopapageno.Grammar {
 			ELEM1 := rhs[0]
 
 			ELEM0.Child = ELEM1
-			ELEM0.LastChild = ELEM1
 
 			{
 				ELEM0.Value = ELEM1.Value
@@ -144,7 +143,6 @@ func NewGrammar() *gopapageno.Grammar {
 
 			ELEM0.Child = ELEM1
 			ELEM1.Next = AlternativeClose2
-			ELEM0.LastChild = AlternativeClose2
 
 			{
 			}
@@ -163,7 +161,6 @@ func NewGrammar() *gopapageno.Grammar {
 			ELEM1.Next = OpenBracket2
 			OpenBracket2.Next = ELEM3
 			ELEM3.Next = CloseBracket4
-			ELEM0.LastChild = CloseBracket4
 
 			{
 			}
@@ -180,7 +177,6 @@ func NewGrammar() *gopapageno.Grammar {
 
 			ELEM0.Child = ELEM1
 			ELEM1.Next = OpenCloseInfo2
-			ELEM0.LastChild = OpenCloseInfo2
 
 			{
 			}
@@ -195,7 +191,6 @@ func NewGrammar() *gopapageno.Grammar {
 
 			ELEM0.Child = ELEM1
 			ELEM1.Next = OpenCloseParams2
-			ELEM0.LastChild = OpenCloseParams2
 
 			{
 			}
@@ -214,7 +209,6 @@ func NewGrammar() *gopapageno.Grammar {
 			ELEM1.Next = OpenParams2
 			OpenParams2.Next = ELEM3
 			ELEM3.Next = CloseParams4
-			ELEM0.LastChild = CloseParams4
 
 			{
 			}
@@ -229,7 +223,6 @@ func NewGrammar() *gopapageno.Grammar {
 			AlternativeClose1 := rhs[0]
 
 			ELEM0.Child = AlternativeClose1
-			ELEM0.LastChild = AlternativeClose1
 
 			{
 			}
@@ -241,7 +234,6 @@ func NewGrammar() *gopapageno.Grammar {
 			Infos1 := rhs[0]
 
 			ELEM0.Child = Infos1
-			ELEM0.LastChild = Infos1
 
 			{
 			}
@@ -257,7 +249,6 @@ func NewGrammar() *gopapageno.Grammar {
 			ELEM0.Child = OpenBracket1
 			OpenBracket1.Next = ELEM2
 			ELEM2.Next = CloseBracket3
-			ELEM0.LastChild = CloseBracket3
 
 			{
 			}
@@ -271,7 +262,6 @@ func NewGrammar() *gopapageno.Grammar {
 			OpenCloseInfo1 := rhs[0]
 
 			ELEM0.Child = OpenCloseInfo1
-			ELEM0.LastChild = OpenCloseInfo1
 
 			{
 			}
@@ -283,7 +273,6 @@ func NewGrammar() *gopapageno.Grammar {
 			OpenCloseParams1 := rhs[0]
 
 			ELEM0.Child = OpenCloseParams1
-			ELEM0.LastChild = OpenCloseParams1
 
 			{
 			}
@@ -299,7 +288,6 @@ func NewGrammar() *gopapageno.Grammar {
 			ELEM0.Child = OpenParams1
 			OpenParams1.Next = ELEM2
 			ELEM2.Next = CloseBracket3
-			ELEM0.LastChild = CloseBracket3
 
 			{
 			}
@@ -310,7 +298,7 @@ func NewGrammar() *gopapageno.Grammar {
 		_ = ruleType
 	}
 
-	return &gopapageno.Grammar{
+	return &gopapageno.Grammar[gopapageno.Token]{
 		NumTerminals:              numTerminals,
 		NumNonterminals:           numNonTerminals,
 		MaxRHSLength:              maxRHSLen,

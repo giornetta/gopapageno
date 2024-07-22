@@ -28,8 +28,8 @@ func BenchmarkParse(b *testing.B) {
 				r := gopapageno.NewRunner(
 					NewLexer(),
 					NewGrammar(),
-					gopapageno.WithConcurrency(c),
-					gopapageno.WithReductionStrategy(gopapageno.ReductionSweep))
+					gopapageno.WithConcurrency[gopapageno.CToken](c),
+					gopapageno.WithReductionStrategy[gopapageno.CToken](gopapageno.ReductionParallel))
 
 				b.ResetTimer()
 
@@ -50,7 +50,7 @@ func TestProfile(t *testing.T) {
 	avgLen := gopapageno.DefaultAverageTokenLength
 	strat := gopapageno.ReductionParallel
 
-	var filename string
+	var filename string = "generated-2000.json"
 
 	file := path.Join(baseFolder, filename)
 
@@ -62,9 +62,9 @@ func TestProfile(t *testing.T) {
 	r := gopapageno.NewRunner(
 		NewLexer(),
 		NewGrammar(),
-		gopapageno.WithConcurrency(c),
-		gopapageno.WithAverageTokenLength(avgLen),
-		gopapageno.WithReductionStrategy(strat),
+		gopapageno.WithConcurrency[gopapageno.CToken](c),
+		gopapageno.WithAverageTokenLength[gopapageno.CToken](avgLen),
+		gopapageno.WithReductionStrategy[gopapageno.CToken](strat),
 	)
 
 	ctx := context.Background()

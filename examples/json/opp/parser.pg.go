@@ -104,7 +104,7 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 	return sb.String()
 }
 
-func NewGrammar() *gopapageno.Grammar {
+func NewGrammar() *gopapageno.Grammar[gopapageno.Token] {
 	numTerminals := uint16(10)
 	numNonTerminals := uint16(8)
 
@@ -172,7 +172,6 @@ func NewGrammar() *gopapageno.Grammar {
 			Elements0.Child = Array_Elements_Value1
 			Array_Elements_Value1.Next = COMMA2
 			COMMA2.Next = Array_Elements_Value3
-			Elements0.LastChild = Array_Elements_Value3
 
 			{
 			}
@@ -190,7 +189,6 @@ func NewGrammar() *gopapageno.Grammar {
 			Elements0.Child = Array_Elements_Value1
 			Array_Elements_Value1.Next = COMMA2
 			COMMA2.Next = Elements_Object_Value3
-			Elements0.LastChild = Elements_Object_Value3
 
 			{
 			}
@@ -208,7 +206,6 @@ func NewGrammar() *gopapageno.Grammar {
 			Elements0.Child = Array_Elements_Value1
 			Array_Elements_Value1.Next = COMMA2
 			COMMA2.Next = Elements_Value3
-			Elements0.LastChild = Elements_Value3
 
 			{
 			}
@@ -222,7 +219,6 @@ func NewGrammar() *gopapageno.Grammar {
 			Document1 := rhs[0]
 
 			Document0.Child = Document1
-			Document0.LastChild = Document1
 
 			{
 				Document0.Value = Document1.Value
@@ -239,7 +235,6 @@ func NewGrammar() *gopapageno.Grammar {
 			Elements0.Child = Elements1
 			Elements1.Next = COMMA2
 			COMMA2.Next = Array_Elements_Value3
-			Elements0.LastChild = Array_Elements_Value3
 
 			{
 			}
@@ -257,7 +252,6 @@ func NewGrammar() *gopapageno.Grammar {
 			Elements0.Child = Elements1
 			Elements1.Next = COMMA2
 			COMMA2.Next = Elements_Object_Value3
-			Elements0.LastChild = Elements_Object_Value3
 
 			{
 			}
@@ -275,7 +269,6 @@ func NewGrammar() *gopapageno.Grammar {
 			Elements0.Child = Elements1
 			Elements1.Next = COMMA2
 			COMMA2.Next = Elements_Value3
-			Elements0.LastChild = Elements_Value3
 
 			{
 			}
@@ -293,7 +286,6 @@ func NewGrammar() *gopapageno.Grammar {
 			Elements0.Child = Elements_Object_Value1
 			Elements_Object_Value1.Next = COMMA2
 			COMMA2.Next = Array_Elements_Value3
-			Elements0.LastChild = Array_Elements_Value3
 
 			{
 			}
@@ -311,7 +303,6 @@ func NewGrammar() *gopapageno.Grammar {
 			Elements0.Child = Elements_Object_Value1
 			Elements_Object_Value1.Next = COMMA2
 			COMMA2.Next = Elements_Object_Value3
-			Elements0.LastChild = Elements_Object_Value3
 
 			{
 			}
@@ -329,7 +320,6 @@ func NewGrammar() *gopapageno.Grammar {
 			Elements0.Child = Elements_Object_Value1
 			Elements_Object_Value1.Next = COMMA2
 			COMMA2.Next = Elements_Value3
-			Elements0.LastChild = Elements_Value3
 
 			{
 			}
@@ -347,7 +337,6 @@ func NewGrammar() *gopapageno.Grammar {
 			Elements0.Child = Elements_Value1
 			Elements_Value1.Next = COMMA2
 			COMMA2.Next = Array_Elements_Value3
-			Elements0.LastChild = Array_Elements_Value3
 
 			{
 			}
@@ -365,7 +354,6 @@ func NewGrammar() *gopapageno.Grammar {
 			Elements0.Child = Elements_Value1
 			Elements_Value1.Next = COMMA2
 			COMMA2.Next = Elements_Object_Value3
-			Elements0.LastChild = Elements_Object_Value3
 
 			{
 			}
@@ -383,7 +371,6 @@ func NewGrammar() *gopapageno.Grammar {
 			Elements0.Child = Elements_Value1
 			Elements_Value1.Next = COMMA2
 			COMMA2.Next = Elements_Value3
-			Elements0.LastChild = Elements_Value3
 
 			{
 			}
@@ -401,7 +388,6 @@ func NewGrammar() *gopapageno.Grammar {
 			Members0.Child = Members1
 			Members1.Next = COMMA2
 			COMMA2.Next = Members_Pair3
-			Members0.LastChild = Members_Pair3
 
 			{
 			}
@@ -419,7 +405,6 @@ func NewGrammar() *gopapageno.Grammar {
 			Members0.Child = Members_Pair1
 			Members_Pair1.Next = COMMA2
 			COMMA2.Next = Members_Pair3
-			Members0.LastChild = Members_Pair3
 
 			{
 			}
@@ -433,7 +418,6 @@ func NewGrammar() *gopapageno.Grammar {
 			BOOL1 := rhs[0]
 
 			Elements_Value0.Child = BOOL1
-			Elements_Value0.LastChild = BOOL1
 
 			{
 			}
@@ -449,7 +433,6 @@ func NewGrammar() *gopapageno.Grammar {
 			Elements_Object_Value0.Child = LCURLY1
 			LCURLY1.Next = Members2
 			Members2.Next = RCURLY3
-			Elements_Object_Value0.LastChild = RCURLY3
 
 			{
 			}
@@ -467,7 +450,6 @@ func NewGrammar() *gopapageno.Grammar {
 			Elements_Object_Value0.Child = LCURLY1
 			LCURLY1.Next = Members_Pair2
 			Members_Pair2.Next = RCURLY3
-			Elements_Object_Value0.LastChild = RCURLY3
 
 			{
 			}
@@ -483,7 +465,6 @@ func NewGrammar() *gopapageno.Grammar {
 
 			Elements_Object_Value0.Child = LCURLY1
 			LCURLY1.Next = RCURLY2
-			Elements_Object_Value0.LastChild = RCURLY2
 
 			{
 			}
@@ -500,7 +481,6 @@ func NewGrammar() *gopapageno.Grammar {
 			Array_Elements_Value0.Child = LSQUARE1
 			LSQUARE1.Next = Array_Elements_Value2
 			Array_Elements_Value2.Next = RSQUARE3
-			Array_Elements_Value0.LastChild = RSQUARE3
 
 			{
 			}
@@ -518,7 +498,6 @@ func NewGrammar() *gopapageno.Grammar {
 			Array_Elements_Value0.Child = LSQUARE1
 			LSQUARE1.Next = Elements2
 			Elements2.Next = RSQUARE3
-			Array_Elements_Value0.LastChild = RSQUARE3
 
 			{
 			}
@@ -536,7 +515,6 @@ func NewGrammar() *gopapageno.Grammar {
 			Array_Elements_Value0.Child = LSQUARE1
 			LSQUARE1.Next = Elements_Object_Value2
 			Elements_Object_Value2.Next = RSQUARE3
-			Array_Elements_Value0.LastChild = RSQUARE3
 
 			{
 			}
@@ -554,7 +532,6 @@ func NewGrammar() *gopapageno.Grammar {
 			Array_Elements_Value0.Child = LSQUARE1
 			LSQUARE1.Next = Elements_Value2
 			Elements_Value2.Next = RSQUARE3
-			Array_Elements_Value0.LastChild = RSQUARE3
 
 			{
 			}
@@ -570,7 +547,6 @@ func NewGrammar() *gopapageno.Grammar {
 
 			Array_Elements_Value0.Child = LSQUARE1
 			LSQUARE1.Next = RSQUARE2
-			Array_Elements_Value0.LastChild = RSQUARE2
 
 			{
 			}
@@ -583,7 +559,6 @@ func NewGrammar() *gopapageno.Grammar {
 			NUMBER1 := rhs[0]
 
 			Elements_Value0.Child = NUMBER1
-			Elements_Value0.LastChild = NUMBER1
 
 			{
 			}
@@ -595,7 +570,6 @@ func NewGrammar() *gopapageno.Grammar {
 			STRING1 := rhs[0]
 
 			Elements_Value0.Child = STRING1
-			Elements_Value0.LastChild = STRING1
 
 			{
 			}
@@ -611,7 +585,6 @@ func NewGrammar() *gopapageno.Grammar {
 			Members_Pair0.Child = STRING1
 			STRING1.Next = COLON2
 			COLON2.Next = Array_Elements_Value3
-			Members_Pair0.LastChild = Array_Elements_Value3
 
 			{
 			}
@@ -629,7 +602,6 @@ func NewGrammar() *gopapageno.Grammar {
 			Members_Pair0.Child = STRING1
 			STRING1.Next = COLON2
 			COLON2.Next = Elements_Object_Value3
-			Members_Pair0.LastChild = Elements_Object_Value3
 
 			{
 			}
@@ -647,7 +619,6 @@ func NewGrammar() *gopapageno.Grammar {
 			Members_Pair0.Child = STRING1
 			STRING1.Next = COLON2
 			COLON2.Next = Elements_Value3
-			Members_Pair0.LastChild = Elements_Value3
 
 			{
 			}
@@ -658,7 +629,7 @@ func NewGrammar() *gopapageno.Grammar {
 		_ = ruleType
 	}
 
-	return &gopapageno.Grammar{
+	return &gopapageno.Grammar[gopapageno.Token]{
 		NumTerminals:              numTerminals,
 		NumNonterminals:           numNonTerminals,
 		MaxRHSLength:              maxRHSLen,
