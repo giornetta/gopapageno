@@ -5,14 +5,11 @@ import (
 	"fmt"
 )
 
-type OPParser struct {
-	g *Grammar
+type OPParser[T Tokener] struct {
+	g *Grammar[Token]
 
 	concurrency       int
 	reductionStrategy ReductionStrategy
-
-	workers []*oppWorker
-	results []*ParserStack
 
 	// Pools
 	pools struct {
@@ -23,16 +20,20 @@ type OPParser struct {
 		sweepInput *Pool[stack[Token]]
 		sweepStack *Pool[stack[*Token]]
 	}
+
+	workers []*oppWorker[T]
+	results []*OPPStack
 }
 
-func NewOPParser(g *Grammar, src []byte, concurrency int, avgTokenLength int, strategy ReductionStrategy) *OPParser {
-	p := &OPParser{
+func NewOPParser[T Tokener](
+	g *Grammar[Token],
+	src []byte, concurrency int, avgTokenLength int, strategy ReductionStrategy) *OPParser[T] {
+	p := &OPParser[T]{
 		g:                 g,
 		concurrency:       concurrency,
 		reductionStrategy: strategy,
-
-		workers: make([]*oppWorker, concurrency),
-		results: make([]*ParserStack, concurrency),
+		workers:           make([]*oppWorker[T], concurrency),
+		results:           make([]*OPPStack, concurrency),
 	}
 
 	srcLen := len(src)
@@ -52,7 +53,7 @@ func NewOPParser(g *Grammar, src []byte, concurrency int, avgTokenLength int, st
 			//stackPoolMultiplier = p.concurrency - thread
 		}
 
-		p.pools.stacks[thread] = NewPool[stack[*Token]](int(float64(stackPoolBaseSize)*stackPoolMultiplier), WithConstructor[stack[*Token]](newStack[*Token]))
+		p.pools.stacks[thread] = NewPool(int(float64(stackPoolBaseSize)*stackPoolMultiplier), WithConstructor(newStack[*Token]))
 		p.pools.nonterminals[thread] = NewPool[Token](ntPoolBaseSize)
 	}
 
@@ -61,27 +62,30 @@ func NewOPParser(g *Grammar, src []byte, concurrency int, avgTokenLength int, st
 	if strategy == ReductionSweep || strategy == ReductionMixed {
 		inputPoolBaseSize := stacksCount[Token](src, p.concurrency, avgTokenLength)
 
-		p.pools.sweepInput = NewPool[stack[Token]](inputPoolBaseSize, WithConstructor[stack[Token]](newStack[Token]))
-		p.pools.sweepStack = NewPool[stack[*Token]](stackPoolBaseSize, WithConstructor[stack[*Token]](newStack[*Token]))
+		p.pools.sweepInput = NewPool(inputPoolBaseSize, WithConstructor(newStack[Token]))
+		p.pools.sweepStack = NewPool(stackPoolBaseSize, WithConstructor(newStack[*Token]))
 	}
 
-	for thread := 0; thread < p.concurrency; thread++ {
-		p.workers[thread] = &oppWorker{
+	for thread := 0; thread < concurrency; thread++ {
+		p.workers[thread] = &oppWorker[T]{
 			p:      p,
 			id:     thread,
 			ntPool: p.pools.nonterminals[thread],
 		}
 	}
+
 	return p
 }
 
-func (p *OPParser) Parse(ctx context.Context, tokensLists []*ListOfStacks[Token]) (*Token, error) {
+func (p *OPParser[T]) Parse(ctx context.Context, tokensLists []*LOS[T]) (*T, error) {
+	tokens := any(tokensLists).([]*LOS[Token])
+
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	p.concurrency = len(tokensLists)
 
-	resultCh := make(chan parseResult[*ParserStack])
+	resultCh := make(chan workerResult[*OPPStack])
 	errCh := make(chan error, 1)
 
 	// First parallel pass of the algorithm.
@@ -90,15 +94,16 @@ func (p *OPParser) Parse(ctx context.Context, tokensLists []*ListOfStacks[Token]
 
 		// If the thread is not the last, also take the first token of the next stack for lookahead.
 		if thread < p.concurrency-1 {
-			nextInputListIter := tokensLists[thread+1].HeadIterator()
+			nextInputListIter := tokens[thread+1].HeadIterator()
 			nextToken = nextInputListIter.Next()
 		}
 
-		s := NewParserStack(p.pools.stacks[thread])
-		go p.workers[thread].parse(ctx, s, tokensLists[thread], nextToken, false, resultCh, errCh)
+		// TODO: Initialize right stack
+		s := NewOPPStack(p.pools.stacks[thread])
+		go p.workers[thread].parse(ctx, s, tokens[thread], nextToken, false, resultCh, errCh)
 	}
 
-	if err := collectResults(p.results, resultCh, errCh, p.concurrency); err != nil {
+	if err := collectResults[*OPPStack](p.results, resultCh, errCh, p.concurrency); err != nil {
 		return nil, err
 	}
 
@@ -121,7 +126,7 @@ func (p *OPParser) Parse(ctx context.Context, tokensLists []*ListOfStacks[Token]
 
 			go p.workers[0].parse(ctx, stack, input, nil, true, resultCh, errCh)
 
-			if err := collectResults(p.results, resultCh, errCh, 1); err != nil {
+			if err := collectResults[*OPPStack](p.results, resultCh, errCh, 1); err != nil {
 				cancel()
 				return nil, err
 			}
@@ -137,12 +142,12 @@ func (p *OPParser) Parse(ctx context.Context, tokensLists []*ListOfStacks[Token]
 				// Unfortunately the new stack depends on the content of tokensLists[i] since its elements are stored there.
 				// We can't erase the old input easily to reuse its storage.
 				// TODO: Maybe allocate 2 * c LOS so that we can alternate?
-				input := stackRight.CombineLOS(tokensLists[i].pool)
+				input := stackRight.CombineLOS(tokens[i].pool)
 
 				go p.workers[i].parse(ctx, stack, input, nil, true, resultCh, errCh)
 			}
 
-			if err := collectResults(p.results, resultCh, errCh, p.concurrency); err != nil {
+			if err := collectResults[*OPPStack](p.results, resultCh, errCh, p.concurrency); err != nil {
 				cancel()
 				return nil, err
 			}
@@ -151,11 +156,16 @@ func (p *OPParser) Parse(ctx context.Context, tokensLists []*ListOfStacks[Token]
 		}
 	}
 
-	return p.results[0].LastNonterminal()
+	root, err := p.results[0].LastNonterminal()
+	if err != nil {
+		return nil, err
+	}
+
+	return any(root).(*T), nil
 }
 
-func (p *OPParser) CombineSweepLOS(pool *Pool[stack[Token]], stacks []*ParserStack) *ListOfStacks[Token] {
-	input := NewListOfStacks[Token](pool)
+func (p *OPParser[T]) CombineSweepLOS(pool *Pool[stack[Token]], stacks []*OPPStack) *LOS[Token] {
+	input := NewLOS[Token](pool)
 	for i := 0; i < p.concurrency-1; i++ {
 		iterator := stacks[i].HeadIterator()
 
@@ -169,14 +179,19 @@ func (p *OPParser) CombineSweepLOS(pool *Pool[stack[Token]], stacks []*ParserSta
 	return input
 }
 
-type oppWorker struct {
-	p      *OPParser
+type oppWorker[T Tokener] struct {
+	p      *OPParser[T]
 	id     int
 	ntPool *Pool[Token]
 }
 
+type workerResult[S any] struct {
+	threadNum int
+	stack     S
+}
+
 // parse implements both OPP and AOPP strategies.
-func (w *oppWorker) parse(ctx context.Context, stack *ParserStack, tokens *ListOfStacks[Token], nextToken *Token, finalPass bool, resultCh chan<- parseResult[*ParserStack], errCh chan<- error) {
+func (w *oppWorker[T]) parse(ctx context.Context, stack *OPPStack, tokens *LOS[Token], nextToken *Token, finalPass bool, resultCh chan<- workerResult[*OPPStack], errCh chan<- error) {
 	tokensIt := tokens.HeadIterator()
 
 	// If the thread is the first, push a # onto the stack
@@ -184,11 +199,10 @@ func (w *oppWorker) parse(ctx context.Context, stack *ParserStack, tokens *ListO
 	if !finalPass {
 		if w.id == 0 {
 			stack.Push(&Token{
-				Type:       TokenTerm,
-				Value:      nil,
-				Precedence: PrecEmpty,
-				Next:       nil,
-				Child:      nil,
+				TokenBase: TokenBase[Token]{
+					Type:       TokenTerm,
+					Precedence: PrecEmpty,
+				},
 			})
 		} else {
 			t := tokensIt.Next()
@@ -200,11 +214,10 @@ func (w *oppWorker) parse(ctx context.Context, stack *ParserStack, tokens *ListO
 		// Otherwise, push onto the tokens m the first inputToken of the next tokens m
 		if w.id == w.p.concurrency-1 {
 			tokens.Push(Token{
-				Type:       TokenTerm,
-				Value:      nil,
-				Precedence: PrecEmpty,
-				Next:       nil,
-				Child:      nil,
+				TokenBase: TokenBase[Token]{
+					Type:       TokenTerm,
+					Precedence: PrecEmpty,
+				},
 			})
 		} else if nextToken != nil {
 			tokens.Push(*nextToken)
@@ -221,11 +234,10 @@ func (w *oppWorker) parse(ctx context.Context, stack *ParserStack, tokens *ListO
 	rhsTokensBuf := make([]*Token, w.p.g.MaxRHSLength)
 
 	newNonTerm := Token{
-		Type:       TokenEmpty,
-		Value:      nil,
-		Precedence: PrecEmpty,
-		Next:       nil,
-		Child:      nil,
+		TokenBase: TokenBase[Token]{
+			Type:       TokenEmpty,
+			Precedence: PrecEmpty,
+		},
 	}
 
 	// Iterate over the tokens
@@ -319,5 +331,5 @@ func (w *oppWorker) parse(ctx context.Context, stack *ParserStack, tokens *ListO
 		}
 	}
 
-	resultCh <- parseResult[*ParserStack]{w.id, stack}
+	resultCh <- workerResult[*OPPStack]{w.id, stack}
 }

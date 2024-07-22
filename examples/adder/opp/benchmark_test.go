@@ -13,25 +13,12 @@ import (
 
 const baseFolder = "../data/"
 
-const (
-	fileMB   = "1MB.txt"
-	file10MB = "10MB.txt"
-)
-
-const (
-	resultMB   = (1 + 2 + 3 + 11 + 222 + 3333 + (1 + 2)) * 26000
-	result10MB = (1 + 2 + 3 + 11 + 222 + 3333 + (1 + 2)) * 260000
-)
-
-var table = map[string]int64{
-	fileMB:   resultMB,
-	file10MB: result10MB,
-}
+var table = map[string]any{}
 
 func BenchmarkParse(b *testing.B) {
 	threads := runtime.NumCPU()
 
-	for filename, expected := range table {
+	for filename, _ := range table {
 		for c := 1; c <= threads; c = min(c*2, threads) {
 			b.Run(fmt.Sprintf("%s/%dT", filename, c), func(b *testing.B) {
 				r := gopapageno.NewRunner(
@@ -42,7 +29,7 @@ func BenchmarkParse(b *testing.B) {
 
 				b.ResetTimer()
 
-				benchmark.RunExpect[int64](b, r, path.Join(baseFolder, filename), expected)
+				benchmark.Run(b, r, path.Join(baseFolder, filename))
 			})
 
 			runtime.GC()

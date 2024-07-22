@@ -3,6 +3,7 @@ package generator
 import (
 	"bufio"
 	"fmt"
+	"github.com/giornetta/gopapageno"
 	"github.com/giornetta/gopapageno/generator/regex"
 	"io"
 	"log"
@@ -240,6 +241,11 @@ func (l *lexerDescriptor) emit(opts *Options, packageName string) error {
 		return fmt.Errorf("could not create lexer file %s: %w", lPath, err)
 	}
 
+	tokenType := "gopapageno.Token"
+	if opts.Strategy == gopapageno.COPP {
+		tokenType = "gopapageno.CToken"
+	}
+
 	/************
 	 * Preamble *
 	 ************/
@@ -253,7 +259,7 @@ func (l *lexerDescriptor) emit(opts *Options, packageName string) error {
 	fmt.Fprintf(f, l.code)
 
 	// NewLexer function starts here.
-	fmt.Fprintf(f, "\n\nfunc NewLexer() *gopapageno.Lexer {\n")
+	fmt.Fprintf(f, "\n\nfunc NewLexer() *gopapageno.Lexer[%s] {\n", tokenType)
 
 	/************
 	 * Automata *
@@ -267,8 +273,9 @@ func (l *lexerDescriptor) emit(opts *Options, packageName string) error {
 	/******************
 	 * Lexer Function *
 	 ******************/
-	fmt.Fprintf(f, "\tfn := func(rule int, text string, start int, end int, thread int, token *gopapageno.Token) gopapageno.LexResult {\n")
+	fmt.Fprintf(f, "\tfn := func(rule int, text string, start int, end int, thread int, token *%s) gopapageno.LexResult {\n", tokenType)
 	fmt.Fprintf(f, "\t\ttoken.Type = gopapageno.TokenTerm\n")
+	fmt.Fprintf(f, "\t\ttoken.Value = nil\n")
 	fmt.Fprintf(f, "\t\tswitch rule {\n")
 	for i, rule := range l.rules {
 		fmt.Fprintf(f, "\t\tcase %d:\n", i)
@@ -282,7 +289,7 @@ func (l *lexerDescriptor) emit(opts *Options, packageName string) error {
 	/****************
 	 * Return Lexer *
 	 ****************/
-	fmt.Fprintf(f, "\treturn &gopapageno.Lexer{\n")
+	fmt.Fprintf(f, "\treturn &gopapageno.Lexer[%s]{\n", tokenType)
 	fmt.Fprintf(f, "\t\tAutomaton: automaton,\n")
 	fmt.Fprintf(f, "\t\tCutPointsAutomaton: cutPointsAutomaton,\n")
 	fmt.Fprintf(f, "\t\tFunc: fn,\n")

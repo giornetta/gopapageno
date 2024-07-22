@@ -2,7 +2,7 @@
   <configuration default="false" name="Run Adder OPP" type="GoApplicationRunConfiguration" factoryName="Go Application" folderName="Run Parsers">
     <module name="gopapageno" />
     <working_directory value="$PROJECT_DIR$/examples/adder" />
-    <parameters value="-f data/small.txt -c 3 -s parallel" />
+    <parameters value="-f data/small.txt -c 12 -s parallel" />
     <kind value="PACKAGE" />
     <package value="github.com/giornetta/gopapageno/examples/adder/opp" />
     <directory value="$PROJECT_DIR$" />

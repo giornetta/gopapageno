@@ -42,10 +42,10 @@ const (
 	RPAR
 )
 
-func SprintToken[TokenValue any](root *gopapageno.Token) string {
-	var sprintRec func(t *gopapageno.Token, sb *strings.Builder, indent string)
+func SprintToken[TokenValue any](root *gopapageno.CToken) string {
+	var sprintRec func(t *gopapageno.CToken, sb *strings.Builder, indent string)
 
-	sprintRec = func(t *gopapageno.Token, sb *strings.Builder, indent string) {
+	sprintRec = func(t *gopapageno.CToken, sb *strings.Builder, indent string) {
 		if t == nil {
 			return
 		}
@@ -101,7 +101,7 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 	return sb.String()
 }
 
-func NewGrammar() *gopapageno.Grammar {
+func NewGrammar() *gopapageno.Grammar[gopapageno.CToken] {
 	numTerminals := uint16(6)
 	numNonTerminals := uint16(5)
 
@@ -146,7 +146,7 @@ func NewGrammar() *gopapageno.Grammar {
 		12130059261172884820, 160,
 	}
 
-	fn := func(rule uint16, lhs *gopapageno.Token, rhs []*gopapageno.Token, thread int) {
+	fn := func(rule uint16, lhs *gopapageno.CToken, rhs []*gopapageno.CToken, thread int) {
 		var ruleType gopapageno.RuleType
 		switch rule {
 		case 0:
@@ -611,7 +611,7 @@ func NewGrammar() *gopapageno.Grammar {
 		_ = ruleType
 	}
 
-	return &gopapageno.Grammar{
+	return &gopapageno.Grammar[gopapageno.CToken]{
 		NumTerminals:              numTerminals,
 		NumNonterminals:           numNonTerminals,
 		MaxRHSLength:              maxRHSLen,

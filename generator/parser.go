@@ -390,6 +390,11 @@ func (p *parserDescriptor) emit(opts *Options, packageName string) error {
 		return fmt.Errorf("could not create parser file %s: %w", pPath, err)
 	}
 
+	tokenType := "gopapageno.Token"
+	if opts.Strategy == gopapageno.COPP {
+		tokenType = "gopapageno.CToken"
+	}
+
 	/************
 	 * Preamble *
 	 ************/
@@ -411,10 +416,10 @@ func (p *parserDescriptor) emit(opts *Options, packageName string) error {
 	/**********
 	 * Tokens *
 	 **********/
-	p.emitTokens(f)
+	p.emitTokens(f, tokenType)
 
 	// NewGrammar func starts here.
-	fmt.Fprintf(f, "\nfunc NewGrammar() *gopapageno.Grammar {\n")
+	fmt.Fprintf(f, "\nfunc NewGrammar() *gopapageno.Grammar[%s] {\n", tokenType)
 
 	/*****************
 	 * Token Numbers *
@@ -501,12 +506,12 @@ func (p *parserDescriptor) emit(opts *Options, packageName string) error {
 	/*******************
 	 * Grammar Function *
 	 *******************/
-	p.emitParserFunctions(f)
+	p.emitParserFunctions(f, opts.Strategy, tokenType)
 
 	/********************
 	 * Construct Grammar *
 	 ********************/
-	fmt.Fprintf(f, "\treturn &gopapageno.Grammar{\n")
+	fmt.Fprintf(f, "\treturn &gopapageno.Grammar[%s]{\n", tokenType)
 	fmt.Fprintf(f, "\t\tNumTerminals: numTerminals,\n")
 	fmt.Fprintf(f, "\t\tNumNonterminals: numNonTerminals,\n")
 	fmt.Fprintf(f, "\t\tMaxRHSLength: maxRHSLen,\n")
@@ -524,8 +529,8 @@ func (p *parserDescriptor) emit(opts *Options, packageName string) error {
 	return nil
 }
 
-func (p *parserDescriptor) emitParserFunctions(f io.Writer) {
-	fmt.Fprintf(f, "\tfn := func(rule uint16, lhs *gopapageno.Token, rhs []*gopapageno.Token, thread int){\n")
+func (p *parserDescriptor) emitParserFunctions(f io.Writer, strategy gopapageno.ParsingStrategy, tokenType string) {
+	fmt.Fprintf(f, "\tfn := func(rule uint16, lhs *%s, rhs []*%s, thread int){\n", tokenType, tokenType)
 	fmt.Fprintf(f, "\t\tvar ruleType gopapageno.RuleType\n")
 	fmt.Fprintf(f, "\t\tswitch rule {\n")
 	for i, rule := range p.rules {
@@ -544,7 +549,11 @@ func (p *parserDescriptor) emitParserFunctions(f io.Writer) {
 				for j := 0; j < len(rule.RHS)-1; j++ {
 					fmt.Fprintf(f, "\t\t\t%s%d.Next = %s%d\n", rule.RHS[j], j+1, rule.RHS[j+1], j+2)
 				}
-				fmt.Fprintf(f, "\t\t\t%s0.LastChild = %s%d\n", rule.LHS, rule.RHS[len(rule.RHS)-1], len(rule.RHS))
+
+				if strategy == gopapageno.COPP {
+					fmt.Fprintf(f, "\t\t\t%s0.LastChild = %s%d\n", rule.LHS, rule.RHS[len(rule.RHS)-1], len(rule.RHS))
+				}
+
 			}
 		case gopapageno.RuleAppendLeft:
 			fmt.Fprintf(f, "\t\t\toldChild := %s0\n", rule.LHS)
@@ -554,32 +563,28 @@ func (p *parserDescriptor) emitParserFunctions(f io.Writer) {
 			}
 			fmt.Fprintf(f, "\t\t\t%s%d.Next = oldChild\n", rule.RHS[len(rule.RHS)-1], len(rule.RHS))
 		case gopapageno.RuleAppendRight:
-			//fmt.Fprintf(f, "\t\t\tlastChild := %s0.Child\n", rule.LHS)
-			//fmt.Fprintf(f, "\t\t\tfor t := lastChild.Next; t != nil; t = t.Next {\n")
-			//fmt.Fprintf(f, "\t\t\t\tlastChild = t\n\t\t\t}\n\n")
-			//fmt.Fprintf(f, "\t\t\tlastChild.Next = %s2\n", rule.RHS[1])
-			fmt.Fprintf(f, "\t\t\t%s0.LastChild.Next = %s2\n", rule.LHS, rule.RHS[1])
-
+			if strategy == gopapageno.COPP {
+				fmt.Fprintf(f, "\t\t\t%s0.LastChild.Next = %s2\n", rule.LHS, rule.RHS[1])
+			}
 			for j := 1; j < len(rule.RHS)-1; j++ {
 				fmt.Fprintf(f, "\t\t\t%s%d.Next = %s%d\n", rule.RHS[j], j+1, rule.RHS[j+1], j+2)
 			}
-
-			fmt.Fprintf(f, "\t\t\t%s0.LastChild = %s%d\n", rule.LHS, rule.RHS[len(rule.RHS)-1], len(rule.RHS))
+			if strategy == gopapageno.COPP {
+				fmt.Fprintf(f, "\t\t\t%s0.LastChild = %s%d\n", rule.LHS, rule.RHS[len(rule.RHS)-1], len(rule.RHS))
+			}
 		case gopapageno.RuleCombine:
-			//fmt.Fprintf(f, "\t\t\tlastChild := %s0.Child\n", rule.LHS)
-			//fmt.Fprintf(f, "\t\t\tfor t := lastChild.Next; t != nil; t = t.Next {\n")
-			//fmt.Fprintf(f, "\t\t\t\tlastChild = t\n\t\t\t}\n\n")
-			//fmt.Fprintf(f, "\t\t\tlastChild.Next = %s2\n", rule.RHS[1])
-			fmt.Fprintf(f, "\t\t\t%s0.LastChild.Next = %s2\n", rule.LHS, rule.RHS[1])
-
+			if strategy == gopapageno.COPP {
+				fmt.Fprintf(f, "\t\t\t%s0.LastChild.Next = %s2\n", rule.LHS, rule.RHS[1])
+			}
 			l := len(rule.RHS)
 			for j := 1; j < l-2; j++ {
 				fmt.Fprintf(f, "\t\t\t%s%d.Next = %s%d\n", rule.RHS[j], j+1, rule.RHS[j+1], j+2)
 			}
 
 			fmt.Fprintf(f, "\t\t\t%s%d.Next = %s%d.Child\n", rule.RHS[l-2], l-1, rule.RHS[l-1], l)
-
-			fmt.Fprintf(f, "\t\t\t%s0.LastChild = %s%d.LastChild\n", rule.LHS, rule.RHS[len(rule.RHS)-1], len(rule.RHS))
+			if strategy == gopapageno.COPP {
+				fmt.Fprintf(f, "\t\t\t%s0.LastChild = %s%d.LastChild\n", rule.LHS, rule.RHS[len(rule.RHS)-1], len(rule.RHS))
+			}
 		}
 		fmt.Fprintf(f, "\n")
 
@@ -604,7 +609,7 @@ func (p *parserDescriptor) emitParserFunctions(f io.Writer) {
 	fmt.Fprintf(f, "\t}\n\n")
 }
 
-func (p *parserDescriptor) emitTokens(f io.Writer) {
+func (p *parserDescriptor) emitTokens(f io.Writer, tokenType string) {
 	fmt.Fprintf(f, "// Non-terminals\n")
 	fmt.Fprintf(f, "const (\n")
 	for i, token := range p.nonterminals.Slice() {
@@ -635,9 +640,9 @@ func (p *parserDescriptor) emitTokens(f io.Writer) {
 	}
 	fmt.Fprintf(f, ")\n\n")
 
-	fmt.Fprintf(f, "func SprintToken[TokenValue any](root *gopapageno.Token) string {\n")
-	fmt.Fprintf(f, "\tvar sprintRec func(t *gopapageno.Token, sb *strings.Builder, indent string)\n\n")
-	fmt.Fprintf(f, "\tsprintRec = func(t *gopapageno.Token, sb *strings.Builder, indent string) {\n\t\t")
+	fmt.Fprintf(f, "func SprintToken[TokenValue any](root *%s) string {\n", tokenType)
+	fmt.Fprintf(f, "\tvar sprintRec func(t *%s, sb *strings.Builder, indent string)\n\n", tokenType)
+	fmt.Fprintf(f, "\tsprintRec = func(t *%s, sb *strings.Builder, indent string) {\n\t\t", tokenType)
 	fmt.Fprintf(f, `if t == nil {
 			return
 		}

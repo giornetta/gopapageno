@@ -13,12 +13,12 @@ var (
 
 type PreambleFunc func(sourceLen, concurrency int)
 
-type LexerFunc func(rule int, text string, start int, end int, thread int, token *Token) LexResult
+type LexerFunc[T Tokener] func(rule int, text string, start int, end int, thread int, token *T) LexResult
 
-type Lexer struct {
+type Lexer[T Tokener] struct {
 	Automaton          LexerDFA
 	CutPointsAutomaton LexerDFA
-	Func               LexerFunc
+	Func               LexerFunc[T]
 
 	PreambleFunc PreambleFunc
 }
@@ -32,22 +32,22 @@ type LexerDFAState struct {
 type LexerDFA []LexerDFAState
 
 // Scanner implements reading and tokenization.
-type Scanner struct {
-	Lexer *Lexer
+type Scanner[T Tokener] struct {
+	Lexer *Lexer[T]
 
 	source      []byte
 	cutPoints   []int
 	concurrency int
 
-	pools []*Pool[stack[Token]]
+	pools []*Pool[stack[T]]
 }
 
-func (l *Lexer) Scanner(src []byte, concurrency int, avgTokenLen int) *Scanner {
+func (l *Lexer[T]) Scanner(src []byte, concurrency int, avgTokenLen int) *Scanner[T] {
 	if concurrency < 1 {
 		concurrency = 1
 	}
 
-	s := &Scanner{
+	s := &Scanner[T]{
 		Lexer: l,
 
 		source:      src,
@@ -57,18 +57,18 @@ func (l *Lexer) Scanner(src []byte, concurrency int, avgTokenLen int) *Scanner {
 
 	s.cutPoints, s.concurrency = s.findCutPoints(concurrency)
 
-	s.pools = make([]*Pool[stack[Token]], s.concurrency)
+	s.pools = make([]*Pool[stack[T]], s.concurrency)
 
 	if avgTokenLen < 1 {
 		avgTokenLen = 1
 	}
 
-	stacksNum := stacksCount[Token](s.source, s.concurrency, avgTokenLen)
+	stacksNum := stacksCount[T](s.source, s.concurrency, avgTokenLen)
 
 	// TODO: Does this need more work?
 	multiplier := 1 // (s.concurrency-thread)
 	for thread := 0; thread < s.concurrency; thread++ {
-		s.pools[thread] = NewPool[stack[Token]](stacksNum*multiplier, WithConstructor[stack[Token]](newStack[Token]))
+		s.pools[thread] = NewPool(stacksNum*multiplier, WithConstructor(newStack[T]))
 	}
 
 	return s
@@ -76,7 +76,7 @@ func (l *Lexer) Scanner(src []byte, concurrency int, avgTokenLen int) *Scanner {
 
 // findCutPoints cuts the source string at specific points determined by the lexer description file.
 // It returns a slice containing the cut points indices in the source string, and the number of goroutines to spawn to handle them.
-func (s *Scanner) findCutPoints(maxConcurrency int) ([]int, int) {
+func (s *Scanner[T]) findCutPoints(maxConcurrency int) ([]int, int) {
 	sourceLen := len(s.source)
 	avgBytesPerThread := sourceLen / maxConcurrency
 
@@ -112,15 +112,15 @@ func (s *Scanner) findCutPoints(maxConcurrency int) ([]int, int) {
 	return cutPoints, maxConcurrency
 }
 
-func (s *Scanner) Lex(ctx context.Context) ([]*ListOfStacks[Token], error) {
-	resultCh := make(chan lexResult, s.concurrency)
+func (s *Scanner[T]) Lex(ctx context.Context) ([]*LOS[T], error) {
+	resultCh := make(chan lexResult[T], s.concurrency)
 	errCh := make(chan error, 1)
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	for thread := 0; thread < s.concurrency; thread++ {
-		w := &scannerWorker{
+		w := &scannerWorker[T]{
 			lexer:       s.Lexer,
 			id:          thread,
 			stackPool:   s.pools[thread],
@@ -132,7 +132,7 @@ func (s *Scanner) Lex(ctx context.Context) ([]*ListOfStacks[Token], error) {
 		go w.lex(ctx, resultCh, errCh)
 	}
 
-	lexResults := make([]*ListOfStacks[Token], s.concurrency)
+	lexResults := make([]*LOS[T], s.concurrency)
 	completed := 0
 
 	for completed < s.concurrency {
@@ -150,11 +150,11 @@ func (s *Scanner) Lex(ctx context.Context) ([]*ListOfStacks[Token], error) {
 }
 
 // worker implements the tokenizing logic on a subset of the source string.
-type scannerWorker struct {
-	lexer *Lexer
+type scannerWorker[T Tokener] struct {
+	lexer *Lexer[T]
 
 	id        int
-	stackPool *Pool[stack[Token]]
+	stackPool *Pool[stack[T]]
 
 	data []byte
 	pos  int
@@ -162,23 +162,22 @@ type scannerWorker struct {
 	startingPos int
 }
 
-type lexResult struct {
+type lexResult[T Tokener] struct {
 	threadID int
-	tokens   *ListOfStacks[Token]
+	tokens   *LOS[T]
 }
 
 // lex is the lexing function executed in parallel by each thread.
-func (w *scannerWorker) lex(ctx context.Context, resultCh chan<- lexResult, errCh chan<- error) {
-	los := NewListOfStacks[Token](w.stackPool)
+func (w *scannerWorker[T]) lex(ctx context.Context, resultCh chan<- lexResult[T], errCh chan<- error) {
+	los := NewLOS[T](w.stackPool)
 
-	var token Token
+	var token T
 
 	for {
-		token.Value = nil
 		result := w.next(&token)
 		if result != LexOK {
 			if result == LexEOF {
-				resultCh <- lexResult{
+				resultCh <- lexResult[T]{
 					threadID: w.id,
 					tokens:   los,
 				}
@@ -203,7 +202,7 @@ const (
 )
 
 // next scans the input text and returns the next Token.
-func (w *scannerWorker) next(token *Token) LexResult {
+func (w *scannerWorker[T]) next(token *T) LexResult {
 	for {
 		var lastFinalStateReached *LexerDFAState = nil
 		var lastFinalStatePos int
@@ -259,7 +258,7 @@ func (w *scannerWorker) next(token *Token) LexResult {
 	}
 }
 
-func (w *scannerWorker) advance(token *Token, lastFinalStatePos int, lastFinalStateReached *LexerDFAState, startPos int) LexResult {
+func (w *scannerWorker[T]) advance(token *T, lastFinalStatePos int, lastFinalStateReached *LexerDFAState, startPos int) LexResult {
 	w.pos = lastFinalStatePos + 1
 	ruleNum := lastFinalStateReached.AssociatedRules[0]
 

@@ -69,12 +69,12 @@ func run() error {
 	r := gopapageno.NewRunner(
 		NewLexer(),
 		NewGrammar(),
-		gopapageno.WithConcurrency(*concurrencyFlag),
-		gopapageno.WithLogging(log.New(logOut, "", 0)),
-		gopapageno.WithCPUProfiling(cpuProfileWriter),
-		gopapageno.WithMemoryProfiling(memProfileWriter),
-		gopapageno.WithReductionStrategy(strat),
-		gopapageno.WithAverageTokenLength(*avgTokensFlag),
+		gopapageno.WithConcurrency[gopapageno.Token](*concurrencyFlag),
+		gopapageno.WithLogging[gopapageno.Token](log.New(logOut, "", 0)),
+		gopapageno.WithCPUProfiling[gopapageno.Token](cpuProfileWriter),
+		gopapageno.WithMemoryProfiling[gopapageno.Token](memProfileWriter),
+		gopapageno.WithReductionStrategy[gopapageno.Token](strat),
+		gopapageno.WithAverageTokenLength[gopapageno.Token](*avgTokensFlag),
 	)
 
 	ctx := context.Background()
