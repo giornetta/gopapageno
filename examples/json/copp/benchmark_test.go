@@ -46,7 +46,7 @@ func BenchmarkParse(b *testing.B) {
 }
 
 func TestProfile(t *testing.T) {
-	c := runtime.NumCPU()
+	c := 12
 	avgLen := gopapageno.DefaultAverageTokenLength
 	strat := gopapageno.ReductionParallel
 
