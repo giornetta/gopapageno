@@ -54,7 +54,7 @@ func NewCOPParser[T Tokener](
 		}
 
 		p.pools.stacks[thread] = NewPool(int(float64(stackPoolBaseSize)*stackPoolMultiplier), WithConstructor(newStack[*CToken]))
-		p.pools.nonterminals[thread] = NewPool[CToken](ntPoolBaseSize)
+		p.pools.nonterminals[thread] = NewPool[CToken](int(float64(ntPoolBaseSize) * stackPoolMultiplier))
 	}
 
 	// If reduction is sweep or mixed, we create another stack and input for the final pass.
