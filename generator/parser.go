@@ -84,7 +84,7 @@ func parseParserDescription(r io.Reader, opts *Options) (*parserDescriptor, erro
 		return nil, fmt.Errorf("could not parse rules: %w", err)
 	}
 
-	opts.Logger.Printf("Parser Rules:\n")
+	opts.Logger.Printf("Grammar Rules:\n")
 	for _, rule := range rules {
 		opts.Logger.Printf("%s\n", rule)
 	}
@@ -414,7 +414,7 @@ func (p *parserDescriptor) emit(opts *Options, packageName string) error {
 	p.emitTokens(f)
 
 	// NewParser func starts here.
-	fmt.Fprintf(f, "\nfunc NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {\n")
+	fmt.Fprintf(f, "\nfunc NewGrammar() *gopapageno.Grammar {\n")
 
 	/*****************
 	 * Token Numbers *
@@ -499,31 +499,29 @@ func (p *parserDescriptor) emit(opts *Options, packageName string) error {
 	fmt.Fprintf(f, "\n\t}\n\n")
 
 	/*******************
-	 * Parser Function *
+	 * Grammar Function *
 	 *******************/
 	p.emitParserFunctions(f)
 
 	/********************
-	 * Construct Parser *
+	 * Construct Grammar *
 	 ********************/
-	fmt.Fprintf(f, "\treturn gopapageno.NewParser(\n")
-	fmt.Fprintf(f, "\t\tNewLexer(),\n")
-	fmt.Fprintf(f, "\t\tnumTerminals,\n\t\tnumNonTerminals,\n")
-	fmt.Fprintf(f, "\t\tmaxRHSLen,\n")
-	fmt.Fprintf(f, "\t\trules,\n")
-	fmt.Fprintf(f, "\t\tcompressedRules,\n")
-	fmt.Fprintf(f, "\t\tprecMatrix,\n")
-	fmt.Fprintf(f, "\t\tbitPackedMatrix,\n")
-	fmt.Fprintf(f, "\t\tfn,\n")
-	fmt.Fprintf(f, "\t\tgopapageno.%s,\n", opts.Strategy)
+	fmt.Fprintf(f, "\treturn &gopapageno.Grammar{\n")
+	fmt.Fprintf(f, "\t\tNumTerminals:  numTerminals,\n")
+	fmt.Fprintf(f, "\t\tNumNonterminals: numNonTerminals,\n")
+	fmt.Fprintf(f, "\t\tMaxRHSLength: maxRHSLen,\n")
+	fmt.Fprintf(f, "\t\tRules: rules,\n")
+	fmt.Fprintf(f, "\t\tCompressedRules: compressedRules,\n")
+	fmt.Fprintf(f, "\t\tPrecedenceMatrix: precMatrix,\n")
+	fmt.Fprintf(f, "\t\tBitPackedPrecedenceMatrix: bitPackedMatrix,\n")
+	fmt.Fprintf(f, "\t\tFunc: fn,\n")
+	fmt.Fprintf(f, "\t\tParsingStrategy: gopapageno.%s,\n", opts.Strategy)
 
-	if p.preambleFunc == "" {
-		fmt.Fprintf(f, "\t\tnil,\n")
-	} else {
-		fmt.Fprintf(f, "\t\t%s,\n", p.preambleFunc)
+	if p.preambleFunc != "" {
+		fmt.Fprintf(f, "\t\tPreambleFunc: %s,\n", p.preambleFunc)
 	}
 
-	fmt.Fprintf(f, "\t\topts...)\n}\n\n")
+	fmt.Fprintf(f, "\t}\n}\n\n")
 
 	return nil
 }

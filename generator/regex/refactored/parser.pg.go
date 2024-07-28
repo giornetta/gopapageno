@@ -28,7 +28,7 @@ const (
 	Star
 )
 
-func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
+func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Grammar {
 	numTerminals := uint16(13)
 	numNonTerminals := uint16(6)
 
@@ -1644,7 +1644,7 @@ func NewParser(opts ...gopapageno.ParserOpt) *gopapageno.Parser {
 		}
 	}
 
-	parser := &gopapageno.Parser{
+	parser := &gopapageno.Grammar{
 		Lexer:                     NewLexer(),
 		NumTerminals:              numTerminals,
 		NumNonterminals:           numNonTerminals,

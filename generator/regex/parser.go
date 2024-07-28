@@ -36,8 +36,8 @@ an input list, a parsing stack and a list that contains all the generated nonter
 */
 type threadContext struct {
 	num             int
-	input           *listOfStacks
-	newNonTerminals *listOfStacks
+	input           *LOS
+	newNonTerminals *LOS
 	stack           *listOfStackPtrs
 	result          string
 }
@@ -288,7 +288,7 @@ func ParseString(str []byte, numThreads int) (bool, *symbol) {
 	//Split the input list
 	inputLists := input.Split(numThreads)
 
-	newNonTerminalsLists := make([]listOfStacks, numThreads)
+	newNonTerminalsLists := make([]LOS, numThreads)
 
 	for i := 0; i < numThreads; i++ {
 		newNonTerminalsLists[i] = newLos(stackPool)

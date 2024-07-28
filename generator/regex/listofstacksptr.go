@@ -122,7 +122,7 @@ The original listOfStackPtrs should not be used after this operation.
 */
 func (l *listOfStackPtrs) Split(numSplits int) []listOfStackPtrs {
 	if numSplits > l.NumStacks() {
-		panic(fmt.Sprintln("Cannot apply", numSplits, "splits on a ListOfStacks containing only", l.NumStacks(), "stacks."))
+		panic(fmt.Sprintln("Cannot apply", numSplits, "splits on a LOS containing only", l.NumStacks(), "stacks."))
 	}
 
 	listsOfStacks := make([]listOfStackPtrs, numSplits)

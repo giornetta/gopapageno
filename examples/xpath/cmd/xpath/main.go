@@ -61,14 +61,13 @@ func run() error {
 		}
 	}
 
-	p := xpath.NewParser(
+	r := gopapageno.NewRunner(
+		xpath.NewLexer(),
+		xpath.NewGrammar(),
 		gopapageno.WithConcurrency(*concurrencyFlag),
 		gopapageno.WithLogging(log.New(logOut, "", 0)),
 		gopapageno.WithCPUProfiling(cpuProfileWriter),
 		gopapageno.WithMemoryProfiling(memProfileWriter))
-
-	xpath.LexerPreallocMem(len(bytes), p.Concurrency())
-	xpath.ParserPreallocMem(len(bytes), p.Concurrency())
 
 	// ctx := context.Background()
 

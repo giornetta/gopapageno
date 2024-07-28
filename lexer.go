@@ -112,7 +112,7 @@ func (s *Scanner) findCutPoints(maxConcurrency int) ([]int, int) {
 	return cutPoints, maxConcurrency
 }
 
-func (s *Scanner) Lex(ctx context.Context) ([]*ListOfStacks[Token], error) {
+func (s *Scanner) Lex(ctx context.Context) ([]*LOS[Token], error) {
 	resultCh := make(chan lexResult, s.concurrency)
 	errCh := make(chan error, 1)
 
@@ -132,7 +132,7 @@ func (s *Scanner) Lex(ctx context.Context) ([]*ListOfStacks[Token], error) {
 		go w.lex(ctx, resultCh, errCh)
 	}
 
-	lexResults := make([]*ListOfStacks[Token], s.concurrency)
+	lexResults := make([]*LOS[Token], s.concurrency)
 	completed := 0
 
 	for completed < s.concurrency {
@@ -164,12 +164,12 @@ type scannerWorker struct {
 
 type lexResult struct {
 	threadID int
-	tokens   *ListOfStacks[Token]
+	tokens   *LOS[Token]
 }
 
 // lex is the lexing function executed in parallel by each thread.
 func (w *scannerWorker) lex(ctx context.Context, resultCh chan<- lexResult, errCh chan<- error) {
-	los := NewListOfStacks[Token](w.stackPool)
+	los := NewLOS[Token](w.stackPool)
 
 	var token Token
 

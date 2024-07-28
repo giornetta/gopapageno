@@ -3,85 +3,10 @@ package gopapageno
 import (
 	"fmt"
 	"math"
-	"reflect"
 )
 
-// stack contains a fixed size array of items,
-// the current position in the stack and pointers to the previous and next stacks.
-type stack[T any] struct {
-	// Data [stackSize]T
-	Data []T
-	Tos  int
-	Size int
-
-	Prev *stack[T]
-	Next *stack[T]
-}
-
-func (s *stack[T]) Push(t T) {
-	if s.Tos >= s.Size {
-		panic("calculations were wrong.")
-	}
-
-	s.Data[s.Tos] = t
-
-	s.Tos++
-}
-
-func (s *stack[T]) Replace(t T) {
-	if s.Tos == 0 {
-		panic("calculations were wrong.")
-	}
-
-	s.Data[s.Tos-1] = t
-}
-
-type ValueConstructor[T any] func() T
-
-func newStack[T any]() *stack[T] {
-	stackLen := stackSize[T]()
-
-	return &stack[T]{
-		Data: make([]T, stackLen),
-		Size: stackLen,
-	}
-}
-
-func (s *stack[T]) Slice(from int, length int) []T {
-	return s.Data[from : from+length]
-}
-
-func stackSize[T any]() int {
-	typeSize := reflect.TypeFor[T]().Size()
-	return 1024 * 1024 / int(typeSize)
-}
-
-func stacksCount[T any](src []byte, concurrency int, avgTokenLen int) int {
-	return int(math.Ceil(float64(len(src)) / float64(avgTokenLen) / float64(concurrency) / float64(stackSize[T]())))
-}
-
-func newStackBuilder[T any](c ValueConstructor[T]) func() *stack[T] {
-	typeSize := reflect.TypeFor[T]().Size()
-	stackLen := 1024 * 1024 / typeSize
-
-	return func() *stack[T] {
-		s := &stack[T]{
-			Data: make([]T, stackLen),
-			Size: int(stackLen),
-		}
-
-		if c != nil {
-			for i, _ := range s.Data {
-				s.Data[i] = c()
-			}
-		}
-
-		return s
-	}
-}
-
-// ListOfStacks is a list of stacks.
-type ListOfStacks[T any] struct {
+// LOS is a list of stacks.
+type LOS[T any] struct {
 	head *stack[T]
 	cur  *stack[T]
 
@@ -90,19 +15,11 @@ type ListOfStacks[T any] struct {
 	pool      *Pool[stack[T]]
 }
 
-// LosIterator allows to iterate over a ListOfStacks, either forward or backwards.
-type LosIterator[T any] struct {
-	los *ListOfStacks[T]
-
-	cur *stack[T]
-	pos int
-}
-
-// NewListOfStacks creates a new ListOfStacks initialized with an empty stack.
-func NewListOfStacks[T any](pool *Pool[stack[T]]) *ListOfStacks[T] {
+// NewLOS creates a new LOS initialized with an empty stack.
+func NewLOS[T any](pool *Pool[stack[T]]) *LOS[T] {
 	s := pool.Get()
 
-	return &ListOfStacks[T]{
+	return &LOS[T]{
 		head: s,
 		cur:  s,
 		len:  0,
@@ -110,10 +27,10 @@ func NewListOfStacks[T any](pool *Pool[stack[T]]) *ListOfStacks[T] {
 	}
 }
 
-// Push adds an element to the listOfStacks.
+// Push adds an element to the LOS.
 // By default, the element is added to the current stack;
 // if that is full, a new one is obtained from the pool.
-func (l *ListOfStacks[T]) Push(t T) *T {
+func (l *LOS[T]) Push(t T) *T {
 	// If the current stack is full, we must obtain a new one and set it as the current one.
 	if l.cur.Tos >= l.cur.Size {
 		if l.cur.Next != nil {
@@ -137,8 +54,8 @@ func (l *ListOfStacks[T]) Push(t T) *T {
 	return ptr
 }
 
-// Pop removes the topmost element from the listOfStacks and returns it.
-func (l *ListOfStacks[T]) Pop() *T {
+// Pop removes the topmost element from the LOS and returns it.
+func (l *LOS[T]) Pop() *T {
 	l.cur.Tos--
 
 	if l.cur.Tos >= 0 {
@@ -159,8 +76,8 @@ func (l *ListOfStacks[T]) Pop() *T {
 	return &l.cur.Data[l.cur.Tos]
 }
 
-// Get returns the topmost element from the ListOfStacks.
-func (l *ListOfStacks[T]) Get() *T {
+// Get returns the topmost element from the LOS.
+func (l *LOS[T]) Get() *T {
 	if l.cur.Tos > 0 {
 		return &l.cur.Data[l.cur.Tos-1]
 	}
@@ -172,8 +89,8 @@ func (l *ListOfStacks[T]) Get() *T {
 	return &l.cur.Prev.Data[l.cur.Prev.Tos-1]
 }
 
-// GetNext returns the first empty element from the ListOfStacks.
-func (l *ListOfStacks[T]) GetNext() *T {
+// GetNext returns the first empty element from the LOS.
+func (l *LOS[T]) GetNext() *T {
 	if l.cur.Tos >= 0 {
 		return &l.cur.Data[l.cur.Tos]
 	}
@@ -185,8 +102,8 @@ func (l *ListOfStacks[T]) GetNext() *T {
 	return &l.cur.Prev.Data[l.cur.Prev.Tos]
 }
 
-// Clear empties the ListOfStacks.
-func (l *ListOfStacks[T]) Clear() {
+// Clear empties the LOS.
+func (l *LOS[T]) Clear() {
 	// Reset length
 	l.len = 0
 
@@ -199,8 +116,8 @@ func (l *ListOfStacks[T]) Clear() {
 	l.cur = l.head
 }
 
-// Merge links the stacks of the current and of another listOfStacks.
-func (l *ListOfStacks[T]) Merge(other *ListOfStacks[T]) {
+// Merge links the stacks of the current and of another LOS.
+func (l *LOS[T]) Merge(other *LOS[T]) {
 	l.cur.Next = other.head
 	other.head.Prev = l.cur
 
@@ -208,16 +125,16 @@ func (l *ListOfStacks[T]) Merge(other *ListOfStacks[T]) {
 	l.len += other.len
 }
 
-// Split splits a listOfStacks into a slice of listOfStacks of length n.
-// The original listOfStacks should not be used after this operation.
-func (l *ListOfStacks[T]) Split(n int) ([]*ListOfStacks[T], error) {
+// Split splits a LOS into a slice of LOS of length n.
+// The original LOS should not be used after this operation.
+func (l *LOS[T]) Split(n int) ([]*LOS[T], error) {
 	numStacks := l.NumStacks()
 
 	if n > numStacks {
-		return nil, fmt.Errorf("not enough stacks in listOfStacks")
+		return nil, fmt.Errorf("not enough stacks in LOS")
 	}
 
-	lists := make([]*ListOfStacks[T], n)
+	lists := make([]*LOS[T], n)
 	curList := 0
 
 	deltaStacks := float64(numStacks) / float64(n)
@@ -232,7 +149,7 @@ func (l *ListOfStacks[T]) Split(n int) ([]*ListOfStacks[T], error) {
 		stacksToAssign := int(math.Floor(remainder + 0.5))
 
 		curStack.Prev = nil
-		lists[curList] = &ListOfStacks[T]{
+		lists[curList] = &LOS[T]{
 			head: curStack,
 			cur:  curStack,
 			len:  curStack.Tos,
@@ -259,9 +176,9 @@ func (l *ListOfStacks[T]) Split(n int) ([]*ListOfStacks[T], error) {
 	return lists, nil
 }
 
-// NumStacks returns the number of stacks contained in the listOfStacks.
+// NumStacks returns the number of stacks contained in the LOS.
 // It takes linear time (in the number of stacks) to execute.
-func (l *ListOfStacks[T]) NumStacks() int {
+func (l *LOS[T]) NumStacks() int {
 	n := 0
 
 	for cur := l.head; cur != nil; cur = cur.Next {
@@ -270,47 +187,28 @@ func (l *ListOfStacks[T]) NumStacks() int {
 	return n
 }
 
-// Length returns the number of items contained in the listOfStacks.
+// Length returns the number of items contained in the LOS.
 // It takes constant time to execute.
-func (l *ListOfStacks[T]) Length() int {
+func (l *LOS[T]) Length() int {
 	return l.len
 }
 
+// LOSIt allows to iterate over a LOS, either forward or backwards.
+type LOSIt[T any] struct {
+	los *LOS[T]
+
+	cur *stack[T]
+	pos int
+}
+
 // HeadIterator returns an iterator initialized to point before the first element of the list.
-func (l *ListOfStacks[T]) HeadIterator() *LosIterator[T] {
-	return &LosIterator[T]{l, l.head, l.headFirst - 1}
-}
-
-// TailIterator returns an iterator initialized to point after the last element of the list.
-func (l *ListOfStacks[T]) TailIterator() *LosIterator[T] {
-	return &LosIterator[T]{l, l.cur, l.cur.Tos}
-}
-
-// Prev moves the iterator one position backward and returns a pointer to the new current element.
-// It returns nil if it points before the first element of the list.
-func (i *LosIterator[T]) Prev() *T {
-	curStack := i.cur
-
-	i.pos--
-
-	if i.pos >= 0 {
-		return &curStack.Data[i.pos]
-	}
-
-	i.pos = -1
-	if curStack.Prev == nil {
-		return nil
-	}
-	curStack = curStack.Prev
-	i.cur = curStack
-	i.pos = curStack.Tos - 1
-
-	return &curStack.Data[i.pos]
+func (l *LOS[T]) HeadIterator() *LOSIt[T] {
+	return &LOSIt[T]{l, l.head, l.headFirst - 1}
 }
 
 // Cur returns a pointer to the current element.
 // It returns nil if it points before the first element or after the last element of the list.
-func (i *LosIterator[T]) Cur() *T {
+func (i *LOSIt[T]) Cur() *T {
 	curStack := i.cur
 
 	if i.pos >= 0 && i.pos < curStack.Tos {
@@ -322,7 +220,7 @@ func (i *LosIterator[T]) Cur() *T {
 
 // Next moves the iterator one position forward and returns a pointer to the new current element.
 // It returns nil if it points after the last element of the list.
-func (i *LosIterator[T]) Next() *T {
+func (i *LOSIt[T]) Next() *T {
 	curStack := i.cur
 
 	i.pos++
@@ -340,4 +238,16 @@ func (i *LosIterator[T]) Next() *T {
 	i.pos = 0
 
 	return &curStack.Data[i.pos]
+}
+
+func (i *LOSIt[T]) IsLast() bool {
+	if i.pos+1 < i.cur.Tos {
+		return false
+	}
+
+	if i.cur.Next == nil {
+		return true
+	}
+
+	return false
 }

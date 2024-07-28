@@ -19,20 +19,20 @@ func main() {
 }
 
 func run() error {
-	lexerFlag := flag.String("l", "", "lexer source file")
-	parserFlag := flag.String("g", "", "parser source file")
+	lexiconFlag := flag.String("l", "", "lexer source file")
+	grammarFlag := flag.String("g", "", "grammar source file")
 	outputFlag := flag.String("o", ".", "output directory")
 	typesOnlyFlag := flag.Bool("types-only", false, "generate types only")
 	benchmarkFlag := flag.Bool("benchmark", false, "generate benchmarks")
 
-	strategyFlag := flag.String("strategy", "opp", "strategy to use during parser generation: opp/aopp/copp")
+	strategyFlag := flag.String("s", "opp", "strategy to use during parser generation: opp/aopp/copp")
 
 	logFlag := flag.Bool("log", false, "enable logging during generation")
 
 	flag.Parse()
 
-	if *lexerFlag == "" || *parserFlag == "" {
-		return fmt.Errorf("lexer and parser files must be provided")
+	if *lexiconFlag == "" || *grammarFlag == "" {
+		return fmt.Errorf("lexicon and grammar description files must be provided")
 	}
 
 	strategy := gopapageno.OPP
@@ -50,8 +50,8 @@ func run() error {
 	}
 
 	opts := &generator.Options{
-		LexerDescriptionFilename:  *lexerFlag,
-		ParserDescriptionFilename: *parserFlag,
+		LexerDescriptionFilename:  *lexiconFlag,
+		ParserDescriptionFilename: *grammarFlag,
 		OutputDirectory:           *outputFlag,
 		TypesOnly:                 *typesOnlyFlag,
 		GenerateBenchmarks:        *benchmarkFlag,

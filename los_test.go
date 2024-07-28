@@ -4,8 +4,9 @@ import (
 	"testing"
 )
 
-func TestListOfStacks_Get(t *testing.T) {
-	los := NewListOfStacks[Token](NewPool[stack[Token]](2, WithConstructor[stack[Token]](newStack[Token])))
+func TestLOS_Get(t *testing.T) {
+	los := NewLOS[Token](NewPool(2, WithConstructor(newStack[Token])))
+	size := stackSize[Token]()
 
 	token := Token{
 		Type:       TokenType(0),
@@ -25,15 +26,15 @@ func TestListOfStacks_Get(t *testing.T) {
 		t.Errorf("Expected %v, got %v", t1, t2)
 	}
 
-	for i := range stackSize {
+	for i := range size {
 		los.Push(Token{
 			Value: i,
 		})
 	}
 
 	t3 := los.Get()
-	if t3.Value.(int) != stackSize-1 {
-		t.Errorf("Expected %v, got %v", stackSize-1, t3.Value.(int))
+	if t3.Value.(int) != size-1 {
+		t.Errorf("Expected %v, got %v", size-1, t3.Value.(int))
 	}
 
 	if los.cur == los.head {
@@ -43,65 +44,7 @@ func TestListOfStacks_Get(t *testing.T) {
 	los.Pop()
 
 	t4 := los.Get()
-	if t4.Value.(int) != stackSize-2 {
-		t.Errorf("Expected %v, got %v", stackSize-2, t4.Value.(int))
-	}
-}
-
-func TestParserStack_Combine(t *testing.T) {
-	list := NewParserStack(NewPool[stack[*Token]](1, WithConstructor[stack[*Token]](newStack[*Token])))
-
-	list.Push(&Token{
-		Type:       0,
-		Precedence: PrecEmpty,
-	})
-	list.Push(&Token{
-		Type:       1,
-		Precedence: PrecEmpty,
-	})
-	// Last element of S^L (a, *)
-	list.Push(&Token{
-		Type:       2,
-		Precedence: PrecTakes,
-	})
-
-	list.Push(&Token{
-		Type:       3,
-		Precedence: PrecYields,
-	})
-	list.Push(&Token{
-		Type:       4,
-		Precedence: PrecEquals,
-	})
-	// Last element of S^R (b, *)
-	list.Push(&Token{
-		Type:       5,
-		Precedence: PrecYields,
-	})
-	list.Push(&Token{
-		Type:       6,
-		Precedence: PrecTakes,
-	})
-
-	combined := list.Combine(nil)
-	combinedIt := combined.HeadIterator()
-
-	var lastTok *Token
-	expected := 2
-	for tok := combinedIt.Next(); tok != nil; tok = combinedIt.Next() {
-		if tok.Type != TokenType(expected) {
-			t.Errorf("Expected: %v, got %v", expected, tok.Value.(int))
-		}
-		expected++
-
-		lastTok = tok
-	}
-
-	if lastTok == nil {
-		t.Fatalf("Last token is nil.")
-	}
-
-	if lastTok.Type != TokenType(5) {
-		t.Errorf("Expected: %v, got %v", 5, lastTok.Value.(int))
+	if t4.Value.(int) != size-2 {
+		t.Errorf("Expected %v, got %v", size-2, t4.Value.(int))
 	}
 }
