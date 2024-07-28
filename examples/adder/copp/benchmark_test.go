@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"github.com/giornetta/gopapageno"
 	"github.com/giornetta/gopapageno/benchmark"
@@ -28,7 +29,24 @@ var table = map[string]int64{
 	file10MB: result10MB,
 }
 
+var reductionFlag string
+
+func TestMain(m *testing.M) {
+	flag.StringVar(&reductionFlag, "s", "sweep", "parsing strategy to execute")
+
+	flag.Parse()
+
+	os.Exit(m.Run())
+}
+
 func BenchmarkParse(b *testing.B) {
+	strat := gopapageno.ReductionSweep
+	if reductionFlag == "parallel" {
+		strat = gopapageno.ReductionParallel
+	} else if reductionFlag == "mixed" {
+		strat = gopapageno.ReductionMixed
+	}
+
 	threads := runtime.NumCPU()
 
 	for filename, result := range table {
@@ -38,7 +56,7 @@ func BenchmarkParse(b *testing.B) {
 					NewLexer(),
 					NewGrammar(),
 					gopapageno.WithConcurrency(c),
-					gopapageno.WithReductionStrategy(gopapageno.ReductionSweep))
+					gopapageno.WithReductionStrategy(strat))
 
 				b.ResetTimer()
 
@@ -59,7 +77,7 @@ func TestProfile(t *testing.T) {
 	avgLen := gopapageno.DefaultAverageTokenLength
 	strat := gopapageno.ReductionParallel
 
-	var filename string
+	var filename string = "small.txt"
 
 	file := path.Join(baseFolder, filename)
 

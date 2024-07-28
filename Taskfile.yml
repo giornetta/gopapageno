@@ -3,6 +3,7 @@ version: '3'
 vars:
   EXAMPLE: adder
   STRAT: opp
+  REDUCTION: sweep
   FNAME: 'default'
 
 tasks:
@@ -32,7 +33,7 @@ tasks:
     vars:
       COUNT: 10
     cmds:
-      - go test github.com/giornetta/gopapageno/examples/{{ .EXAMPLE }}/{{ .STRAT }} -bench . -count={{ .COUNT }} > ./examples/{{ .EXAMPLE }}/benchmark_results/{{ .STRAT }}-{{ .FNAME }}.txt
+      - go test github.com/giornetta/gopapageno/examples/{{ .EXAMPLE }}/{{ .STRAT }} -bench . -count={{ .COUNT }} -args -s={{ .REDUCTION }} > ./examples/{{ .EXAMPLE }}/benchmark_results/{{ .STRAT }}-{{ .REDUCTION }}-{{ .FNAME }}.txt
 
   benchmark-all:
     cmds:

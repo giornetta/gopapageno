@@ -265,8 +265,24 @@ const baseFolder = "../data/"
 
 var table = map[string]any{
 }
+var reductionFlag string
+
+func TestMain(m *testing.M) {
+	flag.StringVar(&reductionFlag, "s", "sweep", "parsing strategy to execute")
+
+	flag.Parse()
+
+	os.Exit(m.Run())
+}
 
 func BenchmarkParse(b *testing.B) {
+	strat := gopapageno.ReductionSweep
+	if reductionFlag == "parallel" {
+		strat = gopapageno.ReductionParallel
+	} else if reductionFlag == "mixed" {
+		strat = gopapageno.ReductionMixed
+	}
+
 	threads := runtime.NumCPU()
 
 	for filename, _ := range table {
