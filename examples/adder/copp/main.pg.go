@@ -66,7 +66,9 @@ func run() error {
 		strat = gopapageno.ReductionMixed
 	}
 
-	p := NewParser(
+	r := gopapageno.NewRunner(
+		NewLexer(),
+		NewGrammar(),
 		gopapageno.WithConcurrency(*concurrencyFlag),
 		gopapageno.WithLogging(log.New(logOut, "", 0)),
 		gopapageno.WithCPUProfiling(cpuProfileWriter),
@@ -77,7 +79,7 @@ func run() error {
 
 	ctx := context.Background()
 
-	root, err := p.Parse(ctx, bytes)
+	root, err := r.Run(ctx, bytes)
 	if err != nil {
 		return fmt.Errorf("could not parse source: %w", err)
 	}

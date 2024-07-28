@@ -195,7 +195,9 @@ func run() error {
 		strat = gopapageno.ReductionMixed	
 	}
 
-	p := NewParser(
+	r := gopapageno.NewRunner(
+		NewLexer(),
+		NewGrammar(),
 		gopapageno.WithConcurrency(*concurrencyFlag),
 		gopapageno.WithLogging(log.New(logOut, "", 0)),
 		gopapageno.WithCPUProfiling(cpuProfileWriter),
@@ -206,7 +208,7 @@ func run() error {
 
 	ctx := context.Background()
 
-	root, err := p.Parse(ctx, bytes)
+	root, err := r.Run(ctx, bytes)
 	if err != nil {
 		return fmt.Errorf("could not parse source: %%w", err)
 	}
@@ -261,22 +263,41 @@ func emitBenchmarkFile(opts *Options, packageName string) error {
 
 const baseFolder = "../data/"
 
-var table = []string{
+var table = map[string]any{
+}
+var reductionFlag string
+
+func TestMain(m *testing.M) {
+	flag.StringVar(&reductionFlag, "s", "sweep", "parsing strategy to execute")
+
+	flag.Parse()
+
+	os.Exit(m.Run())
 }
 
 func BenchmarkParse(b *testing.B) {
+	strat := gopapageno.ReductionSweep
+	if reductionFlag == "parallel" {
+		strat = gopapageno.ReductionParallel
+	} else if reductionFlag == "mixed" {
+		strat = gopapageno.ReductionMixed
+	}
+
 	threads := runtime.NumCPU()
 
-	for _, filename := range table {
+	for filename, _ := range table {
 		for c := 1; c <= threads; c = min(c*2, threads) {
 			b.Run(fmt.Sprintf("%%s/%%dT", filename, c), func(b *testing.B) {
-				p := NewParser(
+				r := gopapageno.NewRunner(
+					NewLexer(),
+					NewGrammar(),
 					gopapageno.WithConcurrency(c),
 					gopapageno.WithReductionStrategy(gopapageno.ReductionSweep))
 
+
 				b.ResetTimer()
 
-				benchmark.Run(b, p, path.Join(baseFolder, filename))
+				benchmark.Run(b, r, path.Join(baseFolder, filename))
 			})
 
 			runtime.GC()
@@ -302,7 +323,9 @@ func TestProfile(t *testing.T) {
 		t.Fatalf("could not read source file %%s: %%v", file, err)
 	}
 
-	p := NewParser(
+	r := gopapageno.NewRunner(
+		NewLexer(),
+		NewGrammar(),
 		gopapageno.WithConcurrency(c),
 		gopapageno.WithAverageTokenLength(avgLen),
 		gopapageno.WithReductionStrategy(strat),
@@ -310,7 +333,7 @@ func TestProfile(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err = p.Parse(ctx, bytes)
+	_, err = r.Run(ctx, bytes)
 	if err != nil {
 		t.Fatalf("could not parse source: %%v", err)
 	}

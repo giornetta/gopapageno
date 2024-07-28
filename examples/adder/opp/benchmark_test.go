@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"github.com/giornetta/gopapageno"
 	"github.com/giornetta/gopapageno/benchmark"
@@ -13,21 +14,53 @@ import (
 
 const baseFolder = "../data/"
 
-var table = []string{}
+const (
+	fileMB   = "1MB.txt"
+	file10MB = "10MB.txt"
+)
+
+const (
+	resultMB   = (1 + 2 + 3 + 11 + 222 + 3333 + (1 + 2)) * 26000
+	result10MB = (1 + 2 + 3 + 11 + 222 + 3333 + (1 + 2)) * 260000
+)
+
+var table = map[string]int64{
+	fileMB:   resultMB,
+	file10MB: result10MB,
+}
+
+var reductionFlag string
+
+func TestMain(m *testing.M) {
+	flag.StringVar(&reductionFlag, "s", "sweep", "parsing strategy to execute")
+
+	flag.Parse()
+
+	os.Exit(m.Run())
+}
 
 func BenchmarkParse(b *testing.B) {
+	strat := gopapageno.ReductionSweep
+	if reductionFlag == "parallel" {
+		strat = gopapageno.ReductionParallel
+	} else if reductionFlag == "mixed" {
+		strat = gopapageno.ReductionMixed
+	}
+
 	threads := runtime.NumCPU()
 
-	for _, filename := range table {
+	for filename, result := range table {
 		for c := 1; c <= threads; c = min(c*2, threads) {
 			b.Run(fmt.Sprintf("%s/%dT", filename, c), func(b *testing.B) {
-				p := NewParser(
+				r := gopapageno.NewRunner(
+					NewLexer(),
+					NewGrammar(),
 					gopapageno.WithConcurrency(c),
-					gopapageno.WithReductionStrategy(gopapageno.ReductionSweep))
+					gopapageno.WithReductionStrategy(strat))
 
 				b.ResetTimer()
 
-				benchmark.Run(b, p, path.Join(baseFolder, filename))
+				benchmark.RunExpect[int64](b, r, path.Join(baseFolder, filename), result)
 			})
 
 			runtime.GC()
@@ -44,7 +77,7 @@ func TestProfile(t *testing.T) {
 	avgLen := gopapageno.DefaultAverageTokenLength
 	strat := gopapageno.ReductionParallel
 
-	var filename string
+	var filename string = "small.txt"
 
 	file := path.Join(baseFolder, filename)
 
@@ -53,7 +86,9 @@ func TestProfile(t *testing.T) {
 		t.Fatalf("could not read source file %s: %v", file, err)
 	}
 
-	p := NewParser(
+	r := gopapageno.NewRunner(
+		NewLexer(),
+		NewGrammar(),
 		gopapageno.WithConcurrency(c),
 		gopapageno.WithAverageTokenLength(avgLen),
 		gopapageno.WithReductionStrategy(strat),
@@ -61,7 +96,7 @@ func TestProfile(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err = p.Parse(ctx, bytes)
+	_, err = r.Run(ctx, bytes)
 	if err != nil {
 		t.Fatalf("could not parse source: %v", err)
 	}

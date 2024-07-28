@@ -6,10 +6,10 @@ import (
 )
 
 /*
-listOfStacks is a list of stacks containing symbols.
+LOS is a list of stacks containing symbols.
 When the current stack is full a new one is automatically obtained and linked to it.
 */
-type listOfStacks struct {
+type LOS struct {
 	head *stack
 	cur  *stack
 	len  int
@@ -17,27 +17,27 @@ type listOfStacks struct {
 }
 
 /*
-iterator allows to iterate over a listOfStacks, either forward or backward.
+iterator allows to iterate over a LOS, either forward or backward.
 */
 type iterator struct {
-	los *listOfStacks
+	los *LOS
 	cur *stack
 	pos int
 }
 
 /*
-newLos creates a new listOfStacks initialized with one empty stack.
+newLos creates a new LOS initialized with one empty stack.
 */
-func newLos(pool *stackPool) listOfStacks {
+func newLos(pool *stackPool) LOS {
 	firstStack := pool.GetSync()
-	return listOfStacks{firstStack, firstStack, 0, pool}
+	return LOS{firstStack, firstStack, 0, pool}
 }
 
 /*
-Push pushes a symbol in the listOfStacks.
+Push pushes a symbol in the LOS.
 It returns a pointer to the pushed symbol.
 */
-func (l *listOfStacks) Push(sym *symbol) *symbol {
+func (l *LOS) Push(sym *symbol) *symbol {
 	curStack := l.cur
 
 	//If the current stack is full obtain a new stack and set it as the current one
@@ -72,7 +72,7 @@ func (l *listOfStacks) Push(sym *symbol) *symbol {
 /*
 Pop pops a symbol from the stack and returns a pointer to it.
 */
-func (l *listOfStacks) Pop() *symbol {
+func (l *LOS) Pop() *symbol {
 	curStack := l.cur
 
 	//Decrement the current position
@@ -101,9 +101,9 @@ func (l *listOfStacks) Pop() *symbol {
 }
 
 /*
-Merge merges a listOfStacks to another by linking their stacks.
+Merge merges a LOS to another by linking their stacks.
 */
-func (l *listOfStacks) Merge(l2 listOfStacks) {
+func (l *LOS) Merge(l2 LOS) {
 	l.cur.Next = l2.head
 	l2.head.Prev = l.cur
 	l.cur = l2.cur
@@ -111,17 +111,17 @@ func (l *listOfStacks) Merge(l2 listOfStacks) {
 }
 
 /*
-Split splits a listOfStacks into a number of lists equal to numSplits,
-which are returned as a slice of listOfStacks.
-If there are not at least numSplits stacks in the listOfStacks it panics.
-The original listOfStacks should not be used after this operation.
+Split splits a LOS into a number of lists equal to numSplits,
+which are returned as a slice of LOS.
+If there are not at least numSplits stacks in the LOS it panics.
+The original LOS should not be used after this operation.
 */
-func (l *listOfStacks) Split(numSplits int) []listOfStacks {
+func (l *LOS) Split(numSplits int) []LOS {
 	if numSplits > l.NumStacks() {
-		panic(fmt.Sprintln("Cannot apply", numSplits, "splits on a listOfStacks containing only", l.NumStacks(), "stacks."))
+		panic(fmt.Sprintln("Cannot apply", numSplits, "splits on a LOS containing only", l.NumStacks(), "stacks."))
 	}
 
-	listsOfStacks := make([]listOfStacks, numSplits)
+	listsOfStacks := make([]LOS, numSplits)
 	curList := 0
 
 	numStacks := l.NumStacks()
@@ -136,7 +136,7 @@ func (l *listOfStacks) Split(numSplits int) []listOfStacks {
 		stacksToAssign := int(math.Floor(remainder))
 
 		curStack.Prev = nil
-		listsOfStacks[curList] = listOfStacks{curStack, curStack, curStack.Tos, l.pool}
+		listsOfStacks[curList] = LOS{curStack, curStack, curStack.Tos, l.pool}
 
 		for i := 1; i < stacksToAssign; i++ {
 			curStack = curStack.Next
@@ -157,16 +157,16 @@ func (l *listOfStacks) Split(numSplits int) []listOfStacks {
 }
 
 /*
-Length returns the number of symbols contained in the listOfStacks
+Length returns the number of symbols contained in the LOS
 */
-func (l *listOfStacks) Length() int {
+func (l *LOS) Length() int {
 	return l.len
 }
 
 /*
-NumStacks returns the number of stacks contained in the listOfStacks
+NumStacks returns the number of stacks contained in the LOS
 */
-func (l *listOfStacks) NumStacks() int {
+func (l *LOS) NumStacks() int {
 	i := 0
 
 	curStack := l.head
@@ -180,9 +180,9 @@ func (l *listOfStacks) NumStacks() int {
 }
 
 /*
-Println prints the content of the listOfStacks.
+Println prints the content of the LOS.
 */
-func (l *listOfStacks) Println() {
+func (l *LOS) Println() {
 	iterator := l.HeadIterator()
 
 	sym := iterator.Next()
@@ -196,14 +196,14 @@ func (l *listOfStacks) Println() {
 /*
 HeadIterator returns an iterator initialized to point before the first element of the list.
 */
-func (l *listOfStacks) HeadIterator() iterator {
+func (l *LOS) HeadIterator() iterator {
 	return iterator{l, l.head, -1}
 }
 
 /*
 TailIterator returns an iterator initialized to point after the last element of the list.
 */
-func (l *listOfStacks) TailIterator() iterator {
+func (l *LOS) TailIterator() iterator {
 	return iterator{l, l.cur, l.cur.Tos}
 }
 

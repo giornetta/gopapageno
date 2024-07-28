@@ -3,12 +3,13 @@ version: '3'
 vars:
   EXAMPLE: adder
   STRAT: opp
+  REDUCTION: sweep
   FNAME: 'default'
 
 tasks:
   generate:
     cmds:
-      - go run ./cmd/gopapageno/main.go -l ./examples/{{ .EXAMPLE }}/{{ .STRAT }}/{{ .EXAMPLE }}.l -g ./examples/{{ .EXAMPLE }}/{{ .STRAT }}/{{ .EXAMPLE }}.g -o ./examples/{{ .EXAMPLE }}/{{ .STRAT }}/ -strategy={{ .STRAT }} -log
+      - go run ./cmd/gopapageno/main.go -l ./examples/{{ .EXAMPLE }}/{{ .STRAT }}/{{ .EXAMPLE }}.l -g ./examples/{{ .EXAMPLE }}/{{ .STRAT }}/{{ .EXAMPLE }}.g -o ./examples/{{ .EXAMPLE }}/{{ .STRAT }}/ -s {{ .STRAT }} -log
     ignore_error: true
 
   generate-all-example:
@@ -32,7 +33,7 @@ tasks:
     vars:
       COUNT: 10
     cmds:
-      - go test github.com/giornetta/gopapageno/examples/{{ .EXAMPLE }}/{{ .STRAT }} -bench . -count={{ .COUNT }} > ./examples/{{ .EXAMPLE }}/benchmark_results/{{ .STRAT }}-{{ .FNAME }}.txt
+      - go test github.com/giornetta/gopapageno/examples/{{ .EXAMPLE }}/{{ .STRAT }} -bench . -count={{ .COUNT }} -args -s={{ .REDUCTION }} > ./examples/{{ .EXAMPLE }}/benchmark_results/{{ .STRAT }}-{{ .REDUCTION }}-{{ .FNAME }}.txt
 
   benchmark-all:
     cmds:
@@ -42,8 +43,3 @@ tasks:
         vars: { STRAT: 'aopp' }
       - task: benchmark
         vars: { STRAT: 'copp' }
-
-  compare-benchmarks-win:
-    platforms: [windows]
-    cmds:
-      - (Get-Content -Path "./examples/{{ .EXAMPLE }}/benchmark_results/{{ .STRAT }}.txt") -replace "{{ .STRAT }}", "" | Set-Content -Path "./examples/{{ .EXAMPLE }}/benchmark_results/{{ .STRAT }}.txt"

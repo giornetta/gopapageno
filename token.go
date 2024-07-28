@@ -7,21 +7,6 @@ import (
 	"sync"
 )
 
-type Token struct {
-	Type       TokenType
-	Precedence Precedence
-
-	Value any
-
-	Next      *Token
-	Child     *Token
-	LastChild *Token
-}
-
-func (t *Token) IsTerminal() bool {
-	return t.Type.IsTerminal()
-}
-
 type TokenType uint16
 
 const (
@@ -35,6 +20,21 @@ func (t TokenType) IsTerminal() bool {
 
 func (t TokenType) Value() uint16 {
 	return uint16(0x7FFF & t)
+}
+
+type Token struct {
+	Type       TokenType
+	Precedence Precedence
+
+	Value any
+
+	Next      *Token
+	Child     *Token
+	LastChild *Token
+}
+
+func (t *Token) IsTerminal() bool {
+	return t.Type.IsTerminal()
 }
 
 // Height computes the height of the AST rooted in `t`.
@@ -56,7 +56,7 @@ func (root *Token) Height(ctx context.Context) (int, error) {
 
 	// Launch the initial goroutine
 	wg.Add(1)
-	go bfs(root, 0, &wg, resultChan)
+	go bfs(root, 1, &wg, resultChan)
 
 	// Wait for all goroutines to finish
 	go func() {

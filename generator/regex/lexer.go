@@ -130,11 +130,11 @@ func (l *lexer) yyLex(genSym *symbol) int {
 }
 
 /*
-lex reads an input string as a slice of byte and lexes it, pushing each symbol in a listOfStacks.
-It returns a listOfStacks containing all the lexed symbols.
+lex reads an input string as a slice of byte and lexes it, pushing each symbol in a LOS.
+It returns a LOS containing all the lexed symbols.
 An error is returned if the string contains invalid data.
 */
-func lex(input []byte, stackPool *stackPool) (listOfStacks, error) {
+func lex(input []byte, stackPool *stackPool) (LOS, error) {
 	los := newLos(stackPool)
 
 	sym := symbol{}

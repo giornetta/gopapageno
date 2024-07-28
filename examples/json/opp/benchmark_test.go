@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"github.com/giornetta/gopapageno"
 	"github.com/giornetta/gopapageno/benchmark"
@@ -13,27 +14,44 @@ import (
 
 const baseFolder = "../data/"
 
-var table = []string{
-	"generated-1000.json",
-	"generated-2000.json",
-	"emojis-100.json",
+var table = map[string]any{
+	"generated-1000.json": nil,
+	"generated-2000.json": nil,
+	"emojis-100.json":     nil,
+}
+
+var reductionFlag string
+
+func TestMain(m *testing.M) {
+	flag.StringVar(&reductionFlag, "s", "sweep", "parsing strategy to execute")
+
+	flag.Parse()
+
+	os.Exit(m.Run())
 }
 
 func BenchmarkParse(b *testing.B) {
+	strat := gopapageno.ReductionSweep
+	if reductionFlag == "parallel" {
+		strat = gopapageno.ReductionParallel
+	} else if reductionFlag == "mixed" {
+		strat = gopapageno.ReductionMixed
+	}
+
 	threads := runtime.NumCPU()
 
-	for _, filename := range table {
+	for filename, _ := range table {
 		for c := 1; c <= threads; c = min(c*2, threads) {
 			b.Run(fmt.Sprintf("%s/%dT", filename, c), func(b *testing.B) {
-				p := NewParser(
+				r := gopapageno.NewRunner(
+					NewLexer(),
+					NewGrammar(),
 					gopapageno.WithConcurrency(c),
-					gopapageno.WithAverageTokenLength(gopapageno.DefaultAverageTokenLength),
-					gopapageno.WithPreallocFunc(ParserPreallocMem),
-					gopapageno.WithReductionStrategy(gopapageno.ReductionParallel))
+					gopapageno.WithReductionStrategy(strat))
 
 				b.ResetTimer()
 
-				benchmark.Run(b, p, path.Join(baseFolder, filename))
+				benchmark.Run(b, r, path.Join(baseFolder, filename))
 			})
 
 			runtime.GC()
@@ -46,11 +64,11 @@ func BenchmarkParse(b *testing.B) {
 }
 
 func TestProfile(t *testing.T) {
-	c := 12
+	c := runtime.NumCPU()
 	avgLen := gopapageno.DefaultAverageTokenLength
 	strat := gopapageno.ReductionParallel
 
-	filename := "emojis-100.json"
+	var filename string = "small.json"
 
 	file := path.Join(baseFolder, filename)
 
@@ -59,16 +77,17 @@ func TestProfile(t *testing.T) {
 		t.Fatalf("could not read source file %s: %v", file, err)
 	}
 
-	p := NewParser(
+	r := gopapageno.NewRunner(
+		NewLexer(),
+		NewGrammar(),
 		gopapageno.WithConcurrency(c),
 		gopapageno.WithAverageTokenLength(avgLen),
-		gopapageno.WithPreallocFunc(ParserPreallocMem),
 		gopapageno.WithReductionStrategy(strat),
 	)
 
 	ctx := context.Background()
 
-	_, err = p.Parse(ctx, bytes)
+	_, err = r.Run(ctx, bytes)
 	if err != nil {
 		t.Fatalf("could not parse source: %v", err)
 	}
