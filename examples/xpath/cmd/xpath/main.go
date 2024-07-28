@@ -77,7 +77,7 @@ func run() error {
 		cmd = cmd.InVerboseMode()
 	}
 
-	results, err := cmd.Run(p)
+	results, err := cmd.Run(r)
 	if err != nil {
 		return fmt.Errorf("could not run command: %v", err)
 	}
