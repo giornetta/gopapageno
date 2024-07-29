@@ -1,0 +1,94 @@
+goos: windows
+goarch: amd64
+pkg: github.com/giornetta/gopapageno/examples/json/copp
+cpu: AMD Ryzen 5 5600 6-Core Processor              
+BenchmarkParse
+BenchmarkParse/strategy=COPP
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=1
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=1/reduction=sweep
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=1/reduction=sweep-12         	      37	  32156368 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=1/reduction=parallel
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=1/reduction=parallel-12      	      49	  25417524 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=1/reduction=mixed
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=1/reduction=mixed-12         	      38	  31067063 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=2
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=2/reduction=sweep
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=2/reduction=sweep-12         	      52	  20685052 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=2/reduction=parallel
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=2/reduction=parallel-12      	      58	  17678614 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=2/reduction=mixed
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=2/reduction=mixed-12         	      49	  21712082 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=3
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=3/reduction=sweep
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=3/reduction=sweep-12         	      58	  17922814 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=3/reduction=parallel
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=3/reduction=parallel-12      	      64	  16417589 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=3/reduction=mixed
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=3/reduction=mixed-12         	      64	  18919023 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=4
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=4/reduction=sweep
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=4/reduction=sweep-12         	      68	  15738240 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=4/reduction=parallel
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=4/reduction=parallel-12      	      93	  14210765 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=4/reduction=mixed
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=4/reduction=mixed-12         	      66	  15884562 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=5
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=5/reduction=sweep
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=5/reduction=sweep-12         	      72	  16303235 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=5/reduction=parallel
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=5/reduction=parallel-12      	      78	  15338509 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=5/reduction=mixed
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=5/reduction=mixed-12         	      69	  16159449 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=6
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=6/reduction=sweep
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=6/reduction=sweep-12         	      68	  17208062 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=6/reduction=parallel
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=6/reduction=parallel-12      	      73	  15510037 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=6/reduction=mixed
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=6/reduction=mixed-12         	      76	  17017884 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=7
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=7/reduction=sweep
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=7/reduction=sweep-12         	      74	  16797928 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=7/reduction=parallel
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=7/reduction=parallel-12      	      75	  15410967 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=7/reduction=mixed
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=7/reduction=mixed-12         	      73	  16826148 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=8
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=8/reduction=sweep
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=8/reduction=sweep-12         	      75	  14941689 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=8/reduction=parallel
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=8/reduction=parallel-12      	      73	  14575242 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=8/reduction=mixed
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=8/reduction=mixed-12         	      78	  15473835 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=9
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=9/reduction=sweep
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=9/reduction=sweep-12         	      76	  14836372 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=9/reduction=parallel
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=9/reduction=parallel-12      	      75	  15202691 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=9/reduction=mixed
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=9/reduction=mixed-12         	      74	  16101338 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=10
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=10/reduction=sweep
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=10/reduction=sweep-12        	      69	  15180732 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=10/reduction=parallel
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=10/reduction=parallel-12     	      70	  16717147 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=10/reduction=mixed
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=10/reduction=mixed-12        	      87	  15550531 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=11
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=11/reduction=sweep
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=11/reduction=sweep-12        	      90	  14945036 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=11/reduction=parallel
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=11/reduction=parallel-12     	      62	  16531571 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=11/reduction=mixed
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=11/reduction=mixed-12        	      75	  14727921 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=12
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=12/reduction=sweep
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=12/reduction=sweep-12        	      82	  14565179 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=12/reduction=parallel
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=12/reduction=parallel-12     	      61	  18397238 ns/op
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=12/reduction=mixed
+BenchmarkParse/strategy=COPP/file=../data/emojis-100.json/goroutines=12/reduction=mixed-12        	      72	  14390417 ns/op
+PASS
+
+Process finished with the exit code 0

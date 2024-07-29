@@ -4,7 +4,7 @@
 
 %%
 
-S : T
+S : E
 {
     $$.Value = $1.Value
 };

@@ -100,17 +100,17 @@ func NewGrammar() *gopapageno.Grammar {
 
 	maxRHSLen := 3
 	rules := []gopapageno.Rule{
+		{S, []gopapageno.TokenType{E}, gopapageno.RuleSimple},
 		{E, []gopapageno.TokenType{E, PLUS, E}, gopapageno.RuleCombine},
 		{E, []gopapageno.TokenType{E, PLUS, T}, gopapageno.RuleAppendRight},
 		{S, []gopapageno.TokenType{S}, gopapageno.RuleSimple},
-		{S, []gopapageno.TokenType{T}, gopapageno.RuleSimple},
 		{E, []gopapageno.TokenType{T, PLUS, E}, gopapageno.RuleAppendLeft},
 		{E, []gopapageno.TokenType{T, PLUS, T}, gopapageno.RuleCyclic},
 		{T, []gopapageno.TokenType{LPAR, E, RPAR}, gopapageno.RuleSimple},
 		{T, []gopapageno.TokenType{LPAR, T, RPAR}, gopapageno.RuleSimple},
 		{T, []gopapageno.TokenType{NUMBER}, gopapageno.RuleSimple},
 	}
-	compressedRules := []uint16{0, 0, 5, 1, 13, 2, 31, 3, 34, 32769, 52, 32770, 75, 0, 0, 1, 32771, 18, 0, 0, 2, 1, 25, 3, 28, 1, 0, 0, 1, 1, 0, 2, 2, 0, 2, 3, 1, 32771, 39, 0, 0, 2, 1, 46, 3, 49, 1, 4, 0, 1, 5, 0, 0, 0, 2, 1, 59, 3, 67, 0, 0, 1, 32772, 64, 3, 6, 0, 0, 0, 1, 32772, 72, 3, 7, 0, 3, 8, 0}
+	compressedRules := []uint16{0, 0, 5, 1, 13, 2, 31, 3, 34, 32769, 52, 32770, 75, 2, 0, 1, 32771, 18, 0, 0, 2, 1, 25, 3, 28, 1, 1, 0, 1, 2, 0, 2, 3, 0, 0, 0, 1, 32771, 39, 0, 0, 2, 1, 46, 3, 49, 1, 4, 0, 1, 5, 0, 0, 0, 2, 1, 59, 3, 67, 0, 0, 1, 32772, 64, 3, 6, 0, 0, 0, 1, 32772, 72, 3, 7, 0, 3, 8, 0}
 
 	precMatrix := [][]gopapageno.Precedence{
 		{gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields},
@@ -127,6 +127,19 @@ func NewGrammar() *gopapageno.Grammar {
 		var ruleType gopapageno.RuleType
 		switch rule {
 		case 0:
+			ruleType = gopapageno.RuleSimple
+
+			S0 := lhs
+			E1 := rhs[0]
+
+			S0.Child = E1
+			S0.LastChild = E1
+
+			{
+				S0.Value = E1.Value
+			}
+			_ = E1
+		case 1:
 			ruleType = gopapageno.RuleCombine
 
 			E0 := lhs
@@ -146,7 +159,7 @@ func NewGrammar() *gopapageno.Grammar {
 			_ = E1
 			_ = PLUS2
 			_ = E3
-		case 1:
+		case 2:
 			ruleType = gopapageno.RuleAppendRight
 
 			E0 := lhs
@@ -166,7 +179,7 @@ func NewGrammar() *gopapageno.Grammar {
 			_ = E1
 			_ = PLUS2
 			_ = T3
-		case 2:
+		case 3:
 			ruleType = gopapageno.RuleSimple
 
 			S0 := lhs
@@ -179,19 +192,6 @@ func NewGrammar() *gopapageno.Grammar {
 				S0.Value = S1.Value
 			}
 			_ = S1
-		case 3:
-			ruleType = gopapageno.RuleSimple
-
-			S0 := lhs
-			T1 := rhs[0]
-
-			S0.Child = T1
-			S0.LastChild = T1
-
-			{
-				S0.Value = T1.Value
-			}
-			_ = T1
 		case 4:
 			ruleType = gopapageno.RuleAppendLeft
 

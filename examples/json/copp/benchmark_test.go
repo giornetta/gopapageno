@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
-	"fmt"
 	"github.com/giornetta/gopapageno"
 	"github.com/giornetta/gopapageno/benchmark"
 	"os"
@@ -15,52 +13,11 @@ import (
 const baseFolder = "../data/"
 
 var table = map[string]any{
-	"generated-1000.json": nil,
-	"generated-2000.json": nil,
-	"emojis-100.json":     nil,
-}
-
-var reductionFlag string
-
-func TestMain(m *testing.M) {
-	flag.StringVar(&reductionFlag, "s", "sweep", "parsing strategy to execute")
-
-	flag.Parse()
-
-	os.Exit(m.Run())
+	baseFolder + "emojis-555.json": nil,
 }
 
 func BenchmarkParse(b *testing.B) {
-	strat := gopapageno.ReductionSweep
-	if reductionFlag == "parallel" {
-		strat = gopapageno.ReductionParallel
-	} else if reductionFlag == "mixed" {
-		strat = gopapageno.ReductionMixed
-	}
-
-	threads := runtime.NumCPU()
-
-	for filename, _ := range table {
-		for c := 1; c <= threads; c = min(c*2, threads) {
-			b.Run(fmt.Sprintf("%s/%dT", filename, c), func(b *testing.B) {
-				r := gopapageno.NewRunner(
-					NewLexer(),
-					NewGrammar(),
-					gopapageno.WithConcurrency(c),
-					gopapageno.WithReductionStrategy(strat))
-
-				b.ResetTimer()
-
-				benchmark.Run(b, r, path.Join(baseFolder, filename))
-			})
-
-			runtime.GC()
-
-			if c == threads {
-				break
-			}
-		}
-	}
+	benchmark.Runner[any](b, gopapageno.COPP, NewLexer, NewGrammar, table)
 }
 
 func TestProfile(t *testing.T) {

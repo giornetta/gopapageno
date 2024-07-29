@@ -30,6 +30,19 @@ const (
 	ReductionMixed
 )
 
+func (s ReductionStrategy) String() string {
+	switch s {
+	case ReductionSweep:
+		return "sweep"
+	case ReductionParallel:
+		return "parallel"
+	case ReductionMixed:
+		return "mixed"
+	default:
+		return "unknown"
+	}
+}
+
 type ParsingStrategy uint8
 
 const (
