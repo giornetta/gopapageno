@@ -51,7 +51,7 @@ func Generate(opts *Options) error {
 		return fmt.Errorf("could not open parser file: %w", err)
 	}
 
-	parserDesc, err := parseParserDescription(parserFile, opts)
+	parserDesc, err := parseGrammarDescription(parserFile, opts)
 	if err != nil {
 		return fmt.Errorf("could not parse parser description: %w", err)
 	}
@@ -221,7 +221,7 @@ func run() error {
 
 	h, err := root.Height(ctx)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	fmt.Printf("Height: %%d\n", h)
@@ -252,6 +252,7 @@ func emitBenchmarkFile(opts *Options, packageName string) error {
 	fmt.Fprintf(gFile, "package %s\n\n", packageName)
 	fmt.Fprintf(gFile, `import (
 	"context"
+	"flag"
 	"fmt"
 	"github.com/giornetta/gopapageno"
 	"github.com/giornetta/gopapageno/benchmark"
@@ -292,7 +293,7 @@ func BenchmarkParse(b *testing.B) {
 					NewLexer(),
 					NewGrammar(),
 					gopapageno.WithConcurrency(c),
-					gopapageno.WithReductionStrategy(gopapageno.ReductionSweep))
+					gopapageno.WithReductionStrategy(strat))
 
 
 				b.ResetTimer()

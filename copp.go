@@ -338,6 +338,7 @@ func (w *coppWorker) parse(ctx context.Context, stack *COPPStack, tokens *LOS[To
 
 			rhsTokens = rhsTokens[:0]
 			rhsTokens = append(rhsTokens, stack.Current()...)
+
 			rhs = rhs[:0]
 			for i := range stack.State.CurrentLen {
 				rhs = append(rhs, rhsTokens[i].Type)

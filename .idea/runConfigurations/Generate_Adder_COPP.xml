@@ -2,7 +2,7 @@
   <configuration default="false" name="Generate Adder COPP" type="GoApplicationRunConfiguration" factoryName="Go Application" folderName="Generate Parsers">
     <module name="gopapageno" />
     <working_directory value="$PROJECT_DIR$/examples/adder" />
-    <parameters value="-l copp/adder.l -g copp/adder.g -o copp/ -strategy=copp -log" />
+    <parameters value="-l copp/adder.l -g copp/adder.g -o copp/ -s copp -log" />
     <envs>
       <env name="GOEXPERIMENT" value="rangefunc" />
     </envs>

@@ -14,11 +14,7 @@ import (
 
 const baseFolder = "../data/"
 
-var table = map[string]any{
-	"generated-1000.json": nil,
-	"generated-2000.json": nil,
-	"emojis-100.json":     nil,
-}
+var table = map[string]any{}
 var reductionFlag string
 
 func TestMain(m *testing.M) {
@@ -67,7 +63,7 @@ func TestProfile(t *testing.T) {
 	avgLen := gopapageno.DefaultAverageTokenLength
 	strat := gopapageno.ReductionParallel
 
-	var filename string = "small.json"
+	var filename string
 
 	file := path.Join(baseFolder, filename)
 

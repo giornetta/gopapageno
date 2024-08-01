@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func (p *parserDescriptor) deleteCopyRules(rulesDict *rulesDictionary) {
+func (p *grammarDescription) deleteCopyRules(rulesDict *rulesDictionary) {
 	copySets := make(map[string]*set[string], p.nonterminals.Len())
 	for _, nonterminal := range p.nonterminals.Iter {
 		copySets[nonterminal] = newSet[string]()
@@ -65,7 +65,7 @@ func (p *parserDescriptor) deleteCopyRules(rulesDict *rulesDictionary) {
 	}
 }
 
-func (p *parserDescriptor) deleteRepeatedRHS() {
+func (p *grammarDescription) deleteRepeatedRHS() {
 	newRules := make([]rule, 0)
 
 	// Create a rules dictionary and add every parsed rule to it.
@@ -77,7 +77,8 @@ func (p *parserDescriptor) deleteRepeatedRHS() {
 	// Create a dictionary that will contain the newly added rules.
 	newRulesDict := newRulesDictionary(dictRules.Len())
 
-	p.extractTerminalRules(dictRules, newRulesDict)
+	// TODO: This always causes problems...
+	// p.extractTerminalRules(dictRules, newRulesDict)
 
 	p.deleteCopyRules(dictRules)
 
@@ -135,21 +136,6 @@ func (p *parserDescriptor) deleteRepeatedRHS() {
 	}
 
 	// TODO: remove unused nonterminals (see cpapageno)
-	nonterminals := p.nonterminals.Slice()
-	for _, nt := range nonterminals {
-		isUsed := false
-
-		for _, lhsSet := range newRulesDict.ValuesLHS {
-			if lhsSet.Contains(nt) {
-				isUsed = true
-				break
-			}
-		}
-
-		if !isUsed {
-
-		}
-	}
 
 	axiomSet := newSet[string]()
 	axiomSet.Add(p.axiom)
@@ -173,17 +159,29 @@ func (p *parserDescriptor) deleteRepeatedRHS() {
 		keyRHS := newRulesDict.KeysRHS[i]
 		valueLHS := newRulesDict.ValuesLHS[i]
 		semAction := newRulesDict.SemActions[i]
-		isPrefix := newRulesDict.Types[i]
+		ruleType := newRulesDict.Types[i]
 
-		newRules = append(newRules, rule{strings.Join(valueLHS.Slice(), "_"), keyRHS, *semAction, isPrefix})
+		newRules = append(newRules, rule{
+			LHS:    strings.Join(valueLHS.Slice(), "_"),
+			RHS:    keyRHS,
+			Action: *semAction,
+			Type:   ruleType,
+		})
 	}
 
 	p.rules = newRules
 
+	newPrefixes := make([][]string, 0)
+	for _, prefix := range p.prefixes {
+		replacedPrefix := p.replaceTokenNames(prefix, newRulesDict.LHSSets())
+		newPrefixes = append(newPrefixes, replacedPrefix...)
+	}
+	p.prefixes = newPrefixes
+
 	p.inferTokens()
 }
 
-func (p *parserDescriptor) extractTerminalRules(dictRules *rulesDictionary, newRulesDict *rulesDictionary) {
+func (p *grammarDescription) extractTerminalRules(dictRules *rulesDictionary, newRulesDict *rulesDictionary) {
 	// Range over the current rules, check if the RHS contains any nonterminal
 	// If it doesn't (i.e. it is a *terminal rule*), add it to the new rules dictionary and remove it from the old dict.
 	dictCopy := dictRules.Copy()
@@ -216,7 +214,7 @@ func (p *parserDescriptor) extractTerminalRules(dictRules *rulesDictionary, newR
 	}
 }
 
-func (p *parserDescriptor) replaceTokenNames(keyRHS []string, newNonterminals []*set[string]) [][]string {
+func (p *grammarDescription) replaceTokenNames(keyRHS []string, newNonterminals []*set[string]) [][]string {
 	newTokenNames := make([][]string, 0)
 
 	var rec func(tokens []string, newTokens []string)
@@ -256,7 +254,7 @@ func (p *parserDescriptor) replaceTokenNames(keyRHS []string, newNonterminals []
 	return newTokenNames
 }
 
-func addNewRules(dict *rulesDictionary, p *parserDescriptor,
+func addNewRules(dict *rulesDictionary, p *grammarDescription,
 	keyRHS []string, valueLHS *set[string], semAction *string, ruleType gopapageno.RuleType, newNonterminals []*set[string]) {
 
 	newRuleRHS := p.replaceTokenNames(keyRHS, newNonterminals)
@@ -272,11 +270,9 @@ func addNewRules(dict *rulesDictionary, p *parserDescriptor,
 		}
 
 	}
-
-	return
 }
 
-func (p *parserDescriptor) sortRulesByRHS() {
+func (p *grammarDescription) sortRulesByRHS() {
 	sortedRules := make([]rule, 0, len(p.rules))
 
 	for _, curRule := range p.rules {
@@ -299,7 +295,7 @@ func (p *parserDescriptor) sortRulesByRHS() {
 	p.rules = sortedRules
 }
 
-func (p *parserDescriptor) rhsLessThan(rhs1 []string, rhs2 []string) bool {
+func (p *grammarDescription) rhsLessThan(rhs1 []string, rhs2 []string) bool {
 	minLen := len(rhs1)
 	if len(rhs2) < minLen {
 		minLen = len(rhs2)
