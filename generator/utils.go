@@ -62,8 +62,8 @@ func getAlternatives(input string, index *int) ([]string, [][]string, error) {
 			// Add each nested alternative to every alternative found so far.
 			newAlternatives := make([][]string, len(alternatives)*len(nestedAlternatives), len(alternatives)*len(nestedAlternatives))
 			for i := 0; i < len(alternatives); i++ {
-				for j := 0; j < len(alternatives); j++ {
-					newAlternatives[i*len(alternatives)+j] = append(alternatives[i], alternatives[j]...)
+				for j := 0; j < len(nestedAlternatives); j++ {
+					newAlternatives[i*len(alternatives)+j] = append(alternatives[i], nestedAlternatives[j]...)
 				}
 			}
 			alternatives = newAlternatives

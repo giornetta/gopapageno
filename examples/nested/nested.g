@@ -8,20 +8,14 @@ S : E
     $$.Value = $1.Value
 };
 
-E : (T PLUS)+ T
+E : (V OPERATOR)+ V
 {
     newValue := parserPools[thread].Get()
     *newValue = *$1.Value.(*int64) + *$3.Value.(*int64)
     $$.Value = newValue
 };
 
-T : LPAR T RPAR
-{
-    $$.Value = $2.Value
-} | LPAR E RPAR
-{
-  $$.Value = $2.Value
-} | NUMBER
+V : NUMBER
 {
     $$.Value = $1.Value
 };
