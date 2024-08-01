@@ -7,10 +7,11 @@ import (
 )
 
 type rule struct {
-	LHS    string
-	RHS    []string
-	Action string
-	Type   gopapageno.RuleType
+	LHS      string
+	RHS      []string
+	Action   string
+	Type     gopapageno.RuleType
+	Prefixes [][]string
 }
 
 func (r rule) String() string {

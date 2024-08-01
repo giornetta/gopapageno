@@ -16,7 +16,7 @@ var (
 	axiomRegexp = regexp.MustCompile("^%axiom\\s*([a-zA-Z][a-zA-Z0-9]*)\\s*$")
 )
 
-type parserDescriptor struct {
+type grammarDescription struct {
 	axiom        string
 	preambleFunc string
 
@@ -33,7 +33,7 @@ type parserDescriptor struct {
 	precMatrix precedenceMatrix
 }
 
-func parseParserDescription(r io.Reader, opts *Options) (*parserDescriptor, error) {
+func parseGrammarDescription(r io.Reader, opts *Options) (*grammarDescription, error) {
 	opts.Logger.Printf("Parsing parser description file...\n")
 
 	scanner := bufio.NewScanner(r)
@@ -98,7 +98,7 @@ func parseParserDescription(r io.Reader, opts *Options) (*parserDescriptor, erro
 		preambleBuilder.WriteString("\n")
 	}
 
-	return &parserDescriptor{
+	return &grammarDescription{
 		axiom:        axiom,
 		preambleFunc: preambleFunc,
 		code:         preambleBuilder.String(),
@@ -141,7 +141,7 @@ func parseRules(input string, strategy gopapageno.ParsingStrategy) ([]rule, [][]
 		// Read Rhs
 		rule.RHS = make([]string, 0)
 
-		rightSides := make([][]string, 1)
+		rulePrefixes := make([][]string, 1)
 
 		for input[pos] != '{' {
 			var rhsToken string
@@ -155,31 +155,22 @@ func parseRules(input string, strategy gopapageno.ParsingStrategy) ([]rule, [][]
 			} else {
 				if input[pos] == '(' {
 					// If the next section is a ()+ part, get the list of all produced alternatives (even nested).
-					_, alternatives, err := getAlternatives(input, &pos)
+					flattened, alternatives, err := getAlternatives(input, &pos)
 					if err != nil {
 						return nil, nil, fmt.Errorf("rule %s is missing an alternative body for lhs", lhs)
 					}
 
-					//// Add each produced alternative to every rhs found so far.
-					newRightSides := make([][]string, len(rightSides)*len(alternatives))
-					for i := 0; i < len(rightSides); i++ {
-						//newRightSides[i*len(alternatives)] = append(rightSides[i], flattened...)
-						//
-						//newRightSides[i*len(alternatives)+1] = append(rightSides[i], lhs)
-						//newRightSides[i*len(alternatives)+1] = append(newRightSides[i*len(alternatives)+1], flattened[1:]...)
-						//
-						//newRightSides[i*len(alternatives)+2] = append(rightSides[i], lhs)
-						//newRightSides[i*len(alternatives)+2] = append(newRightSides[i*len(alternatives)+2], flattened[1:]...)
+					rule.RHS = append(rule.RHS, flattened...)
 
+					// Add each produced alternative to every rhs found so far.
+					newPrefixes := make([][]string, len(rulePrefixes)*len(alternatives))
+					for i := 0; i < len(rulePrefixes); i++ {
 						for j := 0; j < len(alternatives); j++ {
-							newRightSides[i*len(alternatives)+j] = append(rightSides[i], alternatives[j]...)
+							newPrefixes[i*len(alternatives)+j] = append(rulePrefixes[i], alternatives[j]...)
 						}
 					}
-					rightSides = newRightSides
+					rulePrefixes = newPrefixes
 
-					//prefixes = append(prefixes, alternatives...)
-
-					//rule.RHS = append(rule.RHS, flattened...)
 					rule.Type = gopapageno.RuleCyclic
 				} else {
 					// Get a simple identifier
@@ -188,19 +179,11 @@ func parseRules(input string, strategy gopapageno.ParsingStrategy) ([]rule, [][]
 						return nil, nil, fmt.Errorf("rule %s is missing an identifier for rhs", lhs)
 					}
 
-					if len(rightSides) == 1 {
-						rightSides[0] = append(rightSides[0], rhsToken)
-					} else {
-						//newRightSides := make([][]string, len(rightSides)*2)
-						for i := 0; i < len(rightSides); i++ {
-							rightSides[i] = append(rightSides[i], rhsToken)
-							//rightSides[i+len(rightSides)] = append(rightSides[i], rhsToken)
-							//
-						}
-						//rightSides[len(rightSides)-1] = append(rightSides[len(rightSides)-1], lhs)
-						//rightSides = newRightSides
+					rule.RHS = append(rule.RHS, rhsToken)
+
+					for i := 0; i < len(rulePrefixes); i++ {
+						rulePrefixes[i] = append(rulePrefixes[i], rhsToken)
 					}
-					//rule.RHS = append(rule.RHS, rhsToken)
 				}
 			}
 
@@ -214,29 +197,21 @@ func parseRules(input string, strategy gopapageno.ParsingStrategy) ([]rule, [][]
 			rule.Type = gopapageno.RuleSimple
 			rules = append(rules, rule)
 		} else {
-			// rules = append(rules, rule)
+			if len(rulePrefixes) > 1 {
+				prefixes = append(prefixes, rulePrefixes...)
+			}
 
-			for i, rhs := range rightSides {
-				rule.RHS = rhs
+			rules = append(rules, rule)
 
-				if i == 0 {
-					if len(rightSides) == 1 {
-						rule.Type = gopapageno.RuleSimple
-					} else {
-						rule.Type = gopapageno.RuleCyclic
-					}
-				} else {
-					rule.Type = gopapageno.RulePrefix
-				}
-
+			rule.Type = gopapageno.RulePrefix
+			for _, p := range rulePrefixes {
+				rule.RHS = p
 				rules = append(rules, rule)
 			}
 		}
-		//rules = append(rules, rule)
 
 		skipSpaces(input, &pos)
 
-		// rule.Type = gopapageno.RuleSimple
 		if input[pos] == ';' {
 			// We're done with rules with this lhs
 			// Reset current lhs
@@ -256,7 +231,7 @@ func parseRules(input string, strategy gopapageno.ParsingStrategy) ([]rule, [][]
 
 // compile completes the parser description by doing all necessary checks and
 // transformations in order to produce a correct OPG.
-func (p *parserDescriptor) compile(opts *Options) error {
+func (p *grammarDescription) compile(opts *Options) error {
 	p.inferTokens()
 
 	if !p.isAxiomUsed() {
@@ -283,7 +258,7 @@ func (p *parserDescriptor) compile(opts *Options) error {
 	return nil
 }
 
-func (p *parserDescriptor) makeCyclicRules() {
+func (p *grammarDescription) makeCyclicRules() {
 	rules := make([]rule, 0)
 
 	for _, r := range p.rules {
@@ -348,7 +323,7 @@ func (p *parserDescriptor) makeCyclicRules() {
 
 // inferTokens populates the two sets nonterminals and terminals
 // with tokens found in the grammar rules.
-func (p *parserDescriptor) inferTokens() {
+func (p *grammarDescription) inferTokens() {
 	p.nonterminals = newSet[string]()
 	tokens := newSet[string]()
 
@@ -371,7 +346,7 @@ func (p *parserDescriptor) inferTokens() {
 }
 
 // isAxiomUsed checks if the axiom is present in any rules' LHS.
-func (p *parserDescriptor) isAxiomUsed() bool {
+func (p *grammarDescription) isAxiomUsed() bool {
 	for _, rule := range p.rules {
 		if rule.LHS == p.axiom {
 			return true
@@ -381,7 +356,7 @@ func (p *parserDescriptor) isAxiomUsed() bool {
 	return false
 }
 
-func (p *parserDescriptor) emit(opts *Options, packageName string) error {
+func (p *grammarDescription) emit(opts *Options, packageName string) error {
 	pPath := path.Join(opts.OutputDirectory, GeneratedParserFilename)
 	opts.Logger.Printf("Creating parser file %s...\n", pPath)
 
@@ -459,19 +434,19 @@ func (p *parserDescriptor) emit(opts *Options, packageName string) error {
 	///*****************
 	// * COPP Prefixes *
 	// *****************/
-	//maxPrefixLen := 0
-	//for _, prefix := range p.prefixes {
-	//	if len(prefix) > maxPrefixLen {
-	//		maxPrefixLen = len(prefix)
-	//	}
-	//}
-	//
-	//fmt.Fprintf(f, "\tmaxPrefixLen := %d\n", maxPrefixLen)
-	//fmt.Fprint(f, "\tprefixes := [][]gopapageno.TokenType{\n")
-	//for _, prefix := range p.prefixes {
-	//	fmt.Fprintf(f, "\t\t{%s},\n", strings.Join(prefix, ", "))
-	//}
-	//fmt.Fprintf(f, "\t}\n")
+	maxPrefixLen := 0
+	for _, prefix := range p.prefixes {
+		if len(prefix) > maxPrefixLen {
+			maxPrefixLen = len(prefix)
+		}
+	}
+
+	fmt.Fprintf(f, "\tmaxPrefixLength := %d\n", maxPrefixLen)
+	fmt.Fprint(f, "\tprefixes := [][]gopapageno.TokenType{\n")
+	for _, prefix := range p.prefixes {
+		fmt.Fprintf(f, "\t\t{%s},\n", strings.Join(prefix, ", "))
+	}
+	fmt.Fprintf(f, "\t}\n")
 
 	/*********************
 	 * Precedence Matrix *
@@ -514,6 +489,8 @@ func (p *parserDescriptor) emit(opts *Options, packageName string) error {
 	fmt.Fprintf(f, "\t\tCompressedRules: compressedRules,\n")
 	fmt.Fprintf(f, "\t\tPrecedenceMatrix: precMatrix,\n")
 	fmt.Fprintf(f, "\t\tBitPackedPrecedenceMatrix: bitPackedMatrix,\n")
+	fmt.Fprintf(f, "\t\tMaxPrefixLength: maxPrefixLength,\n")
+	fmt.Fprintf(f, "\t\tPrefixes: prefixes,\n")
 	fmt.Fprintf(f, "\t\tFunc: fn,\n")
 	fmt.Fprintf(f, "\t\tParsingStrategy: gopapageno.%s,\n", opts.Strategy)
 
@@ -526,7 +503,7 @@ func (p *parserDescriptor) emit(opts *Options, packageName string) error {
 	return nil
 }
 
-func (p *parserDescriptor) emitParserFunctions(f io.Writer) {
+func (p *grammarDescription) emitParserFunctions(f io.Writer) {
 	fmt.Fprintf(f, "\tfn := func(rule uint16, lhs *gopapageno.Token, rhs []*gopapageno.Token, thread int){\n")
 	fmt.Fprintf(f, "\t\tvar ruleType gopapageno.RuleType\n")
 	fmt.Fprintf(f, "\t\tswitch rule {\n")
@@ -540,6 +517,8 @@ func (p *parserDescriptor) emitParserFunctions(f io.Writer) {
 		fmt.Fprintf(f, "\n")
 
 		switch rule.Type {
+		case gopapageno.RulePrefix:
+			continue
 		case gopapageno.RuleSimple, gopapageno.RuleCyclic:
 			if len(rule.RHS) > 0 {
 				fmt.Fprintf(f, "\t\t\t%s0.Child = %s1\n", rule.LHS, rule.RHS[0])
@@ -606,7 +585,7 @@ func (p *parserDescriptor) emitParserFunctions(f io.Writer) {
 	fmt.Fprintf(f, "\t}\n\n")
 }
 
-func (p *parserDescriptor) emitTokens(f io.Writer) {
+func (p *grammarDescription) emitTokens(f io.Writer) {
 	fmt.Fprintf(f, "// Non-terminals\n")
 	fmt.Fprintf(f, "const (\n")
 	for i, token := range p.nonterminals.Slice() {

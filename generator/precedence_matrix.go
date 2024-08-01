@@ -74,29 +74,45 @@ func (m precedenceMap) computeTakesPrecedence(s gopapageno.ParsingStrategy, rule
 					continue
 				}
 
+				success := false
+
 				// Check if term2 is in the rhs
-				i2 := slices.Index(rule.RHS, term2)
-				if i2 == -1 {
-					continue
-				}
-
-				// If term2 has no nonterminal before it
-				if i2 == 0 || !nonterminals.Contains(rule.RHS[i2-1]) {
-					continue
-				}
-
-				if rts[rule.RHS[i2-1]].Contains(term1) {
-					if m[term1][term2] != gopapageno.PrecEmpty {
-						return fmt.Errorf("precedence conflict on terminals %s and %s (%v, %v)", term1, term2, m[term1][term2], gopapageno.PrecTakes)
+				indices := allIndices(rule.RHS, term2)
+				// TODO: Check if this needs to iterate backwards, I suppose it's fine this way.
+				for _, i2 := range indices {
+					if success {
+						break
 					}
 
-					m[term1][term2] = gopapageno.PrecTakes
+					// If term2 has no nonterminal before it
+					if i2 == 0 || !nonterminals.Contains(rule.RHS[i2-1]) {
+						continue
+					}
+
+					if rts[rule.RHS[i2-1]].Contains(term1) {
+						if m[term1][term2] != gopapageno.PrecEmpty {
+							return fmt.Errorf("precedence conflict on terminals %s and %s (%v, %v)", term1, term2, m[term1][term2], gopapageno.PrecTakes)
+						}
+
+						m[term1][term2] = gopapageno.PrecTakes
+						success = true
+					}
 				}
 			}
 		}
 	}
 
 	return nil
+}
+
+func allIndices[T comparable](slice []T, el T) []int {
+	indices := make([]int, 0)
+	for i := range slice {
+		if slice[i] == el {
+			indices = append(indices, i)
+		}
+	}
+	return indices
 }
 
 func (m precedenceMap) computeYieldsPrecedence(s gopapageno.ParsingStrategy, rules []rule, terminals []string, nonterminals *set[string], lts map[string]*set[string]) error {
@@ -107,22 +123,32 @@ func (m precedenceMap) computeYieldsPrecedence(s gopapageno.ParsingStrategy, rul
 					continue
 				}
 
-				// Check if term2 is in the rhs
-				i1 := slices.Index(rule.RHS, term1)
-				if i1 == -1 {
-					continue
-				}
+				success := false
 
-				// If term2 has no nonterminal after it
-				if i1 == len(rule.RHS)-1 || !nonterminals.Contains(rule.RHS[i1+1]) {
-					continue
-				}
-
-				if lts[rule.RHS[i1+1]].Contains(term2) {
-					if m[term1][term2] != gopapageno.PrecEmpty {
-						return fmt.Errorf("precedence conflict on terminals %s and %s (%v, %v)", term1, term2, m[term1][term2], gopapageno.PrecYields)
+				// Check if term1 is in the rhs
+				indices := allIndices(rule.RHS, term1)
+				for _, i1 := range indices {
+					if success {
+						break
 					}
-					m[term1][term2] = gopapageno.PrecYields
+
+					//i1 := slices.Index(rule.RHS, term1)
+					//if i1 == -1 {
+					//	continue
+					//}
+
+					// If term2 has no nonterminal after it
+					if i1 == len(rule.RHS)-1 || !nonterminals.Contains(rule.RHS[i1+1]) {
+						continue
+					}
+
+					if lts[rule.RHS[i1+1]].Contains(term2) {
+						if m[term1][term2] != gopapageno.PrecEmpty {
+							return fmt.Errorf("precedence conflict on terminals %s and %s (%v, %v)", term1, term2, m[term1][term2], gopapageno.PrecYields)
+						}
+						m[term1][term2] = gopapageno.PrecYields
+						success = true
+					}
 				}
 			}
 		}
@@ -152,7 +178,7 @@ func (m precedenceMap) buildMatrix(terminals []string) (precedenceMatrix, error)
 	return precMatrix, nil
 }
 
-func (p *parserDescriptor) newPrecedenceMatrix(opts *Options) (matrix precedenceMatrix, err error) {
+func (p *grammarDescription) newPrecedenceMatrix(opts *Options) (matrix precedenceMatrix, err error) {
 	terminals := p.terminals.Slice()
 	if err := moveToFront(terminals, "_TERM"); err != nil {
 		return nil, fmt.Errorf("could not move _TERM to front: %w", err)
@@ -215,7 +241,7 @@ type conflict struct {
 	j    int
 }
 
-func (p *parserDescriptor) newAssociativePrecedenceMatrix() (precedenceMatrix, error) {
+func (p *grammarDescription) newAssociativePrecedenceMatrix() (precedenceMatrix, error) {
 	m := make(map[string]map[string]map[gopapageno.Precedence][]conflict)
 	nonOP := make([]conflict, 0)
 
@@ -380,7 +406,7 @@ func (p *parserDescriptor) newAssociativePrecedenceMatrix() (precedenceMatrix, e
 }
 
 // getTerminalSets returns two maps mapping nonterminal tokens to possible terminal productions.
-func (p *parserDescriptor) getTerminalSets() (lts map[string]*set[string], rts map[string]*set[string]) {
+func (p *grammarDescription) getTerminalSets() (lts map[string]*set[string], rts map[string]*set[string]) {
 	lts = make(map[string]*set[string], p.nonterminals.Len())
 	rts = make(map[string]*set[string], p.nonterminals.Len())
 
