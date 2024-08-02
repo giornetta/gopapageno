@@ -105,6 +105,8 @@ func NewGrammar() *gopapageno.Grammar {
 	}
 	compressedRules := []uint16{0, 0, 4, 1, 11, 2, 24, 32769, 27, 32770, 40, 2, 0, 1, 32771, 16, 0, 0, 1, 1, 21, 1, 1, 0, 2, 2, 0, 0, 0, 1, 1, 32, 0, 0, 1, 32772, 37, 1, 3, 0, 1, 4, 0}
 
+	maxPrefixLength := 0
+	prefixes := [][]gopapageno.TokenType{}
 	precMatrix := [][]gopapageno.Precedence{
 		{gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields},
 		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEquals},
@@ -210,6 +212,8 @@ func NewGrammar() *gopapageno.Grammar {
 		CompressedRules:           compressedRules,
 		PrecedenceMatrix:          precMatrix,
 		BitPackedPrecedenceMatrix: bitPackedMatrix,
+		MaxPrefixLength:           maxPrefixLength,
+		Prefixes:                  prefixes,
 		Func:                      fn,
 		ParsingStrategy:           gopapageno.AOPP,
 		PreambleFunc:              ParserPreallocMem,

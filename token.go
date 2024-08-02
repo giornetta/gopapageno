@@ -1,10 +1,8 @@
 package gopapageno
 
 import (
-	"context"
 	"fmt"
 	"strings"
-	"sync"
 )
 
 type TokenType uint16
@@ -39,61 +37,18 @@ func (t *Token) IsTerminal() bool {
 
 // Height computes the height of the AST rooted in `t`.
 // It can be used as an evaluation metric for tree-balance, as left/right-skewed trees will have a bigger height compared to balanced trees.
-func (root *Token) Height(ctx context.Context) (int, error) {
-	// Helper struct to hold a token and its depth
-	type TokenWithDepth struct {
-		token *Token
-		depth int
-	}
+func (t *Token) Height() int {
+	var rec func(t *Token, depth int) int
 
-	if root == nil {
-		return 0, nil
-	}
-
-	var maxHeight int
-	var wg sync.WaitGroup
-	resultChan := make(chan int)
-
-	// Launch the initial goroutine
-	wg.Add(1)
-	go bfs(root, 1, &wg, resultChan)
-
-	// Wait for all goroutines to finish
-	go func() {
-		wg.Wait()
-		close(resultChan)
-	}()
-
-	// Find the maximum height from the results
-	for height := range resultChan {
-		if ctx.Err() != nil {
-			return 0, ctx.Err()
+	rec = func(t *Token, depth int) int {
+		if t == nil {
+			return depth
 		}
 
-		if height > maxHeight {
-			maxHeight = height
-		}
+		return max(rec(t.Child, depth+1), rec(t.Next, depth))
 	}
 
-	return maxHeight, nil
-}
-func bfs(node *Token, depth int, wg *sync.WaitGroup, resultChan chan int) {
-	defer wg.Done()
-
-	// Send the current depth to the result channel
-	resultChan <- depth
-
-	// Process the child node
-	if node.Child != nil {
-		wg.Add(1)
-		go bfs(node.Child, depth+1, wg, resultChan)
-	}
-
-	// Process the next sibling node
-	if node.Next != nil {
-		wg.Add(1)
-		go bfs(node.Next, depth, wg, resultChan)
-	}
+	return rec(t, 0)
 }
 
 // Size returns the number of tokens in the AST rooted in `t`.

@@ -1,7 +1,6 @@
 package gopapageno_test
 
 import (
-	"context"
 	"github.com/giornetta/gopapageno"
 	"testing"
 )
@@ -83,7 +82,7 @@ func TestToken_Height(t *testing.T) {
 		},
 	}
 
-	if h, err := balancedTree.Height(context.Background()); err != nil || h != 3 {
+	if h := balancedTree.Height(); h != 3 {
 		t.Errorf("Balanced Tree expected 3, got %d", h)
 	}
 
@@ -106,7 +105,7 @@ func TestToken_Height(t *testing.T) {
 		},
 	}
 
-	if h, err := tree.Height(context.Background()); err != nil || h != 4 {
+	if h := tree.Height(); h != 4 {
 		t.Errorf("Balanced Tree expected 4, got %d", h)
 	}
 }

@@ -117,7 +117,6 @@ func NewGrammar() *gopapageno.Grammar {
 		{T, PLUS, T},
 		{T, PLUS, T, PLUS, T},
 	}
-
 	precMatrix := [][]gopapageno.Precedence{
 		{gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields},
 		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecEquals},
