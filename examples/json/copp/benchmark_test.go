@@ -1,11 +1,8 @@
 package main
 
 import (
-	"context"
 	"github.com/giornetta/gopapageno"
 	"github.com/giornetta/gopapageno/benchmark"
-	"os"
-	"path"
 	"runtime"
 	"testing"
 )
@@ -13,7 +10,8 @@ import (
 const baseFolder = "../data/"
 
 var table = map[string]any{
-	baseFolder + "emojis-555.json": nil,
+	baseFolder + "generated-1000.json": nil,
+	baseFolder + "emojis-100.json":     nil,
 }
 
 func BenchmarkParse(b *testing.B) {
@@ -25,27 +23,11 @@ func TestProfile(t *testing.T) {
 	avgLen := gopapageno.DefaultAverageTokenLength
 	strat := gopapageno.ReductionParallel
 
-	var filename string = "small.json"
+	filename := ""
 
-	file := path.Join(baseFolder, filename)
-
-	bytes, err := os.ReadFile(file)
-	if err != nil {
-		t.Fatalf("could not read source file %s: %v", file, err)
-	}
-
-	r := gopapageno.NewRunner(
-		NewLexer(),
-		NewGrammar(),
-		gopapageno.WithConcurrency(c),
-		gopapageno.WithAverageTokenLength(avgLen),
-		gopapageno.WithReductionStrategy(strat),
-	)
-
-	ctx := context.Background()
-
-	_, err = r.Run(ctx, bytes)
-	if err != nil {
-		t.Fatalf("could not parse source: %v", err)
-	}
+	benchmark.Profile(
+		t,
+		NewLexer, NewGrammar,
+		c, avgLen, strat,
+		filename)
 }

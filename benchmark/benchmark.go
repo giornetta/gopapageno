@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/giornetta/gopapageno"
 	"os"
+	"path"
 	"runtime"
 	"testing"
 )
@@ -16,7 +17,7 @@ func Runner[T any](b *testing.B, parsingStrategy gopapageno.ParsingStrategy, new
 
 	b.Run(fmt.Sprintf("strategy=%s", parsingStrategy), func(b *testing.B) {
 		for filename, _ := range table {
-			b.Run(fmt.Sprintf("file=%s", filename), func(b *testing.B) {
+			b.Run(fmt.Sprintf("file=%s", path.Base(filename)), func(b *testing.B) {
 				for c := 1; c <= threads; c++ {
 					b.Run(fmt.Sprintf("goroutines=%d", c), func(b *testing.B) {
 						for _, reductionStrat := range reductionStrategies {
@@ -65,6 +66,7 @@ func RunExpect[T comparable](b *testing.B, r *gopapageno.Runner, filename string
 
 func Run(b *testing.B, r *gopapageno.Runner, filename string) {
 	b.StopTimer()
+	b.ResetTimer()
 
 	bytes, err := os.ReadFile(filename)
 	if err != nil {
@@ -80,5 +82,30 @@ func Run(b *testing.B, r *gopapageno.Runner, filename string) {
 		if err != nil {
 			b.Fatalf("could not parse source file: %v", err)
 		}
+	}
+}
+
+func Profile(t *testing.T,
+	newLexer func() *gopapageno.Lexer, newGrammar func() *gopapageno.Grammar,
+	c int, avgLen int, strat gopapageno.ReductionStrategy,
+	filename string) {
+	bytes, err := os.ReadFile(filename)
+	if err != nil {
+		t.Fatalf("could not read source file %s: %v", filename, err)
+	}
+
+	r := gopapageno.NewRunner(
+		newLexer(),
+		newGrammar(),
+		gopapageno.WithConcurrency(c),
+		gopapageno.WithAverageTokenLength(avgLen),
+		gopapageno.WithReductionStrategy(strat),
+	)
+
+	ctx := context.Background()
+
+	_, err = r.Run(ctx, bytes)
+	if err != nil {
+		t.Fatalf("could not parse source: %v", err)
 	}
 }

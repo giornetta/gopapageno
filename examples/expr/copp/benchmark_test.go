@@ -9,13 +9,26 @@ import (
 
 const baseFolder = "../data/"
 
-var table = map[string]any{
-	baseFolder + "generated-1000.json": nil,
-	baseFolder + "emojis-100.json":     nil,
+const (
+	fileSmall = "small.txt"
+	fileMB    = "1MB.txt"
+	file10MB  = "10MB.txt"
+)
+
+const (
+	resultSmall = 1 + 2*3*(4+5)
+	resultMB    = (1*2*3 + 11*222*3333*(1+2)) * 25966
+	result10MB  = (1*2*3 + 11*222*3333*(1+2)) * 257473
+)
+
+var table = map[string]int64{
+	fileSmall: resultSmall,
+	fileMB:    resultMB,
+	file10MB:  result10MB,
 }
 
 func BenchmarkParse(b *testing.B) {
-	benchmark.Runner[any](b, gopapageno.OPP, NewLexer, NewGrammar, table)
+	benchmark.Runner[int64](b, gopapageno.COPP, NewLexer, NewGrammar, table)
 }
 
 func TestProfile(t *testing.T) {
