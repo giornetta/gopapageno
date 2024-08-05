@@ -21,6 +21,8 @@ func (t RuleType) String() string {
 		return "RuleAppendRight"
 	case RuleCombine:
 		return "RuleCombine"
+	case RulePrefix:
+		return "RulePrefix"
 	case RuleCyclic:
 		return "RuleCyclic"
 	default:

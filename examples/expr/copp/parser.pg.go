@@ -120,10 +120,10 @@ func NewGrammar() *gopapageno.Grammar {
 		{P, []gopapageno.TokenType{D_T, PLUS, P}, gopapageno.RuleAppendLeft},
 		{P, []gopapageno.TokenType{D_T, PLUS, P}, gopapageno.RuleAppendLeft},
 		{S, []gopapageno.TokenType{P}, gopapageno.RuleSimple},
-		{P, []gopapageno.TokenType{P, PLUS, D_E_P_T}, gopapageno.RuleAppendRight},
-		{P, []gopapageno.TokenType{P, PLUS, D_E_P_T}, gopapageno.RuleAppendRight},
-		{P, []gopapageno.TokenType{P, PLUS, D_T}, gopapageno.RuleAppendRight},
-		{P, []gopapageno.TokenType{P, PLUS, D_T}, gopapageno.RuleAppendRight},
+		{P, []gopapageno.TokenType{P, PLUS, D_E_P_T}, gopapageno.RuleAppend},
+		{P, []gopapageno.TokenType{P, PLUS, D_E_P_T}, gopapageno.RuleAppend},
+		{P, []gopapageno.TokenType{P, PLUS, D_T}, gopapageno.RuleAppend},
+		{P, []gopapageno.TokenType{P, PLUS, D_T}, gopapageno.RuleAppend},
 		{P, []gopapageno.TokenType{P, PLUS, P}, gopapageno.RuleCombine},
 		{P, []gopapageno.TokenType{P, PLUS, P}, gopapageno.RuleCombine},
 		{P, []gopapageno.TokenType{P, PLUS, P}, gopapageno.RuleCombine},
@@ -418,7 +418,7 @@ func NewGrammar() *gopapageno.Grammar {
 			}
 			_ = P1
 		case 13:
-			ruleType = gopapageno.RuleAppendRight
+			ruleType = gopapageno.RuleAppend
 
 			P0 := lhs
 			P1 := rhs[0]
@@ -438,7 +438,7 @@ func NewGrammar() *gopapageno.Grammar {
 			_ = PLUS2
 			_ = D_E_P_T3
 		case 14:
-			ruleType = gopapageno.RuleAppendRight
+			ruleType = gopapageno.RuleAppend
 
 			P0 := lhs
 			P1 := rhs[0]
@@ -458,7 +458,7 @@ func NewGrammar() *gopapageno.Grammar {
 			_ = PLUS2
 			_ = D_E_P_T3
 		case 15:
-			ruleType = gopapageno.RuleAppendRight
+			ruleType = gopapageno.RuleAppend
 
 			P0 := lhs
 			P1 := rhs[0]
@@ -478,7 +478,7 @@ func NewGrammar() *gopapageno.Grammar {
 			_ = PLUS2
 			_ = D_T3
 		case 16:
-			ruleType = gopapageno.RuleAppendRight
+			ruleType = gopapageno.RuleAppend
 
 			P0 := lhs
 			P1 := rhs[0]

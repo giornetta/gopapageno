@@ -39,7 +39,7 @@ const (
 	RPAR
 )
 
-func SprintToken[TokenValue any](root *gopapageno.Token) string {
+func SprintToken(root *gopapageno.Token) string {
 	var sprintRec func(t *gopapageno.Token, sb *strings.Builder, indent string)
 
 	sprintRec = func(t *gopapageno.Token, sb *strings.Builder, indent string) {
@@ -79,7 +79,7 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 			sb.WriteString("Unknown")
 		}
 		if t.Value != nil {
-			sb.WriteString(fmt.Sprintf(": %v", *t.Value.(*TokenValue)))
+			sb.WriteString(fmt.Sprintf(": %v", t.Value))
 		}
 		sb.WriteString("\n")
 
@@ -102,7 +102,6 @@ func NewGrammar() *gopapageno.Grammar {
 	rules := []gopapageno.Rule{
 		{S, []gopapageno.TokenType{E}, gopapageno.RuleSimple},
 		{E, []gopapageno.TokenType{E, PLUS, E}, gopapageno.RuleCombine},
-		{E, []gopapageno.TokenType{E, PLUS, T}, gopapageno.RuleAppendRight},
 		{S, []gopapageno.TokenType{S}, gopapageno.RuleSimple},
 		{E, []gopapageno.TokenType{T, PLUS, E}, gopapageno.RuleAppendLeft},
 		{E, []gopapageno.TokenType{T, PLUS, T}, gopapageno.RuleCyclic},
@@ -110,12 +109,12 @@ func NewGrammar() *gopapageno.Grammar {
 		{T, []gopapageno.TokenType{LPAR, T, RPAR}, gopapageno.RuleSimple},
 		{T, []gopapageno.TokenType{NUMBER}, gopapageno.RuleSimple},
 	}
-	compressedRules := []uint16{0, 0, 5, 1, 13, 2, 31, 3, 34, 32769, 52, 32770, 75, 2, 0, 1, 32771, 18, 0, 0, 2, 1, 25, 3, 28, 1, 1, 0, 1, 2, 0, 2, 3, 0, 0, 0, 1, 32771, 39, 0, 0, 2, 1, 46, 3, 49, 1, 4, 0, 1, 5, 0, 0, 0, 2, 1, 59, 3, 67, 0, 0, 1, 32772, 64, 3, 6, 0, 0, 0, 1, 32772, 72, 3, 7, 0, 3, 8, 0}
+	compressedRules := []uint16{0, 0, 5, 1, 13, 2, 26, 3, 29, 32769, 47, 32770, 70, 2, 0, 1, 32771, 18, 0, 0, 1, 1, 23, 1, 1, 0, 2, 2, 0, 0, 0, 1, 32771, 34, 0, 0, 2, 1, 41, 3, 44, 1, 3, 0, 1, 4, 0, 0, 0, 2, 1, 54, 3, 62, 0, 0, 1, 32772, 59, 3, 5, 0, 0, 0, 1, 32772, 67, 3, 6, 0, 3, 7, 0}
 
-	maxPrefixLength := 5
+	maxPrefixLength := 4
 	prefixes := [][]gopapageno.TokenType{
-		{T, PLUS, T},
-		{T, PLUS, T, PLUS, T},
+		{T, PLUS},
+		{T, PLUS, T, PLUS},
 	}
 	precMatrix := [][]gopapageno.Precedence{
 		{gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields},
@@ -128,12 +127,9 @@ func NewGrammar() *gopapageno.Grammar {
 		706460516440404,
 	}
 
-	fn := func(rule uint16, lhs *gopapageno.Token, rhs []*gopapageno.Token, thread int) {
-		var ruleType gopapageno.RuleType
+	fn := func(rule uint16, lhs *gopapageno.Token, rhs []*gopapageno.Token, thread int, ruleType gopapageno.RuleType) {
 		switch rule {
 		case 0:
-			ruleType = gopapageno.RuleSimple
-
 			S0 := lhs
 			E1 := rhs[0]
 
@@ -145,8 +141,6 @@ func NewGrammar() *gopapageno.Grammar {
 			}
 			_ = E1
 		case 1:
-			ruleType = gopapageno.RuleCombine
-
 			E0 := lhs
 			E1 := rhs[0]
 			PLUS2 := rhs[1]
@@ -165,28 +159,6 @@ func NewGrammar() *gopapageno.Grammar {
 			_ = PLUS2
 			_ = E3
 		case 2:
-			ruleType = gopapageno.RuleAppendRight
-
-			E0 := lhs
-			E1 := rhs[0]
-			PLUS2 := rhs[1]
-			T3 := rhs[2]
-
-			E0.LastChild.Next = PLUS2
-			PLUS2.Next = T3
-			E0.LastChild = T3
-
-			{
-				newValue := parserPools[thread].Get()
-				*newValue = *E1.Value.(*int64) + *T3.Value.(*int64)
-				E0.Value = newValue
-			}
-			_ = E1
-			_ = PLUS2
-			_ = T3
-		case 3:
-			ruleType = gopapageno.RuleSimple
-
 			S0 := lhs
 			S1 := rhs[0]
 
@@ -197,9 +169,7 @@ func NewGrammar() *gopapageno.Grammar {
 				S0.Value = S1.Value
 			}
 			_ = S1
-		case 4:
-			ruleType = gopapageno.RuleAppendLeft
-
+		case 3:
 			E0 := lhs
 			T1 := rhs[0]
 			PLUS2 := rhs[1]
@@ -219,18 +189,22 @@ func NewGrammar() *gopapageno.Grammar {
 			_ = T1
 			_ = PLUS2
 			_ = E3
-		case 5:
-			ruleType = gopapageno.RuleCyclic
-
+		case 4:
 			E0 := lhs
 			T1 := rhs[0]
 			PLUS2 := rhs[1]
 			T3 := rhs[2]
 
-			E0.Child = T1
-			T1.Next = PLUS2
-			PLUS2.Next = T3
-			E0.LastChild = T3
+			if ruleType == gopapageno.RuleSimple {
+				E0.Child = T1
+				T1.Next = PLUS2
+				PLUS2.Next = T3
+				E0.LastChild = T3
+			} else if ruleType == gopapageno.RuleAppendRight {
+				E0.LastChild.Next = PLUS2
+				PLUS2.Next = T3
+				E0.LastChild = T3
+			}
 
 			{
 				newValue := parserPools[thread].Get()
@@ -240,9 +214,7 @@ func NewGrammar() *gopapageno.Grammar {
 			_ = T1
 			_ = PLUS2
 			_ = T3
-		case 6:
-			ruleType = gopapageno.RuleSimple
-
+		case 5:
 			T0 := lhs
 			LPAR1 := rhs[0]
 			E2 := rhs[1]
@@ -259,9 +231,7 @@ func NewGrammar() *gopapageno.Grammar {
 			_ = LPAR1
 			_ = E2
 			_ = RPAR3
-		case 7:
-			ruleType = gopapageno.RuleSimple
-
+		case 6:
 			T0 := lhs
 			LPAR1 := rhs[0]
 			T2 := rhs[1]
@@ -278,9 +248,7 @@ func NewGrammar() *gopapageno.Grammar {
 			_ = LPAR1
 			_ = T2
 			_ = RPAR3
-		case 8:
-			ruleType = gopapageno.RuleSimple
-
+		case 7:
 			T0 := lhs
 			NUMBER1 := rhs[0]
 
@@ -292,7 +260,6 @@ func NewGrammar() *gopapageno.Grammar {
 			}
 			_ = NUMBER1
 		}
-		_ = ruleType
 	}
 
 	return &gopapageno.Grammar{

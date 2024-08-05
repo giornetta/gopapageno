@@ -3,6 +3,7 @@ package gopapageno
 import (
 	"context"
 	"fmt"
+	"slices"
 )
 
 type COPParser struct {
@@ -74,9 +75,10 @@ func NewCOPParser(
 
 	for thread := 0; thread < concurrency; thread++ {
 		p.workers[thread] = &coppWorker{
-			parser: p,
-			id:     thread,
-			ntPool: p.pools.nonterminals[thread],
+			parser:         p,
+			id:             thread,
+			ntPool:         p.pools.nonterminals[thread],
+			producedTokens: make(map[*Token]*Token),
 		}
 	}
 
@@ -242,8 +244,8 @@ type coppWorker struct {
 func (w *coppWorker) parse(ctx context.Context, stack *COPPStack, tokens *LOS[Token], nextToken *Token, finalPass bool, resultCh chan<- parseResult[COPPStack], errCh chan<- error) {
 	tokensIt := tokens.HeadIterator()
 
-	prefix := make([]TokenType, w.parser.g.MaxRHSLength)
-	prefixTokens := make([]*Token, w.parser.g.MaxRHSLength)
+	rhs := make([]TokenType, 0, w.parser.g.MaxPrefixLength)
+	rhsTokens := make([]*Token, 0, w.parser.g.MaxPrefixLength)
 
 	// If the thread is the first, push a # onto the stack
 	// Otherwise, push the first inputToken onto the stack
@@ -271,8 +273,7 @@ func (w *coppWorker) parse(ctx context.Context, stack *COPPStack, tokens *LOS[To
 		}
 	}
 
-	var rhs []TokenType
-	var rhsTokens []*Token
+	var prefixCount int
 
 	// Iterate over the tokens
 	// If this is the first worker, start reading from the input stack, otherwise begin with the last
@@ -329,24 +330,46 @@ func (w *coppWorker) parse(ctx context.Context, stack *COPPStack, tokens *LOS[To
 				break
 			}
 
-			oldIndex := stack.State.CurrentIndex
 			// If the current construction is a single nonterminal.
 			if stack.IsCurrentSingleNonterminal() {
 				stack.State.CurrentIndex = stack.State.PreviousIndex
 				stack.State.CurrentLen += stack.State.PreviousLen
 			}
 
-			rhsTokens = rhsTokens[:0]
-			rhsTokens = append(rhsTokens, stack.Current()...)
-
-			rhs = rhs[:0]
-			for i := range stack.State.CurrentLen {
-				rhs = append(rhs, rhsTokens[i].Type)
+			if len(rhsTokens) == 0 {
+				rhsTokens = append(rhsTokens, stack.Current()...)
+				for i := range stack.State.CurrentLen {
+					rhs = append(rhs, rhsTokens[i].Type)
+				}
 			}
 
-			lhs, ruleNum := w.parser.g.findMatch(rhs)
-			if lhs != TokenEmpty && w.parser.g.Rules[ruleNum].Type != RuleSimple {
-				lhsToken, err := w.match(rhs, rhsTokens, true)
+			rhsTokens = append(rhsTokens, inputToken)
+			rhs = append(rhs, inputToken.Type)
+
+			found := false
+			for _, prefix := range w.parser.g.Prefixes {
+				if slices.Equal(prefix, rhs) {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				prefixCount++
+				stack.AppendStateToken(inputToken)
+
+				// Replace the topmost token on the stack, keeping its state unchanged.
+				_, s := stack.Pop2()
+				stack.PushWithState(inputToken, *s)
+
+				inputToken = tokensIt.Next()
+
+				continue
+			}
+
+			lhs, ruleNum := w.parser.g.findMatch(rhs[:len(rhs)-prefixCount-1])
+			if lhs != TokenEmpty && w.parser.g.Rules[ruleNum].Type == RuleCyclic {
+				lhsToken, err := w.matchPrefix(lhs, ruleNum, rhs[:len(rhs)-prefixCount-1], rhsTokens[:len(rhsTokens)-prefixCount-1])
 				if err != nil {
 					errCh <- fmt.Errorf("worker %d could not match: %v", w.id, err)
 					return
@@ -357,7 +380,7 @@ func (w *coppWorker) parse(ctx context.Context, stack *COPPStack, tokens *LOS[To
 				stack.State.CurrentLen = 0
 				stack.AppendStateToken(lhsToken)
 
-				_ = oldIndex
+				prefixCount = 0
 			}
 
 			stack.AppendStateToken(inputToken)
@@ -382,19 +405,19 @@ func (w *coppWorker) parse(ctx context.Context, stack *COPPStack, tokens *LOS[To
 			} else {
 				var i int
 				// Prefix is made of a single nonterminal
-				prefixTokens = prefixTokens[:0]
-				prefix = prefix[:0]
+				rhsTokens = rhsTokens[:0]
+				rhs = rhs[:0]
 
 				if stack.IsCurrentSingleNonterminal() {
-					prefixTokens = append(prefixTokens, stack.Previous()...)
+					rhsTokens = append(rhsTokens, stack.Previous()...)
 					for i = 0; i < stack.State.PreviousLen; i++ {
-						prefix = append(prefix, prefixTokens[i].Type)
+						rhs = append(rhs, rhsTokens[i].Type)
 					}
 				}
 
-				prefixTokens = append(prefixTokens, stack.Current()...)
+				rhsTokens = append(rhsTokens, stack.Current()...)
 				for j := 0; j < stack.State.CurrentLen; j++ {
-					prefix = append(prefix, prefixTokens[i].Type)
+					rhs = append(rhs, rhsTokens[i].Type)
 
 					i++
 				}
@@ -411,20 +434,22 @@ func (w *coppWorker) parse(ctx context.Context, stack *COPPStack, tokens *LOS[To
 					stack.State.PreviousLen = st.CurrentLen
 				}
 
-				rhsTokens = prefixTokens[:i]
-				rhs = prefix[:i]
-
-				lhsToken, err := w.match(rhs, rhsTokens, false)
+				lhsToken, err := w.match(rhs, rhsTokens)
 				if err != nil {
 					errCh <- fmt.Errorf("worker %d could not match: %v", w.id, err)
 					return
 				}
+
+				rhsTokens = rhsTokens[:0]
+				rhs = rhs[:0]
 
 				// Reset state
 				stack.StateTokenStack.Tos = stack.State.PreviousIndex + stack.State.PreviousLen + 1
 				stack.State.CurrentIndex = stack.StateTokenStack.Tos - 1
 				stack.State.CurrentLen = 1
 				stack.StateTokenStack.Replace(lhsToken)
+
+				prefixCount = 0
 			}
 		} else {
 			//If there's no precedence relation, abort the parsing
@@ -436,18 +461,59 @@ func (w *coppWorker) parse(ctx context.Context, stack *COPPStack, tokens *LOS[To
 	resultCh <- parseResult[COPPStack]{w.id, stack}
 }
 
-func (w *coppWorker) match(rhs []TokenType, rhsTokens []*Token, isPrefix bool) (*Token, error) {
+func (w *coppWorker) matchPrefix(lhs TokenType, ruleNum uint16, rhs []TokenType, rhsTokens []*Token) (*Token, error) {
+	var lhsToken *Token
+
+	firstToken := rhsTokens[0]
+
+	parentToken, ok := w.producedTokens[rhsTokens[0]]
+	if !ok {
+		lhsToken = w.ntPool.Get()
+		lhsToken.Type = lhs
+	} else {
+		lhsToken = parentToken
+
+		rhsTokens[0] = lhsToken
+		rhs[0] = lhs
+
+		// TODO: RuleType could be directly set from here.
+		lhs, ruleNum = w.parser.g.findMatch(rhs)
+		if lhs == TokenEmpty {
+			return nil, fmt.Errorf("could not find match for rhs %v", rhs)
+		}
+	}
+
+	//Execute the semantic action
+	w.parser.g.Func(ruleNum, lhsToken, rhsTokens, w.id)
+
+	w.producedTokens[rhsTokens[0]] = lhsToken
+
+	return firstToken, nil
+}
+
+func (w *coppWorker) match(rhs []TokenType, rhsTokens []*Token) (*Token, error) {
 	lhs, ruleNum := w.parser.g.findMatch(rhs)
 	if lhs == TokenEmpty {
 		return nil, fmt.Errorf("could not find match for rhs %v", rhs)
 	}
 
-	lhsToken := rhsTokens[0]
+	var lhsToken *Token
 
-	ruleType := w.parser.g.Rules[ruleNum].Type
-	if ruleType == RuleSimple || ruleType == RuleCyclic {
+	parentToken, ok := w.producedTokens[rhsTokens[0]]
+	if !ok {
 		lhsToken = w.ntPool.Get()
 		lhsToken.Type = lhs
+	} else {
+		lhsToken = parentToken
+
+		rhs[0] = lhs
+		rhsTokens[0] = lhsToken
+
+		// TODO: RuleType could be directly set from here.
+		lhs, ruleNum = w.parser.g.findMatch(rhs)
+		if lhs == TokenEmpty {
+			return nil, fmt.Errorf("could not find match for rhs %v", rhs)
+		}
 	}
 
 	//Execute the semantic action

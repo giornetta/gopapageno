@@ -1,5 +1,4 @@
 %axiom S
-%preamble ParserPreallocMem
 
 %%
 
@@ -8,11 +7,18 @@ S : E
     $$.Value = $1.Value
 };
 
-E : (V OPERATOR)+ V
+E : (V TIMES OPERATOR)+ TIMES
 {
-    newValue := parserPools[thread].Get()
-    *newValue = *$1.Value.(*int64) + *$3.Value.(*int64)
-    $$.Value = newValue
+    switch ruleType {
+    case gopapageno.RuleCyclic:
+        $$.Value = $1.Value.(int64)
+    case gopapageno.RuleAppendRight:
+        $$.Value = $$.Value.(int64) * 2
+    case gopapageno.RuleAppendLeft:
+        $$.Value = $$.Value.(int64) * 2
+    case gopapageno.RuleCombine:
+        $$.Value = $1.Value.(int64) + $4.Value.(int64)
+    }
 };
 
 V : NUMBER
@@ -21,20 +27,3 @@ V : NUMBER
 };
 
 %%
-
-import (
-	"math"
-)
-
-var parserPools []*gopapageno.Pool[int64]
-
-func ParserPreallocMem(inputSize int, numThreads int) {
-	parserPools = make([]*gopapageno.Pool[int64], numThreads)
-
-	avgCharsPerNumber := float64(2)
-	poolSizePerThread := int(math.Ceil((float64(inputSize) / avgCharsPerNumber) / float64(numThreads)))
-
-	for i := 0; i < numThreads; i++ {
-		parserPools[i] = gopapageno.NewPool[int64](poolSizePerThread)
-	}
-}

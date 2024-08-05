@@ -7,23 +7,6 @@ import (
 	"strings"
 )
 
-import (
-	"math"
-)
-
-var parserPools []*gopapageno.Pool[int64]
-
-func ParserPreallocMem(inputSize int, numThreads int) {
-	parserPools = make([]*gopapageno.Pool[int64], numThreads)
-
-	avgCharsPerNumber := float64(2)
-	poolSizePerThread := int(math.Ceil((float64(inputSize) / avgCharsPerNumber) / float64(numThreads)))
-
-	for i := 0; i < numThreads; i++ {
-		parserPools[i] = gopapageno.NewPool[int64](poolSizePerThread)
-	}
-}
-
 // Non-terminals
 const (
 	E = gopapageno.TokenEmpty + 1 + iota
@@ -35,9 +18,10 @@ const (
 const (
 	NUMBER = gopapageno.TokenTerm + 1 + iota
 	OPERATOR
+	TIMES
 )
 
-func SprintToken[TokenValue any](root *gopapageno.Token) string {
+func SprintToken(root *gopapageno.Token) string {
 	var sprintRec func(t *gopapageno.Token, sb *strings.Builder, indent string)
 
 	sprintRec = func(t *gopapageno.Token, sb *strings.Builder, indent string) {
@@ -67,13 +51,15 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 			sb.WriteString("NUMBER")
 		case OPERATOR:
 			sb.WriteString("OPERATOR")
+		case TIMES:
+			sb.WriteString("TIMES")
 		case gopapageno.TokenTerm:
 			sb.WriteString("Term")
 		default:
 			sb.WriteString("Unknown")
 		}
 		if t.Value != nil {
-			sb.WriteString(fmt.Sprintf(": %v", *t.Value.(*TokenValue)))
+			sb.WriteString(fmt.Sprintf(": %v", t.Value))
 		}
 		sb.WriteString("\n")
 
@@ -89,33 +75,34 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 }
 
 func NewGrammar() *gopapageno.Grammar {
-	numTerminals := uint16(3)
+	numTerminals := uint16(4)
 	numNonTerminals := uint16(4)
 
-	maxRHSLen := 3
+	maxRHSLen := 4
 	rules := []gopapageno.Rule{
 		{S, []gopapageno.TokenType{E}, gopapageno.RuleSimple},
-		{E, []gopapageno.TokenType{E, OPERATOR, E}, gopapageno.RuleCombine},
-		{E, []gopapageno.TokenType{E, OPERATOR, V}, gopapageno.RuleAppendRight},
+		{E, []gopapageno.TokenType{E, TIMES, OPERATOR, E}, gopapageno.RuleCombine},
+		{E, []gopapageno.TokenType{E, TIMES, OPERATOR, TIMES}, gopapageno.RuleAppendRight},
 		{S, []gopapageno.TokenType{S}, gopapageno.RuleSimple},
-		{E, []gopapageno.TokenType{V, OPERATOR, E}, gopapageno.RuleAppendLeft},
-		{E, []gopapageno.TokenType{V, OPERATOR, V}, gopapageno.RuleCyclic},
+		{E, []gopapageno.TokenType{V, TIMES, OPERATOR, E}, gopapageno.RuleAppendLeft},
+		{E, []gopapageno.TokenType{V, TIMES, OPERATOR, TIMES}, gopapageno.RuleCyclic},
 		{V, []gopapageno.TokenType{NUMBER}, gopapageno.RuleSimple},
 	}
-	compressedRules := []uint16{0, 0, 4, 1, 11, 2, 29, 3, 32, 32769, 50, 2, 0, 1, 32770, 16, 0, 0, 2, 1, 23, 3, 26, 1, 1, 0, 1, 2, 0, 2, 3, 0, 0, 0, 1, 32770, 37, 0, 0, 2, 1, 44, 3, 47, 1, 4, 0, 1, 5, 0, 3, 6, 0}
+	compressedRules := []uint16{0, 0, 4, 1, 11, 2, 34, 3, 37, 32769, 60, 2, 0, 1, 32771, 16, 0, 0, 1, 32770, 21, 0, 0, 2, 1, 28, 32771, 31, 1, 1, 0, 1, 2, 0, 2, 3, 0, 0, 0, 1, 32771, 42, 0, 0, 1, 32770, 47, 0, 0, 2, 1, 54, 32771, 57, 1, 4, 0, 1, 5, 0, 3, 6, 0}
 
-	maxPrefixLength := 5
+	maxPrefixLength := 6
 	prefixes := [][]gopapageno.TokenType{
-		{V, OPERATOR, V},
-		{V, OPERATOR, V, OPERATOR, V},
+		{V, TIMES, OPERATOR},
+		{V, TIMES, OPERATOR, V, TIMES, OPERATOR},
 	}
 	precMatrix := [][]gopapageno.Precedence{
-		{gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields},
-		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecTakes},
-		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecEquals},
+		{gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields},
+		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecTakes},
+		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecEquals, gopapageno.PrecEquals},
+		{gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecEmpty, gopapageno.PrecEquals},
 	}
 	bitPackedMatrix := []uint64{
-		26772,
+		33981012,
 	}
 
 	fn := func(rule uint16, lhs *gopapageno.Token, rhs []*gopapageno.Token, thread int) {
@@ -139,41 +126,61 @@ func NewGrammar() *gopapageno.Grammar {
 
 			E0 := lhs
 			E1 := rhs[0]
-			OPERATOR2 := rhs[1]
-			E3 := rhs[2]
+			TIMES2 := rhs[1]
+			OPERATOR3 := rhs[2]
+			E4 := rhs[3]
 
-			E0.LastChild.Next = OPERATOR2
-			OPERATOR2.Next = E3.Child
-			E0.LastChild = E3.LastChild
+			E0.LastChild.Next = TIMES2
+			TIMES2.Next = OPERATOR3
+			OPERATOR3.Next = E4.Child
+			E0.LastChild = E4.LastChild
 
 			{
-				newValue := parserPools[thread].Get()
-				*newValue = *E1.Value.(*int64) + *E3.Value.(*int64)
-				E0.Value = newValue
+				switch ruleType {
+				case gopapageno.RuleCyclic:
+					E0.Value = E1.Value.(int64)
+				case gopapageno.RuleAppendRight:
+					E0.Value = E0.Value.(int64) * 2
+				case gopapageno.RuleAppendLeft:
+					E0.Value = E0.Value.(int64) * 2
+				case gopapageno.RuleCombine:
+					E0.Value = E1.Value.(int64) + E4.Value.(int64)
+				}
 			}
 			_ = E1
-			_ = OPERATOR2
-			_ = E3
+			_ = TIMES2
+			_ = OPERATOR3
+			_ = E4
 		case 2:
 			ruleType = gopapageno.RuleAppendRight
 
 			E0 := lhs
 			E1 := rhs[0]
-			OPERATOR2 := rhs[1]
-			V3 := rhs[2]
+			TIMES2 := rhs[1]
+			OPERATOR3 := rhs[2]
+			TIMES4 := rhs[3]
 
-			E0.LastChild.Next = OPERATOR2
-			OPERATOR2.Next = V3
-			E0.LastChild = V3
+			E0.LastChild.Next = TIMES2
+			TIMES2.Next = OPERATOR3
+			OPERATOR3.Next = TIMES4
+			E0.LastChild = TIMES4
 
 			{
-				newValue := parserPools[thread].Get()
-				*newValue = *E1.Value.(*int64) + *V3.Value.(*int64)
-				E0.Value = newValue
+				switch ruleType {
+				case gopapageno.RuleCyclic:
+					E0.Value = E1.Value.(int64)
+				case gopapageno.RuleAppendRight:
+					E0.Value = E0.Value.(int64) * 2
+				case gopapageno.RuleAppendLeft:
+					E0.Value = E0.Value.(int64) * 2
+				case gopapageno.RuleCombine:
+					E0.Value = E1.Value.(int64) + TIMES4.Value.(int64)
+				}
 			}
 			_ = E1
-			_ = OPERATOR2
-			_ = V3
+			_ = TIMES2
+			_ = OPERATOR3
+			_ = TIMES4
 		case 3:
 			ruleType = gopapageno.RuleSimple
 
@@ -192,44 +199,64 @@ func NewGrammar() *gopapageno.Grammar {
 
 			E0 := lhs
 			V1 := rhs[0]
-			OPERATOR2 := rhs[1]
-			E3 := rhs[2]
+			TIMES2 := rhs[1]
+			OPERATOR3 := rhs[2]
+			E4 := rhs[3]
 
 			oldChild := E0
 			E0.Child = V1
-			V1.Next = OPERATOR2
-			OPERATOR2.Next = E3
-			E3.Next = oldChild
+			V1.Next = TIMES2
+			TIMES2.Next = OPERATOR3
+			OPERATOR3.Next = E4
+			E4.Next = oldChild
 
 			{
-				newValue := parserPools[thread].Get()
-				*newValue = *V1.Value.(*int64) + *E3.Value.(*int64)
-				E0.Value = newValue
+				switch ruleType {
+				case gopapageno.RuleCyclic:
+					E0.Value = V1.Value.(int64)
+				case gopapageno.RuleAppendRight:
+					E0.Value = E0.Value.(int64) * 2
+				case gopapageno.RuleAppendLeft:
+					E0.Value = E0.Value.(int64) * 2
+				case gopapageno.RuleCombine:
+					E0.Value = V1.Value.(int64) + E4.Value.(int64)
+				}
 			}
 			_ = V1
-			_ = OPERATOR2
-			_ = E3
+			_ = TIMES2
+			_ = OPERATOR3
+			_ = E4
 		case 5:
 			ruleType = gopapageno.RuleCyclic
 
 			E0 := lhs
 			V1 := rhs[0]
-			OPERATOR2 := rhs[1]
-			V3 := rhs[2]
+			TIMES2 := rhs[1]
+			OPERATOR3 := rhs[2]
+			TIMES4 := rhs[3]
 
 			E0.Child = V1
-			V1.Next = OPERATOR2
-			OPERATOR2.Next = V3
-			E0.LastChild = V3
+			V1.Next = TIMES2
+			TIMES2.Next = OPERATOR3
+			OPERATOR3.Next = TIMES4
+			E0.LastChild = TIMES4
 
 			{
-				newValue := parserPools[thread].Get()
-				*newValue = *V1.Value.(*int64) + *V3.Value.(*int64)
-				E0.Value = newValue
+				switch ruleType {
+				case gopapageno.RuleCyclic:
+					E0.Value = V1.Value.(int64)
+				case gopapageno.RuleAppendRight:
+					E0.Value = E0.Value.(int64) * 2
+				case gopapageno.RuleAppendLeft:
+					E0.Value = E0.Value.(int64) * 2
+				case gopapageno.RuleCombine:
+					E0.Value = V1.Value.(int64) + TIMES4.Value.(int64)
+				}
 			}
 			_ = V1
-			_ = OPERATOR2
-			_ = V3
+			_ = TIMES2
+			_ = OPERATOR3
+			_ = TIMES4
 		case 6:
 			ruleType = gopapageno.RuleSimple
 
@@ -259,6 +286,5 @@ func NewGrammar() *gopapageno.Grammar {
 		Prefixes:                  prefixes,
 		Func:                      fn,
 		ParsingStrategy:           gopapageno.COPP,
-		PreambleFunc:              ParserPreallocMem,
 	}
 }

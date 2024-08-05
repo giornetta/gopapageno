@@ -40,7 +40,7 @@ const (
 	RPAR
 )
 
-func SprintToken[TokenValue any](root *gopapageno.Token) string {
+func SprintToken(root *gopapageno.Token) string {
 	var sprintRec func(t *gopapageno.Token, sb *strings.Builder, indent string)
 
 	sprintRec = func(t *gopapageno.Token, sb *strings.Builder, indent string) {
@@ -80,7 +80,7 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 			sb.WriteString("Unknown")
 		}
 		if t.Value != nil {
-			sb.WriteString(fmt.Sprintf(": %v", *t.Value.(*TokenValue)))
+			sb.WriteString(fmt.Sprintf(": %v", t.Value))
 		}
 		sb.WriteString("\n")
 
