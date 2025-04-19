@@ -164,6 +164,6 @@ Example folders also contain a `benchmark_test.go` benchmark file that can be ex
 
 ## Authors and Contributors
 
- * Michele Giornetta <michelegiornetta@gmail.com> (Refactor, AOPP and C-OPP Extensions)
+ * Michele Giornetta <michelegiornetta@gmail.com> <michele.giornetta@mail.polimi.it> (Refactor, AOPP and C-OPP Extensions)
  * Luca Marzi <luca.marzi@mail.polimi.it> (XPath Extension)
  * Simone Guidi <simone.guidi@mail.polimi.it> (Original Version)
