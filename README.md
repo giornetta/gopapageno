@@ -143,7 +143,7 @@ Here, `Rhs` is the name of a nonterminal token, and `Rhs` is a list of tokens se
 
 The `Action` is the Go code that will be executed when the rule is reduced. Inside an `Action`, the following variables are available:
 - `rule`: the index of the grammar rule being matched.
-- `ruleFlags`: additional metadata about the kind of rule being matched. *(Relevant only when working with C-OPG)*
+- `ruleFlags`: additional metadata about the kind of rule being matched. *(Relevant only when working with C-OPGs)*
 - `thread`: the index of the concurrent worker performing the reduction.
 
 Moreover, the special symbols `$$` and `$k` can be used to access, respectively, the lhs token and the k-th rhs token. GoPAPAGENO will replace them with the actual references to the tokens when generating code.
@@ -160,7 +160,7 @@ The `examples` folder contains examples of generated parsers for different langu
 
 To run a parser, execute the generated `main.pg.go` files with the command-line flags detailed in the [Installing and running the tool section](#installing-and-running-the-tool).
 
-Example folders also contain a `benchmark_test.go` benchmark file that can be executed to run benchmarks specific to that parsing algorithm and grammar.
+Example folders also contain a `benchmark_test.go` benchmark file that can be executed to run benchmarks specific to that parsing algorithm and grammar. Two benchmarks named `BenchmarkParse` and `BenchmarkParseOnly` are defined: the first benchmarks the entire lexing and parsing process, the second one only considers the parsing stage. 
 
 ## Authors and Contributors
 
