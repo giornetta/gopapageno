@@ -1,0 +1,8 @@
+.idea
+examples/adder
+examples/expr
+examples/nested
+examples/xml
+examples/xpath
+scripts/
+ext/
