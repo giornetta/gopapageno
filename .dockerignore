@@ -1,8 +1,30 @@
 .idea
-examples/adder
-examples/expr
-examples/nested
-examples/xml
-examples/xpath
-scripts/
+
+# Ignore all example folders except examples/json
+examples/*
+!examples/json
+
+Taskfile.yml
+
+# Ignore all bench_results folders in any directory
+**/bench_results
+**/bench_results/*
+
+# Ignore all benchstat folders in any directory
+**/benchstat
+**/benchstat/*
+
+# Ignore all 7z files
+**/*.7z
+
 ext/
+
+# Common files
+.git
+.gitignore
+.dockerignore
+Dockerfile
+*.log
+*.tmp
+*.test
+*.out

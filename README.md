@@ -8,7 +8,6 @@ algorithm, while also generating much flatter parse trees.
 > [!NOTE]
 > This project was developed as part of my Master's Thesis work at Politecnico di Milano. This is not at a production-grade level of functionality and optimization, and could be greatly improved to achieve even better results.
 
-
 ## Usage
 
 GoPAPAGENO is able to automatically generate parallel scanners and parsers starting from two specification files which resemble those required by programs like Flex and Bison. This section explains how to write these files and how to use the tool and the programs
@@ -160,7 +159,7 @@ The `examples` folder contains examples of generated parsers for different langu
 
 To run a parser, execute the generated `main.pg.go` files with the command-line flags detailed in the [Installing and running the tool section](#installing-and-running-the-tool).
 
-Example folders also contain a `benchmark_test.go` benchmark file that can be executed to run benchmarks specific to that parsing algorithm and grammar. Two benchmarks named `BenchmarkParse` and `BenchmarkParseOnly` are defined: the first benchmarks the entire lexing and parsing process, the second one only considers the parsing stage. 
+Example folders also contain a `benchmark_test.go` benchmark file that can be executed to run benchmarks specific to that parsing algorithm and grammar. Two benchmarks named `BenchmarkParse` and `BenchmarkParseOnly` are defined: the first considers the entire lexing and parsing process, the second one only considers the parsing stage. 
 
 ## Authors and Contributors
 
