@@ -41,13 +41,15 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Create base filename using benchmark name and count
-BASE_FILE="benchmark_json_${BENCH_NAME}_c${COUNT}"
+BASE_FILE="${BENCH_NAME}_json_c${COUNT}"
 
 echo "Running benchmarks for OPP with benchmark '$BENCH_NAME' and count $COUNT..."
 go test github.com/giornetta/gopapageno/examples/json/opp -bench=$BENCH_NAME -count=$COUNT > ${BASE_FILE}_opp.txt
-echo 'Running benchmarks for AOPP...'
+
+echo "Running benchmarks for AOPP with benchmark '$BENCH_NAME' and count $COUNT..."
 go test github.com/giornetta/gopapageno/examples/json/aopp -bench=$BENCH_NAME -count=$COUNT > ${BASE_FILE}_aopp.txt
-echo 'Running benchmarks for COPP...'
+
+echo "Running benchmarks for COPP with benchmark '$BENCH_NAME' and count $COUNT..."
 go test github.com/giornetta/gopapageno/examples/json/copp -bench=$BENCH_NAME -count=$COUNT > ${BASE_FILE}_copp.txt
 
 echo "Generating figure ${BASE_FILE}.png"
@@ -56,8 +58,8 @@ go tool benchplot -bench=$BENCH_NAME -group-by=strategy -plots=avg_line -o=${BAS
 rm ${BASE_FILE}_combine.txt
 
 echo "Generating benchstat file ${BASE_FILE}_compare.txt"
-python3 prepare_benchmarks.py ${BASE_FILE}_opp.txt ${BASE_FILE}_aopp.txt ${BASE_FILE}_copp.txt ${BASE_FILE}_stat.txt
-go tool benchstat ${BASE_FILE}_stat.txt > ${BASE_FILE}_compare.txt
+python3 ./scripts/prepare_benchmarks.py ${BASE_FILE}_opp.txt ${BASE_FILE}_aopp.txt ${BASE_FILE}_copp.txt ${BASE_FILE}_stat.txt
+benchstat ${BASE_FILE}_stat.txt > ${BASE_FILE}_compare.txt
 rm ${BASE_FILE}_stat.txt
 
 echo "Benchmark completed successfully!"

@@ -5,6 +5,8 @@ WORKDIR /gopapageno
 # Install git and basic build tools along with a shell for better interactive experience
 RUN apk add --no-cache git make gcc libc-dev bash vim curl python3
 
+RUN go install golang.org/x/perf/cmd/benchstat@latest
+
 COPY go.mod go.sum ./
 RUN go mod download
 
