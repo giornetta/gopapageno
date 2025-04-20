@@ -166,6 +166,8 @@ To run a benchmark, execute a command with the following format:
 go test github.com/giornetta/gopapageno/examples/{{ .EXAMPLE }}/{{ .STRAT }} -bench=BenchmarkParseOnly -count={{ .COUNT }}
 ```
 
+To learn more about benchmarking details and how to replicate the process, please read the [EVALUATING.md](EVALUATING.md) file.
+
 ## Authors and Contributors
 
  * Michele Giornetta <michelegiornetta@gmail.com> <michele.giornetta@mail.polimi.it> (Refactor, AOPP and C-OPP Extensions)
