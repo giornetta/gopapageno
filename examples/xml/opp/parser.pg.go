@@ -2,10 +2,11 @@
 package main
 
 import (
-	"fmt"
 	"github.com/giornetta/gopapageno"
 	"strings"
+	"fmt"
 )
+
 
 // Non-terminals
 const (
@@ -24,7 +25,7 @@ const (
 	OpenParams
 )
 
-func SprintToken[TokenValue any](root *gopapageno.Token) string {
+func SprintToken[ValueType any](root *gopapageno.Token) string {
 	var sprintRec func(t *gopapageno.Token, sb *strings.Builder, indent string)
 
 	sprintRec = func(t *gopapageno.Token, sb *strings.Builder, indent string) {
@@ -67,19 +68,23 @@ func SprintToken[TokenValue any](root *gopapageno.Token) string {
 		default:
 			sb.WriteString("Unknown")
 		}
-		if t.Value != nil {
-			sb.WriteString(fmt.Sprintf(": %v", *t.Value.(*TokenValue)))
-		}
-		sb.WriteString("\n")
 
+		if t.Value != nil {
+			if v, ok := any(t.Value).(*ValueType); ok {
+				sb.WriteString(fmt.Sprintf(": %v", *v))
+			}
+		}
+		
+		sb.WriteString("\n")
+		
 		sprintRec(t.Child, sb, indent)
 		sprintRec(t.Next, sb, indent[:len(indent)-4])
 	}
 
 	var sb strings.Builder
-
+	
 	sprintRec(root, &sb, "")
-
+	
 	return sb.String()
 }
 
@@ -87,14 +92,8 @@ func NewGrammar() *gopapageno.Grammar {
 	numTerminals := uint16(9)
 	numNonTerminals := uint16(2)
 
-	maxRHSLen := 4
+	maxRHSLen := 3
 	rules := []gopapageno.Rule{
-		{ELEM, []gopapageno.TokenType{ELEM}, gopapageno.RuleSimple},
-		{ELEM, []gopapageno.TokenType{ELEM, AlternativeClose}, gopapageno.RuleSimple},
-		{ELEM, []gopapageno.TokenType{ELEM, OpenBracket, ELEM, CloseBracket}, gopapageno.RuleSimple},
-		{ELEM, []gopapageno.TokenType{ELEM, OpenCloseInfo}, gopapageno.RuleSimple},
-		{ELEM, []gopapageno.TokenType{ELEM, OpenCloseParams}, gopapageno.RuleSimple},
-		{ELEM, []gopapageno.TokenType{ELEM, OpenParams, ELEM, CloseParams}, gopapageno.RuleSimple},
 		{ELEM, []gopapageno.TokenType{AlternativeClose}, gopapageno.RuleSimple},
 		{ELEM, []gopapageno.TokenType{Infos}, gopapageno.RuleSimple},
 		{ELEM, []gopapageno.TokenType{OpenBracket, ELEM, CloseBracket}, gopapageno.RuleSimple},
@@ -102,10 +101,8 @@ func NewGrammar() *gopapageno.Grammar {
 		{ELEM, []gopapageno.TokenType{OpenCloseParams}, gopapageno.RuleSimple},
 		{ELEM, []gopapageno.TokenType{OpenParams, ELEM, CloseBracket}, gopapageno.RuleSimple},
 	}
-	compressedRules := []uint16{0, 0, 7, 1, 17, 32769, 65, 32772, 68, 32773, 71, 32774, 84, 32775, 87, 32776, 90, 1, 0, 5, 32769, 30, 32773, 33, 32774, 46, 32775, 49, 32776, 52, 1, 1, 0, 0, 0, 1, 1, 38, 0, 0, 1, 32770, 43, 1, 2, 0, 1, 3, 0, 1, 4, 0, 0, 0, 1, 1, 57, 0, 0, 1, 32771, 62, 1, 5, 0, 1, 6, 0, 1, 7, 0, 0, 0, 1, 1, 76, 0, 0, 1, 32770, 81, 1, 8, 0, 1, 9, 0, 1, 10, 0, 0, 0, 1, 1, 95, 0, 0, 1, 32770, 100, 1, 11, 0}
+	compressedRules := []uint16{0, 0, 6, 32769, 15, 32772, 18, 32773, 21, 32774, 34, 32775, 37, 32776, 40, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 26, 0, 0, 1, 32770, 31, 1, 2, 0, 1, 3, 0, 1, 4, 0, 0, 0, 1, 1, 45, 0, 0, 1, 32770, 50, 1, 5, 0	}
 
-	maxPrefixLength := 0
-	prefixes := [][]gopapageno.TokenType{}
 	precMatrix := [][]gopapageno.Precedence{
 		{gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields},
 		{gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecEmpty, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecTakes, gopapageno.PrecTakes},
@@ -118,115 +115,12 @@ func NewGrammar() *gopapageno.Grammar {
 		{gopapageno.PrecTakes, gopapageno.PrecYields, gopapageno.PrecEquals, gopapageno.PrecEquals, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields, gopapageno.PrecYields},
 	}
 	bitPackedMatrix := []uint64{
-		3074422161111864660, 12288816313876916906, 5721467434,
+		3074422161111864660, 12288816313876916906, 5721467434, 
 	}
 
-	fn := func(rule uint16, lhs *gopapageno.Token, rhs []*gopapageno.Token, thread int) {
-		var ruleType gopapageno.RuleFlags
-		switch rule {
+	fn := func(ruleDescription uint16, ruleFlags gopapageno.RuleFlags, lhs *gopapageno.Token, rhs []*gopapageno.Token, thread int){
+		switch ruleDescription {
 		case 0:
-			ruleType = gopapageno.RuleSimple
-
-			ELEM0 := lhs
-			ELEM1 := rhs[0]
-
-			ELEM0.Child = ELEM1
-			ELEM0.LastChild = ELEM1
-
-			{
-				ELEM0.Value = ELEM1.Value
-			}
-			_ = ELEM1
-		case 1:
-			ruleType = gopapageno.RuleSimple
-
-			ELEM0 := lhs
-			ELEM1 := rhs[0]
-			AlternativeClose2 := rhs[1]
-
-			ELEM0.Child = ELEM1
-			ELEM1.Next = AlternativeClose2
-			ELEM0.LastChild = AlternativeClose2
-
-			{
-			}
-			_ = ELEM1
-			_ = AlternativeClose2
-		case 2:
-			ruleType = gopapageno.RuleSimple
-
-			ELEM0 := lhs
-			ELEM1 := rhs[0]
-			OpenBracket2 := rhs[1]
-			ELEM3 := rhs[2]
-			CloseBracket4 := rhs[3]
-
-			ELEM0.Child = ELEM1
-			ELEM1.Next = OpenBracket2
-			OpenBracket2.Next = ELEM3
-			ELEM3.Next = CloseBracket4
-			ELEM0.LastChild = CloseBracket4
-
-			{
-			}
-			_ = ELEM1
-			_ = OpenBracket2
-			_ = ELEM3
-			_ = CloseBracket4
-		case 3:
-			ruleType = gopapageno.RuleSimple
-
-			ELEM0 := lhs
-			ELEM1 := rhs[0]
-			OpenCloseInfo2 := rhs[1]
-
-			ELEM0.Child = ELEM1
-			ELEM1.Next = OpenCloseInfo2
-			ELEM0.LastChild = OpenCloseInfo2
-
-			{
-			}
-			_ = ELEM1
-			_ = OpenCloseInfo2
-		case 4:
-			ruleType = gopapageno.RuleSimple
-
-			ELEM0 := lhs
-			ELEM1 := rhs[0]
-			OpenCloseParams2 := rhs[1]
-
-			ELEM0.Child = ELEM1
-			ELEM1.Next = OpenCloseParams2
-			ELEM0.LastChild = OpenCloseParams2
-
-			{
-			}
-			_ = ELEM1
-			_ = OpenCloseParams2
-		case 5:
-			ruleType = gopapageno.RuleSimple
-
-			ELEM0 := lhs
-			ELEM1 := rhs[0]
-			OpenParams2 := rhs[1]
-			ELEM3 := rhs[2]
-			CloseParams4 := rhs[3]
-
-			ELEM0.Child = ELEM1
-			ELEM1.Next = OpenParams2
-			OpenParams2.Next = ELEM3
-			ELEM3.Next = CloseParams4
-			ELEM0.LastChild = CloseParams4
-
-			{
-			}
-			_ = ELEM1
-			_ = OpenParams2
-			_ = ELEM3
-			_ = CloseParams4
-		case 6:
-			ruleType = gopapageno.RuleSimple
-
 			ELEM0 := lhs
 			AlternativeClose1 := rhs[0]
 
@@ -236,9 +130,7 @@ func NewGrammar() *gopapageno.Grammar {
 			{
 			}
 			_ = AlternativeClose1
-		case 7:
-			ruleType = gopapageno.RuleSimple
-
+		case 1:
 			ELEM0 := lhs
 			Infos1 := rhs[0]
 
@@ -248,9 +140,7 @@ func NewGrammar() *gopapageno.Grammar {
 			{
 			}
 			_ = Infos1
-		case 8:
-			ruleType = gopapageno.RuleSimple
-
+		case 2:
 			ELEM0 := lhs
 			OpenBracket1 := rhs[0]
 			ELEM2 := rhs[1]
@@ -266,9 +156,7 @@ func NewGrammar() *gopapageno.Grammar {
 			_ = OpenBracket1
 			_ = ELEM2
 			_ = CloseBracket3
-		case 9:
-			ruleType = gopapageno.RuleSimple
-
+		case 3:
 			ELEM0 := lhs
 			OpenCloseInfo1 := rhs[0]
 
@@ -278,9 +166,7 @@ func NewGrammar() *gopapageno.Grammar {
 			{
 			}
 			_ = OpenCloseInfo1
-		case 10:
-			ruleType = gopapageno.RuleSimple
-
+		case 4:
 			ELEM0 := lhs
 			OpenCloseParams1 := rhs[0]
 
@@ -290,9 +176,7 @@ func NewGrammar() *gopapageno.Grammar {
 			{
 			}
 			_ = OpenCloseParams1
-		case 11:
-			ruleType = gopapageno.RuleSimple
-
+		case 5:
 			ELEM0 := lhs
 			OpenParams1 := rhs[0]
 			ELEM2 := rhs[1]
@@ -309,20 +193,19 @@ func NewGrammar() *gopapageno.Grammar {
 			_ = ELEM2
 			_ = CloseBracket3
 		}
-		_ = ruleType
+		_ = ruleFlags
 	}
 
 	return &gopapageno.Grammar{
-		NumTerminals:              numTerminals,
-		NumNonterminals:           numNonTerminals,
-		MaxRHSLength:              maxRHSLen,
-		Rules:                     rules,
-		CompressedRules:           compressedRules,
-		PrecedenceMatrix:          precMatrix,
+		NumTerminals:  numTerminals,
+		NumNonterminals: numNonTerminals,
+		MaxRHSLength: maxRHSLen,
+		Rules: rules,
+		CompressedRules: compressedRules,
+		PrecedenceMatrix: precMatrix,
 		BitPackedPrecedenceMatrix: bitPackedMatrix,
-		MaxPrefixLength:           maxPrefixLength,
-		Prefixes:                  prefixes,
-		Func:                      fn,
-		ParsingStrategy:           gopapageno.OPP,
+		Func: fn,
+		ParsingStrategy: gopapageno.OPP,
 	}
 }
+

@@ -1,9 +1,10 @@
 package main
 
 import (
+	"testing"
+
 	"github.com/giornetta/gopapageno"
 	"github.com/giornetta/gopapageno/benchmark"
-	"testing"
 )
 
 const baseFolder = "../data/"
@@ -30,22 +31,9 @@ var entries = []*benchmark.Entry[any]{
 }
 
 func BenchmarkParse(b *testing.B) {
-	benchmark.Runner[any](b, gopapageno.OPP, NewLexer, NewGrammar, entries)
+	benchmark.Runner(b, gopapageno.OPP, gopapageno.ReductionParallel, NewLexer, NewGrammar, entries)
 }
 
 func BenchmarkParseOnly(b *testing.B) {
-	benchmark.ParserRunner[any](b, gopapageno.OPP, NewLexer, NewGrammar, entries)
-}
-
-func TestProfile(t *testing.T) {
-	opts := &gopapageno.RunOptions{
-		Concurrency:       2,
-		AvgTokenLength:    8,
-		ReductionStrategy: gopapageno.ReductionParallel,
-		ParallelFactor:    0.5,
-	}
-
-	filename := baseFolder + "citylots.json"
-
-	benchmark.Profile(t, NewLexer, NewGrammar, opts, filename)
+	benchmark.ParserRunner(b, gopapageno.OPP, gopapageno.ReductionParallel, NewLexer, NewGrammar, entries)
 }

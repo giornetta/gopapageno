@@ -4,8 +4,8 @@ package main
 import "github.com/giornetta/gopapageno"
 
 import (
-	"math"
 	"strconv"
+	"math"
 )
 
 var lexerInt64Pools []*gopapageno.Pool[int64]
@@ -20,6 +20,7 @@ func LexerPreallocMem(inputSize int, numThreads int) {
 		lexerInt64Pools[i] = gopapageno.NewPool[int64](poolSizePerThread)
 	}
 }
+
 
 func NewLexer() *gopapageno.Lexer {
 	automaton := []gopapageno.LexerDFAState{
@@ -38,12 +39,12 @@ func NewLexer() *gopapageno.Lexer {
 		{[256]int{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, true, []int{}},
 	}
 
-	fn := func(rule int, text string, start int, end int, thread int, token *gopapageno.Token) gopapageno.LexResult {
+	fn := func(ruleDescription int, text string, start int, end int, thread int, token *gopapageno.Token) gopapageno.LexResult {
 		token.Type = gopapageno.TokenTerm
-		switch rule {
+		switch ruleDescription {
 		case 0:
 			{
-				token.Type = LPAR
+			    token.Type = LPAR
 			}
 		case 1:
 			{
@@ -55,18 +56,18 @@ func NewLexer() *gopapageno.Lexer {
 			}
 		case 3:
 			{
-				token.Type = PLUS
+			    token.Type = PLUS
 			}
 		case 4:
 			{
-				num := lexerInt64Pools[thread].Get()
-				var err error
-
+			    num := lexerInt64Pools[thread].Get()
+			    var err error
+			
 				*num, err = strconv.ParseInt(text, 10, 64)
 				if err != nil {
 					return gopapageno.LexErr
 				}
-
+			
 				token.Type = NUMBER
 				token.Value = num
 			}
@@ -86,9 +87,9 @@ func NewLexer() *gopapageno.Lexer {
 	}
 
 	return &gopapageno.Lexer{
-		Automaton:          automaton,
+		Automaton: automaton,
 		CutPointsAutomaton: cutPointsAutomaton,
-		Func:               fn,
-		PreambleFunc:       LexerPreallocMem,
+		Func: fn,
+		PreambleFunc: LexerPreallocMem,
 	}
 }

@@ -3,24 +3,25 @@ package xpath
 
 import "github.com/giornetta/gopapageno"
 
+
 import (
-	"github.com/giornetta/gopapageno/ext/xpath"
 	"regexp"
+	"github.com/giornetta/gopapageno/ext/xpath"
 )
 
-// A regexp.Regexp is safe for concurrent use by multiple goroutines, except for configuration methods, such as Longest.
+//A regexp.Regexp is safe for concurrent use by multiple goroutines, except for configuration methods, such as Longest.
 var generalTagRegexp *(regexp.Regexp)
 var attributesRegexp *(regexp.Regexp)
 
-func getIdAndAttributesListFrom(text string) (id string, attributesList []*xpath.Attribute) {
+func getIdAndAttributesListFrom(text string) (id string, attributesList []*xpath.Attribute){
 	tagMatch := generalTagRegexp.FindStringSubmatch(text)
 
 	id = tagMatch[1]
 	attributesString := tagMatch[2]
 
-	if attributesString != "" {
+	if(attributesString != ""){
 		attributesMatches := attributesRegexp.FindAllStringSubmatch(attributesString, -1)
-		for _, attributeMatch := range attributesMatches {
+		for _, attributeMatch := range attributesMatches{
 			attribute := xpath.NewAttribute(attributeMatch[1], attributeMatch[2])
 			attributesList = append(attributesList, attribute)
 		}
@@ -28,10 +29,11 @@ func getIdAndAttributesListFrom(text string) (id string, attributesList []*xpath
 	return
 }
 
-func LexerPreallocMem(inputSize int, numThreads int) {
+func LexerPreallocMem(inputSize int, numThreads int){
 	generalTagRegexp = regexp.MustCompile(`^<\/?([a-zA-Z0-9_\-:]+)(?:\s*)([^\/>]*)\/?>$`)
 	attributesRegexp = regexp.MustCompile(`([a-zA-Z0-9_\-:]+)(?:=")([^"]+)(?:")`)
 }
+
 
 func NewLexer() *gopapageno.Lexer {
 	automaton := []gopapageno.LexerDFAState{
@@ -69,14 +71,14 @@ func NewLexer() *gopapageno.Lexer {
 		{[256]int{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, true, []int{}},
 	}
 
-	fn := func(rule int, text string, start int, end int, thread int, token *gopapageno.Token) gopapageno.LexResult {
+	fn := func(ruleDescription int, text string, start int, end int, thread int, token *gopapageno.Token) gopapageno.LexResult {
 		token.Type = gopapageno.TokenTerm
-		switch rule {
+		switch ruleDescription {
 		case 0:
 			{
 				id, attributesList := getIdAndAttributesListFrom(text)
 				semanticValue := xpath.NewOpenTagSemanticValue(id, attributesList, start, end)
-
+			
 				token.Type = OPENTAG
 				token.Value = *semanticValue
 			}
@@ -84,17 +86,17 @@ func NewLexer() *gopapageno.Lexer {
 			{
 				id, attributesList := getIdAndAttributesListFrom(text)
 				semanticValue := xpath.NewOpenCloseTagSemanticValue(id, attributesList, start, end)
-
-				token.Type = OPENCLOSETAG
-				token.Value = *semanticValue
+			
+			    token.Type = OPENCLOSETAG
+			    token.Value = *semanticValue
 			}
 		case 2:
 			{
 				id, _ := getIdAndAttributesListFrom(text)
 				semanticValue := xpath.NewCloseTagSemanticValue(id, start, end)
-
-				token.Type = CLOSETAG
-				token.Value = *semanticValue
+			
+			    token.Type = CLOSETAG
+			    token.Value = *semanticValue
 			}
 		case 3:
 			{
@@ -111,7 +113,7 @@ func NewLexer() *gopapageno.Lexer {
 		case 6:
 			{
 				semanticValue := xpath.NewTextSemanticValue(text, start, end)
-
+			
 				token.Type = TEXT
 				token.Value = *semanticValue
 			}
@@ -123,9 +125,9 @@ func NewLexer() *gopapageno.Lexer {
 	}
 
 	return &gopapageno.Lexer{
-		Automaton:          automaton,
+		Automaton: automaton,
 		CutPointsAutomaton: cutPointsAutomaton,
-		Func:               fn,
-		PreambleFunc:       LexerPreallocMem,
+		Func: fn,
+		PreambleFunc: LexerPreallocMem,
 	}
 }
