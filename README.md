@@ -161,6 +161,11 @@ To run a parser, execute the generated `main.pg.go` files with the command-line 
 
 Example folders also contain a `benchmark_test.go` benchmark file that can be executed to run benchmarks specific to that parsing algorithm and grammar. Two benchmarks named `BenchmarkParse` and `BenchmarkParseOnly` are defined: the first considers the entire lexing and parsing process, the second one only considers the parsing stage. 
 
+To run a benchmark, execute a command with the following format:
+```
+go test github.com/giornetta/gopapageno/examples/{{ .EXAMPLE }}/{{ .STRAT }} -bench=BenchmarkParseOnly -count={{ .COUNT }}
+```
+
 ## Authors and Contributors
 
  * Michele Giornetta <michelegiornetta@gmail.com> <michele.giornetta@mail.polimi.it> (Refactor, AOPP and C-OPP Extensions)

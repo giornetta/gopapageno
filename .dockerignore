@@ -1,7 +1,8 @@
 .idea
 
-# Ignore all example folders except examples/json
+# Ignore all example folders except adder and JSON
 examples/*
+!examples/adder
 !examples/json
 
 Taskfile.yml

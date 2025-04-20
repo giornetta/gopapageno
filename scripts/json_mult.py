@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """JSON Multiplier
 
 This scripts reads a JSON file and writes a new JSON file obtained by replicated each key-value pair n times.

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """Prepare Benchmarks
 
 This scripts takes as input a number of Go benchmark files, possibly obtained by benchmarks in different packages,

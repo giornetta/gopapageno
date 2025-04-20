@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """Filter Benchmarks
 
 This scripts takes as input a Go benchmark file, and filters lines which contain specified key value pairs.
