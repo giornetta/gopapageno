@@ -21,6 +21,11 @@ GoPAPAGENO can be installed by using the Go toolchain and running the following 
 go install github.com/giornetta/gopapageno/cmd/gopapageno@latest
 ```
 
+Alternatively, you can run a Docker container:
+```bash
+docker run -it giornetta/gopapageno
+```
+
 The gopapageno program accepts the following command-line flags:
 - `-l lexfile.l`: the lexicon specification file **(Mandatory)**;
 - `-g grammarfile.g`: the grammar specification file **(Mandatory)**;
