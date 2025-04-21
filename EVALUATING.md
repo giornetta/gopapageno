@@ -42,9 +42,11 @@ Alternatively, you can customize the benchmark parameters:
 
 The script supports the following options:
 ```
--b, --bench: Specify the benchmark type (either BenchmarkParseOnly or BenchmarkParse)
+-b, --bench: Specify the benchmark type (either BenchmarkParseOnly or BenchmarkParse, default: BenchmarkParseOnly)
 -c, --count: Number of iterations for each benchmark (default: 10)
 ```
+
+The script will benchmark the three parsing algorithms on the *Emojis*, *Citylots* and *Wikidata* datasets using all thread counts from `1` to `min(GOMAXPROCS(), 32)`.
 
 When running the evaluation script, you should see output similar to:
 ```
