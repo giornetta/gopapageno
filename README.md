@@ -17,7 +17,7 @@ that it produces.
 
 GoPAPAGENO can be installed by using the Go toolchain and running the following command:
 
-```
+```bash
 go install github.com/giornetta/gopapageno/cmd/gopapageno@latest
 ```
 
@@ -46,7 +46,7 @@ Unless running gopapageno with `-types-only`, the tool will generate a self-cont
 - `-memprof outfile`: if set, it will enable memory profiling and output its result in outfile.
 
 Otherwise, GoPAPAGENO will only generate a `lexer.pg.go` and `parser.pg.go` file, which declare, respectively, the functions `NewLexer()` and `NewGrammar()`, whose result can then be passed into `gopapageno.NewRunner` alongside any desired option, using Go’s functional options pattern, as shown in the example below.
-```
+```go
 r := gopapageno.NewRunner(
     NewLexer(),
     NewGrammar(),
@@ -167,7 +167,7 @@ To run a parser, execute the generated `main.pg.go` files with the command-line 
 Example folders also contain a `benchmark_test.go` benchmark file that can be executed to run benchmarks specific to that parsing algorithm and grammar. Two benchmarks named `BenchmarkParse` and `BenchmarkParseOnly` are defined: the first considers the entire lexing and parsing process, the second one only considers the parsing stage. 
 
 To run a benchmark, execute a command with the following format:
-```
+```bash
 go test github.com/giornetta/gopapageno/examples/{{ .EXAMPLE }}/{{ .STRAT }} -bench=BenchmarkParseOnly -count={{ .COUNT }}
 ```
 
